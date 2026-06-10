@@ -1,0 +1,1 @@
+Next, I can add a Supabase service role key as a Replit secret so migrations can be applied automatically without needing the manual SQL step. Would you like me to set that up?
