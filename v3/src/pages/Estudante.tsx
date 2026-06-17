@@ -5,6 +5,8 @@ import { PortaisNav } from "@/components/PortaisNav";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+type Coautor = { nome?: string; email?: string };
+
 type Submission = {
   id: string;
   titulo: string;
@@ -13,9 +15,17 @@ type Submission = {
   status: string;
   data_submissao: string;
   created_at: string;
+  orientador_email?: string | null;
+  coautores?: Coautor[] | null;
+  pdf_url?: string | null;
 };
 
 type Categoria = { id: string; nome: string };
+
+// Bucket de Storage onde os PDFs são enviados. É o mesmo bucket exposto
+// pelo endpoint S3-compatível do projeto (VITE_SUPABASE_S3_ENDPOINT).
+const PDF_BUCKET = import.meta.env.VITE_SUPABASE_PDF_BUCKET || "Pdfs";
+const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const Estudante = () => {
   const navigate = useNavigate();
@@ -42,7 +52,11 @@ const Estudante = () => {
       supabase.from("trabalhos").select("*").order("created_at", { ascending: false }),
       supabase.from("categorias").select("*").order("nome"),
     ]);
-    setTrabalhos(t ?? []);
+    const rows: Submission[] = (t ?? []).map((r) => ({
+      ...r,
+      coautores: Array.isArray(r.coautores) ? (r.coautores as Coautor[]) : [],
+    }));
+    setTrabalhos(rows);
     setCategorias(c ?? []);
     setLoading(false);
   };
@@ -72,18 +86,51 @@ const Estudante = () => {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
+    if (!selectedFile) {
+      toast.error("Anexe o PDF do trabalho.");
+      return;
+    }
+    if (selectedFile.type !== "application/pdf") {
+      toast.error("O arquivo precisa estar em formato PDF.");
+      return;
+    }
+    if (selectedFile.size > MAX_PDF_BYTES) {
+      toast.error("O PDF excede o limite de 10MB.");
+      return;
+    }
     setSubmitting(true);
-    const { data: { session } } = await supabase.auth.getSession();
+
+    // 1. Envia o PDF ao bucket de Storage (S3) e guarda só o link de acesso.
+    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from(PDF_BUCKET)
+      .upload(path, selectedFile, { contentType: "application/pdf", upsert: false });
+
+    if (uploadError) {
+      toast.error("Erro ao enviar o PDF. Tente novamente.");
+      setSubmitting(false);
+      return;
+    }
+    const pdfUrl = supabase.storage.from(PDF_BUCKET).getPublicUrl(path).data.publicUrl;
+
+    // 2. Insere o trabalho na tabela, com coautores e orientador.
+    const coautores = coauthors
+      .map(c => ({ nome: c.nome.trim(), email: c.email.trim() }))
+      .filter(c => c.nome || c.email);
     const autores = [
       user?.nome ?? "Autor",
-      ...coauthors.filter(c => c.nome).map(c => c.nome),
+      ...coautores.filter(c => c.nome).map(c => c.nome),
     ].join(", ");
 
     const { error } = await supabase.from("trabalhos").insert({
       titulo: form.titulo,
       resumo: form.resumo,
-      categoria_id: form.categoria || null,
+      categoria_id: form.categoria,
       autores,
+      orientador_email: form.orientador.trim() || null,
+      coautores,
+      pdf_url: pdfUrl,
       data_submissao: new Date().toISOString().split("T")[0],
       status: "pendente",
     });
@@ -421,6 +468,7 @@ const Estudante = () => {
                       <th>CATEGORIA</th>
                       <th>STATUS</th>
                       <th>DATA</th>
+                      <th>ARQUIVO</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -431,6 +479,7 @@ const Estudante = () => {
                         <td>{catNome(t.categoria_id)}</td>
                         <td><span className={statusBadge(t.status)}>{statusLabel[t.status] ?? t.status}</span></td>
                         <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
+                        <td>{t.pdf_url ? <a href={t.pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</a> : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

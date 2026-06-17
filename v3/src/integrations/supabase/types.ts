@@ -101,6 +101,38 @@ export type Database = {
         }
         Relationships: []
       }
+      criterios: {
+        Row: {
+          categoria_id: string
+          created_at: string
+          id: string
+          ordem: number
+          titulo: string
+        }
+        Insert: {
+          categoria_id: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo: string
+        }
+        Update: {
+          categoria_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "criterios_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estudantes: {
         Row: {
           id: string
@@ -187,30 +219,42 @@ export type Database = {
           aluno_id: string | null
           autores: string
           categoria_id: string
+          coautores: Json
           created_at: string
           data_submissao: string
           id: string
+          orientador_email: string | null
+          pdf_url: string | null
           resumo: string
+          status: string
           titulo: string
         }
         Insert: {
           aluno_id?: string | null
           autores: string
           categoria_id: string
+          coautores?: Json
           created_at?: string
           data_submissao?: string
           id?: string
+          orientador_email?: string | null
+          pdf_url?: string | null
           resumo: string
+          status?: string
           titulo: string
         }
         Update: {
           aluno_id?: string | null
           autores?: string
           categoria_id?: string
+          coautores?: Json
           created_at?: string
           data_submissao?: string
           id?: string
+          orientador_email?: string | null
+          pdf_url?: string | null
           resumo?: string
+          status?: string
           titulo?: string
         }
         Relationships: [

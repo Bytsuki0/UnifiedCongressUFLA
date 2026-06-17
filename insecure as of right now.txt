@@ -1,0 +1,23 @@
+What was connected
+The /estudante "Submeter trabalho científico" form now writes to Supabase (handleSubmitWork in Estudante.tsx). Note: it was actually broken before — the code inserted a status field that didn't exist on the table, so every submission failed silently with "Erro ao submeter trabalho". That's fixed.
+
+trabalhos — the form now saves título, resumo, categoria_id, autores, orientador_email, coautores, pdf_url, and status.
+categorias — already populated the dropdown; the selected category is now persisted.
+Coautores — the existing "Adicionar" UI (multiple name+email rows) is now stored as a JSONB array [{nome, email}, ...].
+PDF — uploaded to the Pdfs Storage bucket (the same bucket your S3 endpoint exposes); only the public link is stored in trabalhos.pdf_url. A "Ver PDF" link now appears in the Histórico table.
+Schema changes (new migration)
+trabalhos: status (default 'pendente'), orientador_email, coautores (jsonb []), pdf_url
+Pdfs bucket → public, 10 MB limit, application/pdf only, + RLS policies for upload/read
+Env (.env)
+Added VITE_SUPABASE_S3_ENDPOINT (your endpoint) and VITE_SUPABASE_PDF_BUCKET=Pdfs.
+
+Migrate + test results
+npm run migrate → applied (also fixed migrate.js to load .env locally — it previously only worked on Replit).
+End-to-end test with the anon key (browser path): upload → public URL HTTP 200 → insert with coautores/orientador → cleanup — all ✓
+npm run build ✓, tsc --noEmit ✓, npm test ✓ (also fixed vitest.config.ts, which referenced an uninstalled -swc plugin).
+Two things to flag
+The Pdfs bucket is now public — anyone with the link can open a PDF. This matches the rest of the app (all tables use open public RLS for this no-auth sprint), but given the Revisor page mentions double-blind review, say the word if you'd prefer a private bucket with time-limited signed URLs instead.
+About the S3 endpoint: uploads go through the Supabase Storage API (supabase.storage), which writes to the exact same bucket your S3 endpoint serves. Using the raw S3 protocol from the browser would require embedding S3 secret keys client-side (insecure), so the Storage API is the correct path — the endpoint is recorded in .env for reference/config.
+One heads-up, not changed: the Estudante page lists all trabalhos, not just the logged-in student's (pre-existing). Now that real submissions land in the table, you may want to filter by student — let me know and I'll add an aluno_id link + filter.
+
+Note on running migrate here: this machine has a TLS-intercepting proxy, so Node's HTTPS failed cert verification; I applied the migration with NODE_TLS_REJECT_UNAUTHORIZED=0 for that run only (didn't bake it into any script). In your own terminal npm run migrate should work as normal.

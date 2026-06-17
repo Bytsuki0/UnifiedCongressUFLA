@@ -12,6 +12,14 @@ export type Categoria = {
   created_at: string;
 };
 
+export type Criterio = {
+  id: string;
+  categoria_id: string;
+  ordem: number;
+  titulo: string;
+  created_at: string;
+};
+
 export type Trabalho = {
   id: string;
   titulo: string;
