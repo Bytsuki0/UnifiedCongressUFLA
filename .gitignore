@@ -23,4 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+vite_project
+.claude
+.config
+./vite_project
+vite_project/*
+!.gitignore
+
 
