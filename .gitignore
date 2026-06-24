@@ -29,5 +29,8 @@ vite_project
 ./vite_project
 vite_project/*
 !.gitignore
+insecure as of right now.txt
+next promt.txt
+
 
 
