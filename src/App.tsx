@@ -24,7 +24,28 @@ import Revisor from "./pages/Revisor";
 import PreCadastro from "./pages/PreCadastro";
 import ProfessorCadastro from "./pages/ProfessorCadastro";
 
+// Event-management (QuadCode congress) pages — namespaced under /congresso
+import EventInformacoes from "./pages/event/Informacoes";
+import EventProgramacao from "./pages/event/Programacao";
+import EventVerificar from "./pages/event/Verificar";
+import EventVerificarCodigo from "./pages/event/VerificarCodigo";
+import EventDashboard from "./pages/event/Dashboard";
+import EventInscricao from "./pages/event/Inscricao";
+import EventMinicursos from "./pages/event/Minicursos";
+import EventCertificados from "./pages/event/Certificados";
+import EventPerfil from "./pages/event/Perfil";
+import AdminIndex from "./pages/event/admin/AdminIndex";
+import AdminUsuarios from "./pages/event/admin/AdminUsuarios";
+import AdminInscricoes from "./pages/event/admin/AdminInscricoes";
+import AdminMinicursos from "./pages/event/admin/AdminMinicursos";
+import AdminProgramacao from "./pages/event/admin/AdminProgramacao";
+import AdminCertificados from "./pages/event/admin/AdminCertificados";
+import AdminVerificar from "./pages/event/admin/AdminVerificar";
+import AdminNotificacoes from "./pages/event/admin/AdminNotificacoes";
+
 const queryClient = new QueryClient();
+
+const ALL_ROLES = ["estudante", "professor", "avaliador", "admin"] as const;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -69,6 +90,33 @@ const App = () => (
                 <Route path="/categorias" element={<Categorias />} />
                 <Route path="/atribuicoes" element={<Atribuicoes />} />
               </Route>
+            </Route>
+
+            {/* ===== Congresso (event management) — public pages ===== */}
+            <Route path="/congresso/informacoes" element={<EventInformacoes />} />
+            <Route path="/congresso/programacao" element={<EventProgramacao />} />
+            <Route path="/congresso/verificar" element={<EventVerificar />} />
+            <Route path="/congresso/verificar/:codigo" element={<EventVerificarCodigo />} />
+
+            {/* Congresso — logged-in pages: all four profiles */}
+            <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} />}>
+              <Route path="/congresso/dashboard" element={<EventDashboard />} />
+              <Route path="/congresso/inscricao" element={<EventInscricao />} />
+              <Route path="/congresso/minicursos" element={<EventMinicursos />} />
+              <Route path="/congresso/certificados" element={<EventCertificados />} />
+              <Route path="/congresso/perfil" element={<EventPerfil />} />
+            </Route>
+
+            {/* Congresso — co-chairs (avaliador) and admin */}
+            <Route element={<ProtectedRoute allowedRoles={["avaliador", "admin"]} />}>
+              <Route path="/congresso/admin" element={<AdminIndex />} />
+              <Route path="/congresso/admin/usuarios" element={<AdminUsuarios />} />
+              <Route path="/congresso/admin/inscricoes" element={<AdminInscricoes />} />
+              <Route path="/congresso/admin/minicursos" element={<AdminMinicursos />} />
+              <Route path="/congresso/admin/programacao" element={<AdminProgramacao />} />
+              <Route path="/congresso/admin/certificados" element={<AdminCertificados />} />
+              <Route path="/congresso/admin/verificar" element={<AdminVerificar />} />
+              <Route path="/congresso/admin/notificacoes" element={<AdminNotificacoes />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

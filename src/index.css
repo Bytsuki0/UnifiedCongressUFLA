@@ -41,6 +41,16 @@
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
 
+    /* Event-management pages — aligned to the main app's blue/purple palette
+       so the congresso pages share the same visual identity. */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(263 70% 50%));
+    --gradient-purple: linear-gradient(135deg, hsl(263 70% 55%), hsl(263 70% 42%));
+    --gradient-cyan: linear-gradient(135deg, hsl(189 96% 45%), hsl(200 90% 45%));
+    --gradient-soft: linear-gradient(135deg, hsl(221 83% 53% / 0.10), hsl(263 70% 50% / 0.10));
+    --shadow-soft: 0 6px 20px -8px hsl(221 83% 40% / 0.25);
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 221 83% 53%;
@@ -651,11 +661,56 @@
 .sidebar-dark .sidebar-footer .nav-item { color: rgba(255,255,255,0.5); }
 .sidebar-dark .sidebar-footer .nav-item:hover { background: rgba(255,255,255,0.08); color: var(--white); }
 
+/* ---- Secondary sidebar (Congresso › Administração) ---- */
+.sidebar-subnav {
+  left: var(--sidebar-width);
+  width: 240px;
+  z-index: 99;
+  box-shadow: var(--shadow-2);
+}
+
+.sidebar-subnav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.sidebar-subnav-header .logo-text {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+}
+
+.sidebar-subnav-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.sidebar-subnav-close:hover {
+  background: var(--gray-100);
+  color: var(--color-text);
+}
+
 /* ---- Main Content ---- */
 .main-content {
   margin-left: var(--sidebar-width);
   min-height: 100vh;
   background: var(--color-bg);
+  transition: margin-left var(--transition-fast) var(--ease-default);
+}
+
+.main-content.with-subnav {
+  margin-left: calc(var(--sidebar-width) + 240px);
 }
 
 .top-bar {

@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/contexts/AuthContext";
 
-type CurrentPage = "estudante" | "revisor" | "admin" | "dashboard";
+type CurrentPage = "estudante" | "revisor" | "admin" | "dashboard" | "congresso";
 
 const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNode }> = {
   estudante: {
@@ -45,16 +45,30 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
       </>
     ),
   },
+  congresso: {
+    label: "Congresso",
+    to: "/congresso/dashboard",
+    icon: (
+      <>
+        <path d="M8 2v4"/>
+        <path d="M16 2v4"/>
+        <rect width="18" height="18" x="3" y="4" rx="2"/>
+        <path d="M3 10h18"/>
+      </>
+    ),
+  },
 };
 
-function getPortaisItems(role: UserRole, currentPage: CurrentPage): string[] {
+function getPortaisItems(role: UserRole): string[] {
+  // Fixed, canonical order per role. The current page is NOT removed — it stays
+  // in place (marked active) so the portal buttons never shift position.
   const byRole: Record<UserRole, string[]> = {
-    estudante: [],
-    professor: ["estudante", "revisor"],
-    avaliador: ["dashboard", "estudante", "revisor"],
-    admin: ["dashboard", "estudante", "revisor", "admin"],
+    estudante: ["congresso"],
+    professor: ["estudante", "revisor", "congresso"],
+    avaliador: ["dashboard", "estudante", "revisor", "congresso"],
+    admin: ["dashboard", "estudante", "revisor", "admin", "congresso"],
   };
-  return (byRole[role] || []).filter(k => k !== currentPage);
+  return byRole[role] || [];
 }
 
 type Props = {
@@ -67,7 +81,7 @@ export function PortaisNav({ currentPage, pushToBottom = false, borderColor = "v
   const { role } = useAuth();
   if (!role) return null;
 
-  const items = getPortaisItems(role, currentPage);
+  const items = getPortaisItems(role);
   if (items.length === 0) return null;
 
   const content = (
@@ -77,11 +91,13 @@ export function PortaisNav({ currentPage, pushToBottom = false, borderColor = "v
       </div>
       {items.map(key => {
         const item = NAV_ITEMS[key];
+        const isCurrent = key === currentPage;
         return (
           <NavLink
             key={key}
             to={item.to}
-            className="nav-item"
+            className={`nav-item${isCurrent ? " active" : ""}`}
+            aria-current={isCurrent ? "page" : undefined}
             style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", textDecoration: "none" }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
