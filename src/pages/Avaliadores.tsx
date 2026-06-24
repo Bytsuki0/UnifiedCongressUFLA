@@ -29,7 +29,7 @@ const Avaliadores = () => {
       .from("avaliadores")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) toast.error("Erro ao carregar avaliadores");
+    if (error) toast.error("Erro ao carregar co-chairs");
     else setAvaliadores(data ?? []);
     setLoading(false);
   };
@@ -43,7 +43,7 @@ const Avaliadores = () => {
     const { error } = await supabase.from("avaliadores").delete().eq("id", toDelete.id);
     if (error) toast.error("Erro ao excluir");
     else {
-      toast.success("Avaliador excluído");
+      toast.success("Co-chair excluído");
       load();
     }
     setToDelete(null);
@@ -53,12 +53,12 @@ const Avaliadores = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Avaliadores</h1>
-          <p className="text-sm text-muted-foreground">Gerencie os avaliadores cadastrados.</p>
+          <h1 className="text-2xl font-bold">Co-chairs</h1>
+          <p className="text-sm text-muted-foreground">Gerencie os Co-chairs cadastrados.</p>
         </div>
         <Button asChild>
           <Link to="/avaliadores/novo">
-            <Plus className="mr-2 h-4 w-4" /> Novo avaliador
+            <Plus className="mr-2 h-4 w-4" /> Novo co-chair
           </Link>
         </Button>
       </div>
@@ -83,7 +83,7 @@ const Avaliadores = () => {
             ) : avaliadores.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground">
-                  Nenhum avaliador cadastrado.
+                  Nenhum co-chair cadastrado.
                 </TableCell>
               </TableRow>
             ) : (
@@ -107,9 +107,9 @@ const Avaliadores = () => {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir avaliador?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir co-chair?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O avaliador{" "}
+              Esta ação não pode ser desfeita. O co-chair{" "}
               <strong>{toDelete?.nome}</strong> será removido permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>

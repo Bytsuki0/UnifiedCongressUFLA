@@ -4,6 +4,49 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  Criterio,
+  ParecerItem,
+  ResultadoParecer,
+  RESULTADO_OPTIONS,
+} from "@/lib/types";
+import {
+  AssociacaoComTrabalho,
+  listarTrabalhosAssociados,
+  listarCriterios,
+  obterParecer,
+  salvarParecer,
+} from "@/services/revisorService";
+
+const RESULTADO_LABEL: Record<ResultadoParecer, string> = {
+  aprovado: "Aprovado",
+  aprovado_correcoes: "Aprovado c/ correções",
+  nao_aprovado: "Não aprovado",
+};
+const RESULTADO_BADGE: Record<ResultadoParecer, string> = {
+  aprovado: "badge-solid-green",
+  aprovado_correcoes: "badge-solid-blue",
+  nao_aprovado: "badge-solid-red",
+};
+const TRABALHO_STATUS_LABEL: Record<string, string> = {
+  pendente: "Recebido",
+  em_avaliacao: "Em Avaliação",
+  aprovado: "Aprovado",
+  reprovado: "Reprovado",
+};
+const TRABALHO_STATUS_BADGE: Record<string, string> = {
+  pendente: "badge-amber",
+  em_avaliacao: "badge-blue",
+  aprovado: "badge-green",
+  reprovado: "badge-red",
+};
+const NOTA_OPCOES = [
+  { value: "1", label: "1 - Insuficiente" },
+  { value: "2", label: "2 - Regular" },
+  { value: "3", label: "3 - Bom" },
+  { value: "4", label: "4 - Muito Bom" },
+  { value: "5", label: "5 - Excelente" },
+];
 
 type Submissao = {
   id: string;
@@ -71,9 +114,22 @@ function deadlineOf(sub: Submissao) {
 const Revisor = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [section, setSection] = useState<"atribuicoes" | "avaliacao" | "formularios" | "arquivo" | "portais">("atribuicoes");
+  const [section, setSection] = useState<"analise" | "analise-detalhe" | "atribuicoes" | "avaliacao" | "formularios" | "arquivo" | "portais">("analise");
   const [subs, setSubs] = useState<Submissao[]>([]);
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
+
+  // ===== Análise de trabalhos associados (Supabase) =====
+  const [analiseAssocs, setAnaliseAssocs] = useState<AssociacaoComTrabalho[]>([]);
+  const [analiseLoading, setAnaliseLoading] = useState(true);
+  const [analiseCategorias, setAnaliseCategorias] = useState<Record<string, string>>({});
+  const [analisePareceres, setAnalisePareceres] = useState<Record<string, ResultadoParecer>>({});
+  const [analiseAtivo, setAnaliseAtivo] = useState<AssociacaoComTrabalho | null>(null);
+  const [analiseCriterios, setAnaliseCriterios] = useState<Criterio[]>([]);
+  const [analiseResultado, setAnaliseResultado] = useState<ResultadoParecer | "">("");
+  const [analiseNotas, setAnaliseNotas] = useState<Record<string, { nota: string; comentario: string }>>({});
+  const [analiseComentarioGeral, setAnaliseComentarioGeral] = useState("");
+  const [analiseJaAvaliado, setAnaliseJaAvaliado] = useState(false);
+  const [analiseSaving, setAnaliseSaving] = useState(false);
 
   const [resultado, setResultado] = useState("");
   const [comentarios, setComentarios] = useState("");
@@ -92,6 +148,103 @@ const Revisor = () => {
     const interval = setInterval(loadSubs, 4000);
     return () => clearInterval(interval);
   }, [loadSubs]);
+
+  const carregarAnalise = useCallback(async () => {
+    if (!user?.email) return;
+    setAnaliseLoading(true);
+    try {
+      const [assocs, { data: cats }, { data: pars }] = await Promise.all([
+        listarTrabalhosAssociados(user.email),
+        supabase.from("categorias").select("id, nome"),
+        supabase.from("pareceres").select("trabalho_id, resultado").eq("revisor_email", user.email),
+      ]);
+      setAnaliseAssocs(assocs);
+      const map: Record<string, string> = {};
+      (cats ?? []).forEach((c) => { map[c.id] = c.nome; });
+      setAnaliseCategorias(map);
+      const pmap: Record<string, ResultadoParecer> = {};
+      (pars ?? []).forEach((p) => { pmap[p.trabalho_id] = p.resultado as ResultadoParecer; });
+      setAnalisePareceres(pmap);
+    } catch {
+      toast.error("Erro ao carregar trabalhos associados.");
+    } finally {
+      setAnaliseLoading(false);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    carregarAnalise();
+  }, [carregarAnalise]);
+
+  async function abrirAnalise(assoc: AssociacaoComTrabalho) {
+    const trab = assoc.trabalho;
+    if (!trab) { toast.error("Trabalho indisponível."); return; }
+    setAnaliseAtivo(assoc);
+    setAnaliseResultado("");
+    setAnaliseNotas({});
+    setAnaliseComentarioGeral("");
+    setAnaliseJaAvaliado(false);
+    setAnaliseCriterios([]);
+    setSection("analise-detalhe");
+    try {
+      const crits = trab.categoria_id ? await listarCriterios(trab.categoria_id) : [];
+      setAnaliseCriterios(crits);
+      const parecer = user?.email ? await obterParecer(trab.id, user.email) : null;
+      if (parecer) {
+        setAnaliseJaAvaliado(true);
+        setAnaliseResultado(parecer.resultado);
+        setAnaliseComentarioGeral(parecer.comentario_geral ?? "");
+        const map: Record<string, { nota: string; comentario: string }> = {};
+        parecer.itens.forEach((it) => {
+          map[it.criterio_id] = { nota: String(it.nota), comentario: it.comentario };
+        });
+        setAnaliseNotas(map);
+      }
+    } catch {
+      toast.error("Erro ao carregar critérios ou parecer.");
+    }
+  }
+
+  function setNota(critId: string, nota: string) {
+    setAnaliseNotas((r) => ({ ...r, [critId]: { ...(r[critId] ?? { nota: "", comentario: "" }), nota } }));
+  }
+  function setComentarioCrit(critId: string, comentario: string) {
+    setAnaliseNotas((r) => ({ ...r, [critId]: { ...(r[critId] ?? { nota: "", comentario: "" }), comentario } }));
+  }
+
+  async function enviarParecer() {
+    if (!analiseAtivo?.trabalho || !user?.email) return;
+    if (!analiseResultado) { toast.error("Selecione o resultado final."); return; }
+    if (analiseCriterios.length === 0) { toast.error("Esta categoria não possui critérios definidos."); return; }
+    const faltando = analiseCriterios.some((c) => !analiseNotas[c.id]?.nota);
+    if (faltando) { toast.error("Atribua uma nota a todos os critérios."); return; }
+
+    setAnaliseSaving(true);
+    try {
+      const itens: ParecerItem[] = analiseCriterios.map((c) => ({
+        criterio_id: c.id,
+        titulo: c.titulo,
+        nota: Number(analiseNotas[c.id]?.nota || 0),
+        comentario: analiseNotas[c.id]?.comentario?.trim() || "",
+      }));
+      await salvarParecer({
+        trabalhoId: analiseAtivo.trabalho.id,
+        revisorEmail: user.email,
+        revisorNome: user.nome,
+        resultado: analiseResultado,
+        itens,
+        comentarioGeral: analiseComentarioGeral.trim() || null,
+      });
+      toast.success("Parecer registrado com sucesso!");
+      await carregarAnalise();
+      setSection("analise");
+      setAnaliseAtivo(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar parecer.");
+    } finally {
+      setAnaliseSaving(false);
+    }
+  }
 
   const reviewerEmail = user?.email || REVIEWER_EMAIL;
 
@@ -195,7 +348,7 @@ const Revisor = () => {
   const DL = ({ sub, diffDays, hoursRem, isEval }: { sub: Submissao; diffDays: number; hoursRem: number; isEval: boolean }) => {
     const dl = deadlineOf(sub);
     const urgent = !isEval && hoursRem <= alertHours;
-    let rem = diffDays < 0 ? "Atrasado" : diffDays === 0 ? `Hoje (${hoursRem}h)` : `${diffDays} dias restantes`;
+    const rem = diffDays < 0 ? "Atrasado" : diffDays === 0 ? `Hoje (${hoursRem}h)` : `${diffDays} dias restantes`;
     return (
       <div className="work-card-deadline">
         <div className="deadline-date">Prazo: {dl.toLocaleDateString("pt-BR")}</div>
@@ -222,13 +375,14 @@ const Revisor = () => {
 
         <nav className="sidebar-nav">
           {([
+            { id: "analise", label: "Análise de Trabalhos", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></> },
             { id: "atribuicoes", label: "Atribuições", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></> },
             { id: "formularios", label: "Formulários", icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></> },
             { id: "arquivo", label: "Arquivo", icon: <><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></> },
           ] as { id: string; label: string; icon: React.ReactNode }[]).map(item => (
             <button
               key={item.id}
-              className={`nav-item${section === item.id ? " active" : ""}`}
+              className={`nav-item${section === item.id || (item.id === "analise" && section === "analise-detalhe") ? " active" : ""}`}
               onClick={() => setSection(item.id as typeof section)}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>{item.icon}</svg>
@@ -261,6 +415,188 @@ const Revisor = () => {
             <div className="user-avatar" style={{ background: "var(--color-primary)" }}>{initials(user?.nome)}</div>
           </div>
         </header>
+
+        {/* ============ ANÁLISE DE TRABALHOS ASSOCIADOS ============ */}
+        <div className={`section${section === "analise" ? " active" : ""}`}>
+          <div className="content-area">
+            <div className="page-header">
+              <div className="page-overline">ANÁLISE DE TRABALHOS</div>
+              <h1 className="page-title">Trabalhos associados a você</h1>
+              <p className="page-subtitle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Trabalhos vinculados a <strong>{user?.email}</strong> · abra o PDF, avalie cada critério e emita seu parecer.
+              </p>
+            </div>
+
+            {analiseLoading ? (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Carregando trabalhos...</div>
+            ) : analiseAssocs.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <h3 className="empty-state-title">Nenhum trabalho associado</h3>
+                <p className="empty-state-description">Não há trabalhos vinculados ao seu e-mail no momento. Assim que a comissão organizadora associar trabalhos a você, eles aparecerão aqui para análise.</p>
+              </div>
+            ) : (
+              <div className="table-container" style={{ marginTop: 24 }}>
+                <table className="table" style={{ width: "100%" }}>
+                  <thead>
+                    <tr>
+                      <th>TÍTULO</th>
+                      <th>CATEGORIA</th>
+                      <th>AUTORES</th>
+                      <th>STATUS</th>
+                      <th>DATA</th>
+                      <th>PDF</th>
+                      <th>SEU PARECER</th>
+                      <th>AÇÃO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analiseAssocs.map((a) => {
+                      const t = a.trabalho;
+                      const resultado = t ? analisePareceres[t.id] : undefined;
+                      return (
+                        <tr key={a.id}>
+                          <td style={{ fontWeight: "var(--fw-semibold)" }}>{t?.titulo ?? "Trabalho removido"}</td>
+                          <td>{t?.categoria_id ? (analiseCategorias[t.categoria_id] ?? "—") : "—"}</td>
+                          <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t?.autores ?? "—"}</td>
+                          <td>{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
+                          <td>{t ? new Date(t.data_submissao).toLocaleDateString("pt-BR") : "—"}</td>
+                          <td>{t?.pdf_url ? <a href={t.pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</a> : "—"}</td>
+                          <td>{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
+                          <td>
+                            <button className="btn btn-primary btn-sm" disabled={!t} onClick={() => abrirAnalise(a)}>
+                              {resultado ? "Revisar" : "Analisar"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ============ ANÁLISE — DETALHE ============ */}
+        <div className={`section${section === "analise-detalhe" ? " active" : ""}`}>
+          <div className="avaliacao-subheader">
+            <button className="back-btn" onClick={() => { setSection("analise"); setAnaliseAtivo(null); }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              VOLTAR AOS TRABALHOS
+            </button>
+            <span className="sub-id">
+              {analiseAtivo?.trabalho
+                ? `${analiseAtivo.trabalho.categoria_id ? (analiseCategorias[analiseAtivo.trabalho.categoria_id] ?? "—") : "—"} · ${TRABALHO_STATUS_LABEL[analiseAtivo.trabalho.status] ?? analiseAtivo.trabalho.status}`
+                : "—"}
+            </span>
+            {analiseAtivo?.trabalho?.pdf_url && (
+              <a className="btn btn-outline btn-sm" href={analiseAtivo.trabalho.pdf_url} target="_blank" rel="noopener noreferrer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                ABRIR PDF
+              </a>
+            )}
+          </div>
+
+          <div className="avaliacao-layout">
+            <div className="pdf-viewer">
+              {analiseAtivo?.trabalho?.pdf_url ? (
+                <iframe title="PDF do trabalho" src={analiseAtivo.trabalho.pdf_url} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none", zIndex: 5 }} />
+              ) : (
+                <>
+                  <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <div className="pdf-viewer-filename">PDF NÃO DISPONÍVEL</div>
+                  <div className="pdf-viewer-description">Este trabalho não possui arquivo PDF anexado.</div>
+                </>
+              )}
+            </div>
+
+            <div className="review-panel">
+              <div className="review-panel-body">
+                <div className="review-section-overline">DADOS DO TRABALHO</div>
+                <div className="review-section-title">{analiseAtivo?.trabalho?.titulo ?? "—"}</div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-secondary)", marginBottom: "var(--space-4)" }}>
+                  <div><strong>Autores:</strong> {analiseAtivo?.trabalho?.autores ?? "—"}</div>
+                  <div><strong>Orientador:</strong> {analiseAtivo?.trabalho?.orientador_email ?? "—"}</div>
+                  <div><strong>Categoria:</strong> {analiseAtivo?.trabalho?.categoria_id ? (analiseCategorias[analiseAtivo.trabalho.categoria_id] ?? "—") : "—"}</div>
+                  <div><strong>Data de submissão:</strong> {analiseAtivo?.trabalho ? new Date(analiseAtivo.trabalho.data_submissao).toLocaleDateString("pt-BR") : "—"}</div>
+                  {analiseAtivo?.trabalho?.resumo && (
+                    <div style={{ marginTop: 4, padding: 8, background: "var(--gray-50)", borderRadius: 4, lineHeight: "var(--lh-normal)" }}>{analiseAtivo.trabalho.resumo}</div>
+                  )}
+                </div>
+
+                {analiseJaAvaliado && (
+                  <div className="alert" style={{ background: "var(--blue-50)", border: "1px solid var(--blue-200)", color: "var(--blue-700)", display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Você já emitiu um parecer para este trabalho. Ao enviar novamente, o parecer será atualizado.
+                  </div>
+                )}
+
+                <div className="review-section-overline">PARECER TÉCNICO</div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="analiseResultado">RESULTADO FINAL</label>
+                  <select className="form-select" id="analiseResultado" value={analiseResultado} onChange={(e) => setAnaliseResultado(e.target.value as ResultadoParecer)}>
+                    <option value="">Selecione o resultado</option>
+                    {RESULTADO_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="review-section-overline" style={{ marginTop: "var(--space-4)", marginBottom: "var(--space-2)" }}>
+                  Critérios de Avaliação {analiseCriterios.length > 0 ? `(${analiseCriterios.length})` : ""}
+                </div>
+
+                {analiseCriterios.length === 0 ? (
+                  <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0 }}>
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>A categoria deste trabalho ainda não possui critérios definidos. Defina-os na página de Categorias.</span>
+                  </div>
+                ) : (
+                  analiseCriterios.map((c, i) => (
+                    <div className="form-group" style={{ marginBottom: "var(--space-4)", paddingBottom: "var(--space-3)", borderBottom: "1px solid var(--color-border)" }} key={c.id}>
+                      <label className="form-label" style={{ fontSize: 11, fontWeight: "var(--fw-semibold)", color: "var(--color-text-secondary)", textTransform: "none", letterSpacing: "normal" }} htmlFor={`nota-${c.id}`}>
+                        {i + 1}. {c.titulo}
+                      </label>
+                      <select className="form-select criteria-rating" id={`nota-${c.id}`} value={analiseNotas[c.id]?.nota || ""} onChange={(e) => setNota(c.id, e.target.value)}>
+                        <option value="">Nota (1 a 5)</option>
+                        {NOTA_OPCOES.map((n) => (
+                          <option key={n.value} value={n.value}>{n.label}</option>
+                        ))}
+                      </select>
+                      <textarea className="form-textarea" style={{ marginTop: "var(--space-2)" }} rows={2} placeholder="Comentário sobre este critério (opcional)" value={analiseNotas[c.id]?.comentario || ""} onChange={(e) => setComentarioCrit(c.id, e.target.value)} />
+                    </div>
+                  ))
+                )}
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="analiseComentarioGeral">COMENTÁRIO GERAL</label>
+                  <textarea className="form-textarea" id="analiseComentarioGeral" rows={5} placeholder="Considerações gerais, pontos fortes, fragilidades e sugestões de correção..." value={analiseComentarioGeral} onChange={(e) => setAnaliseComentarioGeral(e.target.value)} />
+                </div>
+
+                <div className="review-actions mt-6">
+                  <button className="btn btn-primary" disabled={analiseSaving} onClick={enviarParecer}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {analiseSaving ? "SALVANDO..." : analiseJaAvaliado ? "ATUALIZAR PARECER" : "ENVIAR PARECER"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* ============ ATRIBUIÇÕES ============ */}
         <div className={`section${section === "atribuicoes" ? " active" : ""}`}>

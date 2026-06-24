@@ -193,6 +193,50 @@ export type Database = {
         }
         Relationships: []
       }
+      pareceres: {
+        Row: {
+          comentario_geral: string | null
+          created_at: string
+          id: string
+          itens: Json
+          resultado: string
+          revisor_email: string
+          revisor_nome: string | null
+          trabalho_id: string
+          updated_at: string
+        }
+        Insert: {
+          comentario_geral?: string | null
+          created_at?: string
+          id?: string
+          itens?: Json
+          resultado: string
+          revisor_email: string
+          revisor_nome?: string | null
+          trabalho_id: string
+          updated_at?: string
+        }
+        Update: {
+          comentario_geral?: string | null
+          created_at?: string
+          id?: string
+          itens?: Json
+          resultado?: string
+          revisor_email?: string
+          revisor_nome?: string | null
+          trabalho_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pareceres_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -263,6 +307,41 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trabalho_revisores: {
+        Row: {
+          created_at: string
+          id: string
+          revisor_email: string
+          revisor_nome: string | null
+          tipo: string
+          trabalho_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          revisor_email: string
+          revisor_nome?: string | null
+          tipo?: string
+          trabalho_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          revisor_email?: string
+          revisor_nome?: string | null
+          tipo?: string
+          trabalho_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trabalho_revisores_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
             referencedColumns: ["id"]
           },
         ]

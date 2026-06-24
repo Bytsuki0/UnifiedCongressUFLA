@@ -3,19 +3,20 @@ import { toast } from "sonner";
 import { ClipboardList, Sparkles, Trash2, UserCheck, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Avaliacao,
-  AvaliacaoStatus,
   Avaliador,
   LIMITE_TRABALHOS_POR_AVALIADOR,
+  MAX_REVISORES_POR_TRABALHO,
+  Professor,
+  ResultadoParecer,
   Trabalho,
+  TrabalhoRevisor,
 } from "@/lib/types";
 import {
-  atribuirTrabalho,
-  distribuirAutomaticamente,
-  listarAvaliacoes,
-  removerAvaliacao,
-  atualizarStatus,
-} from "@/services/avaliacaoService";
+  associarRevisor,
+  distribuirRevisoresAutomaticamente,
+  removerRevisor,
+  RevisorOption,
+} from "@/services/revisorService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,38 +46,50 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const STATUS_LABEL: Record<AvaliacaoStatus, string> = {
-  pendente: "Pendente",
-  em_avaliacao: "Em avaliação",
-  concluida: "Concluída",
+const RESULTADO_LABEL: Record<ResultadoParecer, string> = {
+  aprovado: "Aprovado",
+  aprovado_correcoes: "Aprovado c/ correções",
+  nao_aprovado: "Não aprovado",
+};
+const RESULTADO_VARIANT: Record<ResultadoParecer, "default" | "secondary" | "destructive"> = {
+  aprovado: "default",
+  aprovado_correcoes: "secondary",
+  nao_aprovado: "destructive",
+};
+const TIPO_LABEL: Record<"avaliador" | "professor", string> = {
+  avaliador: "Avaliador",
+  professor: "Professor",
 };
 
-const STATUS_VARIANT: Record<AvaliacaoStatus, "secondary" | "default" | "outline"> = {
-  pendente: "secondary",
-  em_avaliacao: "default",
-  concluida: "outline",
-};
+type ParecerLite = { trabalho_id: string; revisor_email: string; resultado: ResultadoParecer };
 
 const Atribuicoes = () => {
   const [avaliadores, setAvaliadores] = useState<Avaliador[]>([]);
+  const [professores, setProfessores] = useState<Professor[]>([]);
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
-  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
-  const [avaliadorId, setAvaliadorId] = useState<string>("");
+  const [revisores, setRevisores] = useState<TrabalhoRevisor[]>([]);
+  const [pareceres, setPareceres] = useState<ParecerLite[]>([]);
   const [trabalhoId, setTrabalhoId] = useState<string>("");
+  const [revisorEmail, setRevisorEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
     try {
-      const [{ data: av }, { data: tr }, avs] = await Promise.all([
-        supabase.from("avaliadores").select("*").order("nome"),
-        supabase.from("trabalhos").select("*").order("titulo"),
-        listarAvaliacoes(),
-      ]);
+      const [{ data: av }, { data: pr }, { data: tr }, { data: rv }, { data: pa }] =
+        await Promise.all([
+          supabase.from("avaliadores").select("*").order("nome"),
+          supabase.from("professores").select("*").order("nome"),
+          supabase.from("trabalhos").select("*").order("titulo"),
+          supabase.from("trabalho_revisores").select("*").order("created_at"),
+          supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
+        ]);
       setAvaliadores((av ?? []) as Avaliador[]);
+      setProfessores((pr ?? []) as Professor[]);
       setTrabalhos((tr ?? []) as Trabalho[]);
-      setAvaliacoes(avs);
+      setRevisores((rv ?? []) as TrabalhoRevisor[]);
+      setPareceres((pa ?? []) as ParecerLite[]);
     } catch (e) {
       toast.error("Erro ao carregar dados");
     } finally {
@@ -88,35 +101,70 @@ const Atribuicoes = () => {
     carregar();
   }, []);
 
-  // Mapas auxiliares
-  const cargaPorAvaliador = useMemo(() => {
-    const m = new Map<string, number>();
-    avaliacoes.forEach((a) => m.set(a.avaliador_id, (m.get(a.avaliador_id) ?? 0) + 1));
+  // Pool unificado de revisores: avaliadores + professores, únicos por e-mail.
+  const revisorOptions = useMemo<RevisorOption[]>(() => {
+    const map = new Map<string, RevisorOption>();
+    avaliadores.forEach((a) => {
+      if (a.email) map.set(a.email, { email: a.email, nome: a.nome, tipo: "avaliador" });
+    });
+    professores.forEach((p) => {
+      if (p.email && !map.has(p.email)) map.set(p.email, { email: p.email, nome: p.nome, tipo: "professor" });
+    });
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [avaliadores, professores]);
+
+  const trabalhosPorId = useMemo(() => new Map(trabalhos.map((t) => [t.id, t])), [trabalhos]);
+
+  const revisoresPorTrabalho = useMemo(() => {
+    const m = new Map<string, TrabalhoRevisor[]>();
+    revisores.forEach((r) => {
+      const list = m.get(r.trabalho_id) ?? [];
+      list.push(r);
+      m.set(r.trabalho_id, list);
+    });
     return m;
-  }, [avaliacoes]);
+  }, [revisores]);
 
-  const avaliadoresPorId = useMemo(
-    () => new Map(avaliadores.map((a) => [a.id, a])),
-    [avaliadores],
-  );
-  const trabalhosPorId = useMemo(
-    () => new Map(trabalhos.map((t) => [t.id, t])),
-    [trabalhos],
-  );
+  const revisoresPorEmail = useMemo(() => {
+    const m = new Map<string, TrabalhoRevisor[]>();
+    revisores.forEach((r) => {
+      const list = m.get(r.revisor_email) ?? [];
+      list.push(r);
+      m.set(r.revisor_email, list);
+    });
+    return m;
+  }, [revisores]);
 
-  const handleAtribuir = async () => {
-    if (!avaliadorId || !trabalhoId) {
-      toast.error("Selecione um avaliador e um trabalho");
+  const cargaPorRevisor = useMemo(() => {
+    const m = new Map<string, number>();
+    revisores.forEach((r) => m.set(r.revisor_email, (m.get(r.revisor_email) ?? 0) + 1));
+    return m;
+  }, [revisores]);
+
+  // Resultado do parecer por (trabalho, revisor), quando já emitido.
+  const parecerPorChave = useMemo(() => {
+    const m = new Map<string, ResultadoParecer>();
+    pareceres.forEach((p) => m.set(`${p.trabalho_id}:${p.revisor_email}`, p.resultado));
+    return m;
+  }, [pareceres]);
+
+  const revCount = trabalhoId ? (revisoresPorTrabalho.get(trabalhoId)?.length ?? 0) : 0;
+  const revLimiteAtingido = revCount >= MAX_REVISORES_POR_TRABALHO;
+
+  const handleAssociar = async () => {
+    if (!trabalhoId || !revisorEmail) {
+      toast.error("Selecione um trabalho e um revisor");
       return;
     }
+    const opt = revisorOptions.find((o) => o.email === revisorEmail);
     setSubmitting(true);
     try {
-      await atribuirTrabalho(avaliadorId, trabalhoId);
-      toast.success("Trabalho atribuído com sucesso");
-      setTrabalhoId("");
+      await associarRevisor(trabalhoId, revisorEmail, opt?.nome ?? null, opt?.tipo ?? "professor");
+      toast.success("Revisor associado ao trabalho");
+      setRevisorEmail("");
       await carregar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao atribuir");
+      toast.error(e instanceof Error ? e.message : "Erro ao associar revisor");
     } finally {
       setSubmitting(false);
     }
@@ -125,11 +173,14 @@ const Atribuicoes = () => {
   const handleAuto = async () => {
     setSubmitting(true);
     try {
-      const criados = await distribuirAutomaticamente(avaliadores, trabalhos);
+      const criados = await distribuirRevisoresAutomaticamente(
+        revisorOptions,
+        trabalhos.map((t) => t.id),
+      );
       if (criados === 0) {
         toast.info("Nenhum trabalho disponível para distribuição automática");
       } else {
-        toast.success(`${criados} atribuição(ões) criada(s) automaticamente`);
+        toast.success(`${criados} associação(ões) criada(s) automaticamente`);
       }
       await carregar();
     } catch (e) {
@@ -141,27 +192,20 @@ const Atribuicoes = () => {
 
   const handleRemover = async (id: string) => {
     try {
-      await removerAvaliacao(id);
-      toast.success("Atribuição removida");
+      await removerRevisor(id);
+      toast.success("Associação removida");
       await carregar();
     } catch {
-      toast.error("Erro ao remover");
+      toast.error("Erro ao remover associação");
     }
   };
 
-  const handleStatusChange = async (id: string, status: AvaliacaoStatus) => {
-    try {
-      await atualizarStatus(id, status);
-      setAvaliacoes((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-    } catch {
-      toast.error("Erro ao atualizar status");
-    }
-  };
-
-  const cargaSelecionada = avaliadorId
-    ? cargaPorAvaliador.get(avaliadorId) ?? 0
-    : 0;
-  const limiteAtingido = cargaSelecionada >= LIMITE_TRABALHOS_POR_AVALIADOR;
+  const ParecerBadge = ({ resultado }: { resultado?: ResultadoParecer }) =>
+    resultado ? (
+      <Badge variant={RESULTADO_VARIANT[resultado]}>{RESULTADO_LABEL[resultado]}</Badge>
+    ) : (
+      <Badge variant="outline">Pendente</Badge>
+    );
 
   return (
     <div className="space-y-8">
@@ -171,7 +215,9 @@ const Atribuicoes = () => {
             <ClipboardList className="h-6 w-6" /> Atribuições
           </h1>
           <p className="text-muted-foreground">
-            Distribua trabalhos entre os avaliadores. Limite: {LIMITE_TRABALHOS_POR_AVALIADOR} por avaliador.
+            Associe revisores (avaliadores e professores, tratados igualmente) aos trabalhos. Até{" "}
+            {MAX_REVISORES_POR_TRABALHO} revisores por trabalho · limite de {LIMITE_TRABALHOS_POR_AVALIADOR}{" "}
+            trabalhos por revisor.
           </p>
         </div>
         <Button onClick={handleAuto} disabled={submitting || loading} variant="secondary">
@@ -180,129 +226,122 @@ const Atribuicoes = () => {
         </Button>
       </div>
 
-      {/* Atribuição manual */}
+      {/* Associação manual unificada */}
       <Card>
         <CardHeader>
-          <CardTitle>Atribuição manual</CardTitle>
-          <CardDescription>Selecione um avaliador e um trabalho para criar uma atribuição.</CardDescription>
+          <CardTitle>Associar revisor</CardTitle>
+          <CardDescription>
+            Selecione um trabalho e um revisor — avaliadores e professores aparecem na mesma lista e são tratados da
+            mesma forma. O revisor verá o trabalho no portal do revisor pelo e-mail associado.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
           <div>
-            <label className="mb-1 block text-sm font-medium">Avaliador</label>
-            <Select value={avaliadorId} onValueChange={setAvaliadorId}>
+            <label className="mb-1 block text-sm font-medium">Trabalho</label>
+            <Select value={trabalhoId} onValueChange={(v) => { setTrabalhoId(v); setRevisorEmail(""); }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um avaliador" />
+                <SelectValue placeholder="Selecione um trabalho" />
               </SelectTrigger>
               <SelectContent>
-                {avaliadores.map((a) => {
-                  const carga = cargaPorAvaliador.get(a.id) ?? 0;
+                {trabalhos.map((t) => {
+                  const n = revisoresPorTrabalho.get(t.id)?.length ?? 0;
                   return (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.nome} — {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.titulo} — {n}/{MAX_REVISORES_POR_TRABALHO}
                     </SelectItem>
                   );
                 })}
               </SelectContent>
             </Select>
-            {avaliadorId && (
-              <p className={`mt-1 text-xs ${limiteAtingido ? "text-destructive" : "text-muted-foreground"}`}>
-                Carga atual: {cargaSelecionada}/{LIMITE_TRABALHOS_POR_AVALIADOR}
-                {limiteAtingido && " — limite atingido"}
+            {trabalhoId && (
+              <p className={`mt-1 text-xs ${revLimiteAtingido ? "text-destructive" : "text-muted-foreground"}`}>
+                {revCount}/{MAX_REVISORES_POR_TRABALHO} revisores{revLimiteAtingido && " — limite atingido"}
               </p>
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Trabalho</label>
-            <Select value={trabalhoId} onValueChange={setTrabalhoId}>
+            <label className="mb-1 block text-sm font-medium">Revisor</label>
+            <Select value={revisorEmail} onValueChange={setRevisorEmail}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um trabalho" />
+                <SelectValue placeholder="Selecione um revisor" />
               </SelectTrigger>
               <SelectContent>
-                {trabalhos.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.titulo}
-                  </SelectItem>
-                ))}
+                {revisorOptions.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    Nenhum avaliador/professor cadastrado
+                  </div>
+                ) : (
+                  revisorOptions.map((o) => {
+                    const carga = cargaPorRevisor.get(o.email) ?? 0;
+                    return (
+                      <SelectItem key={o.email} value={o.email}>
+                        {o.nome} · {TIPO_LABEL[o.tipo]} — {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                      </SelectItem>
+                    );
+                  })
+                )}
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-end">
             <Button
-              onClick={handleAtribuir}
-              disabled={submitting || limiteAtingido || !avaliadorId || !trabalhoId}
+              onClick={handleAssociar}
+              disabled={submitting || revLimiteAtingido || !trabalhoId || !revisorEmail}
               className="w-full md:w-auto"
             >
-              Atribuir
+              Associar
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Visualização */}
-      <Tabs defaultValue="por-avaliador">
+      <Tabs defaultValue="por-trabalho">
         <TabsList>
-          <TabsTrigger value="por-avaliador">
-            <UserCheck className="mr-2 h-4 w-4" /> Por avaliador
-          </TabsTrigger>
           <TabsTrigger value="por-trabalho">
             <FileText className="mr-2 h-4 w-4" /> Por trabalho
           </TabsTrigger>
+          <TabsTrigger value="por-revisor">
+            <UserCheck className="mr-2 h-4 w-4" /> Por revisor
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="por-avaliador" className="space-y-4">
-          {avaliadores.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum avaliador cadastrado.</p>
+        {/* Por trabalho */}
+        <TabsContent value="por-trabalho" className="space-y-4">
+          {trabalhos.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum trabalho cadastrado.</p>
           )}
-          {avaliadores.map((av) => {
-            const lista = avaliacoes.filter((a) => a.avaliador_id === av.id);
-            const carga = lista.length;
+          {trabalhos.map((t) => {
+            const lista = revisoresPorTrabalho.get(t.id) ?? [];
             return (
-              <Card key={av.id}>
+              <Card key={t.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">{av.nome}</CardTitle>
-                      <CardDescription>{av.instituicao}</CardDescription>
-                    </div>
-                    <Badge variant={carga >= LIMITE_TRABALHOS_POR_AVALIADOR ? "destructive" : "secondary"}>
-                      {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                    <CardTitle className="text-base">{t.titulo}</CardTitle>
+                    <Badge variant={lista.length >= MAX_REVISORES_POR_TRABALHO ? "destructive" : "secondary"}>
+                      {lista.length}/{MAX_REVISORES_POR_TRABALHO}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {lista.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Sem trabalhos atribuídos.</p>
+                    <p className="text-sm text-muted-foreground">Nenhum revisor associado.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {lista.map((a) => {
-                        const t = trabalhosPorId.get(a.trabalho_id);
-                        return (
-                          <li
-                            key={a.id}
-                            className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
-                          >
-                            <span className="flex-1 text-sm font-medium">
-                              {t?.titulo ?? "Trabalho removido"}
-                            </span>
-                            <Select
-                              value={a.status}
-                              onValueChange={(v) => handleStatusChange(a.id, v as AvaliacaoStatus)}
-                            >
-                              <SelectTrigger className="h-8 w-40">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(Object.keys(STATUS_LABEL) as AvaliacaoStatus[]).map((s) => (
-                                  <SelectItem key={s} value={s}>
-                                    {STATUS_LABEL[s]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <RemoverBotao onConfirm={() => handleRemover(a.id)} />
-                          </li>
-                        );
-                      })}
+                      {lista.map((r) => (
+                        <li
+                          key={r.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+                        >
+                          <span className="flex flex-1 flex-wrap items-center gap-2 text-sm">
+                            <span className="font-medium">{r.revisor_nome ?? r.revisor_email}</span>
+                            <span className="text-muted-foreground">— {r.revisor_email}</span>
+                            <Badge variant="outline">{TIPO_LABEL[r.tipo]}</Badge>
+                          </span>
+                          <ParecerBadge resultado={parecerPorChave.get(`${t.id}:${r.revisor_email}`)} />
+                          <RemoverBotao onConfirm={() => handleRemover(r.id)} />
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </CardContent>
@@ -311,39 +350,46 @@ const Atribuicoes = () => {
           })}
         </TabsContent>
 
-        <TabsContent value="por-trabalho" className="space-y-4">
-          {trabalhos.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum trabalho cadastrado.</p>
+        {/* Por revisor */}
+        <TabsContent value="por-revisor" className="space-y-4">
+          {revisorOptions.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum avaliador/professor cadastrado.</p>
           )}
-          {trabalhos.map((t) => {
-            const lista = avaliacoes.filter((a) => a.trabalho_id === t.id);
+          {revisorOptions.map((o) => {
+            const lista = revisoresPorEmail.get(o.email) ?? [];
             return (
-              <Card key={t.id}>
+              <Card key={o.email}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{t.titulo}</CardTitle>
-                    <Badge variant="secondary">{lista.length} avaliador(es)</Badge>
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        {o.nome}
+                        <Badge variant="outline">{TIPO_LABEL[o.tipo]}</Badge>
+                      </CardTitle>
+                      <CardDescription>{o.email}</CardDescription>
+                    </div>
+                    <Badge variant={lista.length >= LIMITE_TRABALHOS_POR_AVALIADOR ? "destructive" : "secondary"}>
+                      {lista.length}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {lista.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum avaliador atribuído.</p>
+                    <p className="text-sm text-muted-foreground">Sem trabalhos associados.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {lista.map((a) => {
-                        const av = avaliadoresPorId.get(a.avaliador_id);
+                      {lista.map((r) => {
+                        const t = trabalhosPorId.get(r.trabalho_id);
                         return (
                           <li
-                            key={a.id}
-                            className="flex items-center justify-between rounded-md border border-border p-3"
+                            key={r.id}
+                            className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
                           >
-                            <span className="text-sm">
-                              <span className="font-medium">{av?.nome ?? "Avaliador removido"}</span>
-                              {av && (
-                                <span className="text-muted-foreground"> — {av.instituicao}</span>
-                              )}
+                            <span className="flex-1 text-sm font-medium">
+                              {t?.titulo ?? "Trabalho removido"}
                             </span>
-                            <Badge variant={STATUS_VARIANT[a.status]}>{STATUS_LABEL[a.status]}</Badge>
+                            <ParecerBadge resultado={parecerPorChave.get(`${r.trabalho_id}:${o.email}`)} />
+                            <RemoverBotao onConfirm={() => handleRemover(r.id)} />
                           </li>
                         );
                       })}
@@ -368,9 +414,9 @@ const RemoverBotao = ({ onConfirm }: { onConfirm: () => void }) => (
     </AlertDialogTrigger>
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle>Remover atribuição?</AlertDialogTitle>
+        <AlertDialogTitle>Remover associação?</AlertDialogTitle>
         <AlertDialogDescription>
-          Esta ação não pode ser desfeita. O avaliador deixará de avaliar este trabalho.
+          Esta ação não pode ser desfeita. O revisor deixará de avaliar este trabalho.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

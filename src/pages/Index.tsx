@@ -7,9 +7,9 @@ const Index = () => {
   return (
     <div className="space-y-10">
       <section className="rounded-2xl bg-[image:var(--gradient-hero)] p-10 text-primary-foreground shadow-[var(--shadow-card)]">
-        <h1 className="text-3xl font-bold sm:text-4xl">Sistema de Avaliação de Trabalhos</h1>
+        <h1 className="text-3xl font-bold sm:text-4xl">Aba de gerenciamento de co-chairs</h1>
         <p className="mt-3 max-w-2xl text-primary-foreground/90">
-          Gerencie avaliadores e trabalhos submetidos ao congresso acadêmico de forma simples e organizada.
+          Gerencie co-chairs e trabalhos submetidos ao congresso acadêmico de forma simples e organizada.
         </p>
       </section>
 
@@ -19,8 +19,8 @@ const Index = () => {
             <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
               <Users className="h-5 w-5" />
             </div>
-            <CardTitle>Avaliadores</CardTitle>
-            <CardDescription>Cadastre e gerencie os avaliadores do congresso.</CardDescription>
+            <CardTitle>Co-Chairs</CardTitle>
+            <CardDescription>Cadastre e gerencie os co-chairs do congresso.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
@@ -54,7 +54,7 @@ const Index = () => {
               <ClipboardList className="h-5 w-5" />
             </div>
             <CardTitle>Atribuições</CardTitle>
-            <CardDescription>Distribua trabalhos aos avaliadores manual ou automaticamente.</CardDescription>
+            <CardDescription>Distribua trabalhos aos revisores manual ou automaticamente.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
