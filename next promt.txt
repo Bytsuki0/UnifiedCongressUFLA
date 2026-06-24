@@ -1,3 +1,0 @@
-in the page 
-
-*/revisor page in this page first lets add a div that is for analysing papers associeted to than, if the email logged in has a paper associeted with it it will show here, in the div the revisor will be able to open the pdf see the data in the table for that row pretty much so he can acess and judge the paper uploded in this div the one that reads must be able to give a grade in 5 diferent critirias to this paper the critirias will depend on the categoria_id of this paper the one analysing this paper can give comments to all the criterias and select between options aprovado, aprovado com necessidades de correções and não aprovado
