@@ -6,10 +6,9 @@
 --     rest of the app, which operates with the anon key.
 --   * Admin is NOT driven by user_roles.role = 'admin'. It is the
 --     hardcoded e-mail used everywhere else: bytsuki066@gmail.com.
---   * The conflicting objects from the original zip migration
---     (app_role enum, profiles table, user_roles table, has_role)
---     are NOT recreated here. We only EXTEND the existing profiles
---     table with the extra columns the event pages need.
+--   * profiles / user_roles / app_role did NOT exist in this database
+--     (the generated types.ts was stale), so they are CREATED here with
+--     IF NOT EXISTS guards — there is no conflict with existing objects.
 -- ============================================================
 
 -- 0. Admin helper (e-mail based, matches AuthContext) ----------
@@ -31,13 +30,54 @@ DO $$ BEGIN
   CREATE TYPE public.registration_status AS ENUM ('pending', 'approved', 'cancelled');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- 2. Extend existing profiles (do NOT recreate it) ------------
+-- 2. Profiles, user_roles, app_role ---------------------------
+-- These did not exist in this database, so create them. profiles holds
+-- the participant data the event pages read/write; user_roles backs the
+-- admin "Usuários" screen (cosmetic — real admin is the e-mail above).
+DO $$ BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'participant');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome        TEXT NOT NULL DEFAULT '',
+  email       TEXT,
+  cpf         TEXT,
+  telefone    TEXT,
+  instituicao TEXT,
+  curso       TEXT,
+  foto_perfil TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+-- Safety: add any missing columns if profiles already existed.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email       TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cpf         TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS telefone    TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS instituicao TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS curso       TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS foto_perfil TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at  TIMESTAMPTZ DEFAULT now();
+
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role       public.app_role NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+ALTER TABLE public.profiles   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public all profiles" ON public.profiles;
+CREATE POLICY "public all profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "public all user_roles" ON public.user_roles;
+CREATE POLICY "public all user_roles" ON public.user_roles FOR ALL USING (true) WITH CHECK (true);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles   TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_roles TO anon, authenticated;
+GRANT ALL ON public.profiles, public.user_roles TO service_role;
 
 -- 3. Congress registrations -----------------------------------
 CREATE TABLE IF NOT EXISTS public.congress_registrations (
