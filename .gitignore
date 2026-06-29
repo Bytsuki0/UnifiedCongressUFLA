@@ -29,5 +29,6 @@ vite_project
 ./vite_project
 vite_project/*
 !.gitignore
-
-
+docs/*
+.docs
+docs
