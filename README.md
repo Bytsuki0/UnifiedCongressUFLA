@@ -6,16 +6,28 @@ Academic paper submission and peer-review platform built for UFLA (Universidade 
 
 ## Table of Contents
 
-- [Tech Stack](#tech-stack)
-- [Architecture Overview](#architecture-overview)
-- [Role-Based Access Control](#role-based-access-control)
-- [Pages & Routes](#pages--routes)
-- [Database Schema](#database-schema)
-- [Running Locally](#running-locally)
-- [Environment Variables & Secrets](#environment-variables--secrets)
-- [Database Migrations](#database-migrations)
-- [Recent Implementation Progress](#recent-implementation-progress)
-- [Available Scripts](#available-scripts)
+- [Nexus Corp — Plataforma de Submissão Científica (UFLA)](#nexus-corp--plataforma-de-submissão-científica-ufla)
+  - [Table of Contents](#table-of-contents)
+  - [Tech Stack](#tech-stack)
+  - [Architecture Overview](#architecture-overview)
+  - [Role-Based Access Control](#role-based-access-control)
+    - [What each role can access](#what-each-role-can-access)
+    - [Promoting a professor to avaliador](#promoting-a-professor-to-avaliador)
+  - [Pages \& Routes](#pages--routes)
+  - [Database Schema](#database-schema)
+  - [Running Locally](#running-locally)
+    - [Prerequisites](#prerequisites)
+    - [1. Clone and install dependencies](#1-clone-and-install-dependencies)
+    - [2. Configure environment variables](#2-configure-environment-variables)
+    - [3. Apply database migrations](#3-apply-database-migrations)
+    - [4. Start the development server](#4-start-the-development-server)
+    - [5. Create your first admin account](#5-create-your-first-admin-account)
+  - [Environment Variables \& Secrets](#environment-variables--secrets)
+  - [Database Migrations](#database-migrations)
+  - [Recent Implementation Progress](#recent-implementation-progress)
+    - [RBAC — Role-Based Access Control](#rbac--role-based-access-control)
+    - [Automatic Database Migrations](#automatic-database-migrations)
+  - [Available Scripts](#available-scripts)
 
 ---
 

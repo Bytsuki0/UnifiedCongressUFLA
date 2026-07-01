@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,10 +8,24 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
-import Estudante from "./pages/Estudante";
 import AdminPortal from "./pages/AdminPortal";
 import NotFound from "./pages/NotFound.tsx";
-import Revisor from "./pages/Revisor";
+
+// Portal do Estudante — uma página por função, sob /estudante
+import EstudanteLayout from "./components/estudante/Layout";
+import EstudanteDashboard from "./pages/estudante/Dashboard";
+import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
+import EstudanteHistorico from "./pages/estudante/Historico";
+import EstudanteTemplates from "./pages/estudante/Templates";
+
+// Painel do Revisor — uma página por função, sob /revisor
+import RevisorLayout from "./components/revisor/Layout";
+import RevisorAnalise from "./pages/revisor/Analise";
+import RevisorAnaliseDetalhe from "./pages/revisor/AnaliseDetalhe";
+import RevisorAtribuicoes from "./pages/revisor/Atribuicoes";
+import RevisorAvaliacao from "./pages/revisor/Avaliacao";
+import RevisorFormularios from "./pages/revisor/Formularios";
+import RevisorArquivo from "./pages/revisor/Arquivo";
 
 // Co-chairs (dashboard / "Gestão de Co-Chairs") — grouped under co-chairs/
 import Layout from "./components/co-chairs/Layout";
@@ -67,12 +81,26 @@ const App = () => (
 
             {/* Estudante: accessible by all authenticated roles */}
             <Route element={<ProtectedRoute allowedRoles={["estudante", "professor", "avaliador", "admin"]} />}>
-              <Route path="/estudante" element={<Estudante />} />
+              <Route path="/estudante" element={<EstudanteLayout />}>
+                <Route index element={<Navigate to="/estudante/dashboard" replace />} />
+                <Route path="dashboard" element={<EstudanteDashboard />} />
+                <Route path="nova-submissao" element={<EstudanteNovaSubmissao />} />
+                <Route path="historico" element={<EstudanteHistorico />} />
+                <Route path="templates" element={<EstudanteTemplates />} />
+              </Route>
             </Route>
 
             {/* Revisor: professor, avaliador, admin */}
             <Route element={<ProtectedRoute allowedRoles={["professor", "avaliador", "admin"]} />}>
-              <Route path="/revisor" element={<Revisor />} />
+              <Route path="/revisor" element={<RevisorLayout />}>
+                <Route index element={<Navigate to="/revisor/analise" replace />} />
+                <Route path="analise" element={<RevisorAnalise />} />
+                <Route path="analise/:id" element={<RevisorAnaliseDetalhe />} />
+                <Route path="atribuicoes" element={<RevisorAtribuicoes />} />
+                <Route path="avaliacao/:id" element={<RevisorAvaliacao />} />
+                <Route path="formularios" element={<RevisorFormularios />} />
+                <Route path="arquivo" element={<RevisorArquivo />} />
+              </Route>
             </Route>
 
             {/* Admin portal: admin only */}
