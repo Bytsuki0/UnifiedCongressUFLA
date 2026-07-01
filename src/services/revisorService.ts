@@ -10,6 +10,22 @@ import {
   TrabalhoRevisor,
 } from "@/lib/types";
 
+/** Pool unificado de revisores (avaliadores + professores), únicos por e-mail. */
+export async function carregarPoolRevisores(): Promise<RevisorOption[]> {
+  const [{ data: av }, { data: pr }] = await Promise.all([
+    supabase.from("avaliadores").select("nome, email"),
+    supabase.from("professores").select("nome, email"),
+  ]);
+  const map = new Map<string, RevisorOption>();
+  (av ?? []).forEach((a: { nome: string; email: string | null }) => {
+    if (a.email) map.set(a.email, { email: a.email, nome: a.nome, tipo: "avaliador" });
+  });
+  (pr ?? []).forEach((p: { nome: string; email: string | null }) => {
+    if (p.email && !map.has(p.email)) map.set(p.email, { email: p.email, nome: p.nome, tipo: "professor" });
+  });
+  return Array.from(map.values());
+}
+
 // Um revisor associável: avaliador OU professor, tratados igualmente.
 export type RevisorOption = {
   email: string;
@@ -197,9 +213,12 @@ export async function removerRevisor(id: string): Promise<void> {
 }
 
 /**
- * Distribuição automática unificada: para cada trabalho ainda sem revisor,
- * associa o revisor (avaliador OU professor, tratados igualmente) com menor
- * carga, respeitando o limite por revisor. Retorna o número de associações criadas.
+ * Distribuição automática unificada: para cada trabalho, tenta preencher até
+ * MAX_REVISORES_POR_TRABALHO (3) revisores (avaliador OU professor, tratados
+ * igualmente), sempre escolhendo o revisor de menor carga e respeitando o
+ * limite por revisor. Trabalhos que já têm revisores são complementados até 3.
+ * Só associa menos de 3 quando não há revisores disponíveis o bastante.
+ * Retorna o número de associações criadas.
  */
 export async function distribuirRevisoresAutomaticamente(
   revisores: RevisorOption[],
@@ -226,31 +245,36 @@ export async function distribuirRevisoresAutomaticamente(
 
   const jaAtribuido = new Set(existentes.map((e) => `${e.revisor_email}:${e.trabalho_id}`));
 
-  // Só os trabalhos que ainda não têm nenhum revisor.
-  const pendentes = trabalhoIds.filter((id) => (countTrab.get(id) ?? 0) === 0);
-
   let criados = 0;
-  for (const tid of pendentes) {
-    const candidato = [...revisores]
-      .filter(
-        (r) =>
-          (carga.get(r.email) ?? 0) < LIMITE_TRABALHOS_POR_AVALIADOR &&
-          !jaAtribuido.has(`${r.email}:${tid}`),
-      )
-      .sort((a, b) => (carga.get(a.email) ?? 0) - (carga.get(b.email) ?? 0))[0];
+  for (const tid of trabalhoIds) {
+    let atuais = countTrab.get(tid) ?? 0;
 
-    if (!candidato) continue;
+    // Tenta preencher o trabalho até o máximo de revisores.
+    while (atuais < MAX_REVISORES_POR_TRABALHO) {
+      const candidato = [...revisores]
+        .filter(
+          (r) =>
+            (carga.get(r.email) ?? 0) < LIMITE_TRABALHOS_POR_AVALIADOR &&
+            !jaAtribuido.has(`${r.email}:${tid}`),
+        )
+        .sort((a, b) => (carga.get(a.email) ?? 0) - (carga.get(b.email) ?? 0))[0];
 
-    const { error: insErr } = await supabase.from("trabalho_revisores").insert({
-      trabalho_id: tid,
-      revisor_email: candidato.email,
-      revisor_nome: candidato.nome,
-      tipo: candidato.tipo,
-    });
+      // Sem revisor possível para este trabalho — segue para o próximo.
+      if (!candidato) break;
 
-    if (!insErr) {
+      const { error: insErr } = await supabase.from("trabalho_revisores").insert({
+        trabalho_id: tid,
+        revisor_email: candidato.email,
+        revisor_nome: candidato.nome,
+        tipo: candidato.tipo,
+      });
+
+      // Falha (ex.: trigger de limite) — para este trabalho e segue adiante.
+      if (insErr) break;
+
       carga.set(candidato.email, (carga.get(candidato.email) ?? 0) + 1);
       jaAtribuido.add(`${candidato.email}:${tid}`);
+      atuais++;
       criados++;
     }
   }

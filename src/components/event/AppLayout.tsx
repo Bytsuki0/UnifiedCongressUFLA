@@ -168,11 +168,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <span className="top-bar-title">CONGRESSO UNIFICADO UFLA PARAÍSO</span>
           <div className="user-info">
             <NotificationsBell />
-            <div className="user-details">
-              <div className="user-name">{user?.nome || "Visitante"}</div>
-              <div className="user-meta">{user?.email || "Congresso Unificado"}</div>
-            </div>
-            <div className="user-avatar purple">{initials(user?.nome)}</div>
+            <NavLink
+              to={e("/perfil")}
+              className="user-profile-link"
+              title="Ver meu perfil"
+              style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", textDecoration: "none", color: "inherit", cursor: "pointer" }}
+            >
+              <div className="user-details">
+                <div className="user-name">{user?.nome || "Visitante"}</div>
+                <div className="user-meta">{user?.email || "Congresso Unificado"}</div>
+              </div>
+              <div className="user-avatar purple">{initials(user?.nome)}</div>
+            </NavLink>
           </div>
         </header>
 

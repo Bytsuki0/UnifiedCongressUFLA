@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { carregarPoolRevisores, distribuirRevisoresAutomaticamente } from "@/services/revisorService";
 
 type Coautor = { nome?: string; email?: string };
 
@@ -123,7 +124,7 @@ const Estudante = () => {
       ...coautores.filter(c => c.nome).map(c => c.nome),
     ].join(", ");
 
-    const { error } = await supabase.from("trabalhos").insert({
+    const { data: novo, error } = await supabase.from("trabalhos").insert({
       titulo: form.titulo,
       resumo: form.resumo,
       categoria_id: form.categoria,
@@ -133,12 +134,22 @@ const Estudante = () => {
       pdf_url: pdfUrl,
       data_submissao: new Date().toISOString().split("T")[0],
       status: "pendente",
-    });
+    }).select("id").single();
 
     if (error) {
       toast.error("Erro ao submeter trabalho. Tente novamente.");
     } else {
       toast.success("Trabalho submetido com sucesso!");
+      // Dispara a distribuição automática (tenta associar até 3 revisores ao
+      // novo trabalho). É best-effort: falhas aqui não bloqueiam a submissão.
+      if (novo?.id) {
+        try {
+          const pool = await carregarPoolRevisores();
+          if (pool.length > 0) await distribuirRevisoresAutomaticamente(pool, [novo.id]);
+        } catch {
+          /* distribuição automática silenciosa */
+        }
+      }
       setForm({ titulo: "", resumo: "", categoria: "", orientador: "" });
       setCoauthors([{ nome: "", email: "" }]);
       setSelectedFile(null);

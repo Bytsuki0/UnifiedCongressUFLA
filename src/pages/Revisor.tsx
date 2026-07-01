@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
+import { PdfViewer } from "@/components/PdfViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -203,6 +204,28 @@ const Revisor = () => {
       }
     } catch {
       toast.error("Erro ao carregar critérios ou parecer.");
+    }
+  }
+
+  // Download apenas por clique explícito: busca o arquivo e salva localmente,
+  // garantindo o download mesmo quando o navegador está configurado para abrir PDFs.
+  async function baixarPdf() {
+    const trab = analiseAtivo?.trabalho;
+    if (!trab?.pdf_url) return;
+    const nome = `${(trab.titulo || "trabalho").replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
+    try {
+      const resp = await fetch(trab.pdf_url);
+      const blob = await resp.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = obj;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(obj);
+    } catch {
+      window.open(trab.pdf_url, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -507,17 +530,23 @@ const Revisor = () => {
                 : "—"}
             </span>
             {analiseAtivo?.trabalho?.pdf_url && (
-              <a className="btn btn-outline btn-sm" href={analiseAtivo.trabalho.pdf_url} target="_blank" rel="noopener noreferrer">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                ABRIR PDF
-              </a>
+              <span style={{ display: "inline-flex", gap: "var(--space-2)" }}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={baixarPdf}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  BAIXAR PDF
+                </button>
+                <a className="btn btn-outline btn-sm" href={analiseAtivo.trabalho.pdf_url} target="_blank" rel="noopener noreferrer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  ABRIR EM NOVA ABA
+                </a>
+              </span>
             )}
           </div>
 
           <div className="avaliacao-layout">
             <div className="pdf-viewer">
               {analiseAtivo?.trabalho?.pdf_url ? (
-                <iframe title="PDF do trabalho" src={analiseAtivo.trabalho.pdf_url} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none", zIndex: 5 }} />
+                <PdfViewer url={analiseAtivo.trabalho.pdf_url} />
               ) : (
                 <>
                   <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>

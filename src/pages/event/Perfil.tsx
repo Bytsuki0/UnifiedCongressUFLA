@@ -12,34 +12,53 @@ const sb = supabase as any;
 export default function Perfil() {
   const { user } = useAuth();
   const uid = user!.id;
+  const email = user!.email;
   const qc = useQueryClient();
   const { data: profile } = useQuery({
     queryKey: ["profile", uid],
     queryFn: async () => (await sb.from("profiles").select("*").eq("id", uid).maybeSingle()).data,
   });
 
-  const [form, setForm] = useState({ nome: "", telefone: "", instituicao: "", curso: "" });
+  // Dados vindos do cadastro/login real (estudantes/professores/avaliadores).
+  // Nome e curso são a fonte da verdade da conta logada.
+  const { data: account } = useQuery({
+    queryKey: ["account-perfil", email],
+    queryFn: async () => {
+      const est = (await sb.from("estudantes").select("nome, email, curso").eq("email", email).maybeSingle()).data;
+      if (est) return { nome: est.nome, curso: est.curso ?? "", instituicao: "UFLA", tipo: "Estudante" };
+      const prof = (await sb.from("professores").select("nome, email, departamento").eq("email", email).maybeSingle()).data;
+      if (prof) return { nome: prof.nome, curso: prof.departamento ?? "", instituicao: "UFLA", tipo: "Professor" };
+      const aval = (await sb.from("avaliadores").select("nome, email, instituicao").eq("email", email).maybeSingle()).data;
+      if (aval) return { nome: aval.nome, curso: "", instituicao: aval.instituicao ?? "", tipo: "Avaliador" };
+      return null;
+    },
+  });
+
+  const [form, setForm] = useState({ telefone: "", instituicao: "" });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  // Campos derivados da conta logada (somente leitura).
+  const nome = account?.nome ?? user?.nome ?? "";
+  const curso = account?.curso ?? profile?.curso ?? "";
+
   useEffect(() => {
-    if (profile) {
-      setForm({
-        nome: profile.nome ?? "", telefone: profile.telefone ?? "",
-        instituicao: profile.instituicao ?? "", curso: profile.curso ?? "",
+    setForm({
+      telefone: profile?.telefone ?? "",
+      instituicao: profile?.instituicao ?? account?.instituicao ?? "",
+    });
+    if (profile?.foto_perfil) {
+      supabase.storage.from("avatars").createSignedUrl(profile.foto_perfil, 3600).then(({ data }: any) => {
+        setAvatarUrl(data?.signedUrl ?? null);
       });
-      if (profile.foto_perfil) {
-        supabase.storage.from("avatars").createSignedUrl(profile.foto_perfil, 3600).then(({ data }: any) => {
-          setAvatarUrl(data?.signedUrl ?? null);
-        });
-      }
     }
-  }, [profile]);
+  }, [profile, account]);
 
   const save = useMutation({
     mutationFn: async () => {
-      // upsert so it works even when no profile row exists yet
+      // upsert so it works even when no profile row exists yet.
+      // nome/curso vêm da conta logada e são gravados junto para manter o registro consistente.
       const { error } = await sb.from("profiles").upsert(
-        { id: uid, email: user!.email, ...form },
+        { id: uid, email, nome, curso, ...form },
         { onConflict: "id" },
       );
       if (error) throw error;
@@ -52,7 +71,7 @@ export default function Perfil() {
     const path = `${uid}/avatar-${Date.now()}.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (error) return toast.error(error.message);
-    await sb.from("profiles").upsert({ id: uid, email: user!.email, nome: form.nome || (user!.email ?? ""), foto_perfil: path }, { onConflict: "id" });
+    await sb.from("profiles").upsert({ id: uid, email, nome: nome || (email ?? ""), foto_perfil: path }, { onConflict: "id" });
     qc.invalidateQueries({ queryKey: ["profile", uid] });
     toast.success("Foto atualizada");
   };
@@ -76,16 +95,18 @@ export default function Perfil() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <ReadOnly label="CPF" value={profile?.cpf ?? ""} />
-          <ReadOnly label="E-mail" value={profile?.email ?? user?.email ?? ""} />
+          <ReadOnly label="Nome completo" value={nome} />
+          <ReadOnly label="E-mail" value={email ?? ""} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ReadOnly label="Curso" value={curso} />
+          <ReadOnly label="Perfil" value={account?.tipo ?? ""} />
         </div>
 
-        <Input label="Nome completo" value={form.nome} onChange={(v) => setForm({ ...form, nome: v })} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Telefone" value={form.telefone} onChange={(v) => setForm({ ...form, telefone: v })} />
           <Input label="Instituição" value={form.instituicao} onChange={(v) => setForm({ ...form, instituicao: v })} />
         </div>
-        <Input label="Curso" value={form.curso} onChange={(v) => setForm({ ...form, curso: v })} />
 
         <button
           onClick={() => save.mutate()} disabled={save.isPending}

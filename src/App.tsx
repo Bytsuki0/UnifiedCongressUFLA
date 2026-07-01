@@ -10,18 +10,20 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Estudante from "./pages/Estudante";
 import AdminPortal from "./pages/AdminPortal";
-import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import Layout from "./components/Layout";
-import Avaliadores from "./pages/Avaliadores";
-import AvaliadorForm from "./pages/AvaliadorForm";
-import Trabalhos from "./pages/Trabalhos";
-import TrabalhoForm from "./pages/TrabalhoForm";
-import TrabalhoDetalhe from "./pages/TrabalhoDetalhe";
-import Categorias from "./pages/Categorias";
-import Atribuicoes from "./pages/Atribuicoes";
-import Rankings from "./pages/Rankings";
 import Revisor from "./pages/Revisor";
+
+// Co-chairs (dashboard / "Gestão de Co-Chairs") — grouped under co-chairs/
+import Layout from "./components/co-chairs/Layout";
+import Index from "./pages/co-chairs/Index.tsx";
+import Avaliadores from "./pages/co-chairs/Avaliadores";
+import AvaliadorForm from "./pages/co-chairs/AvaliadorForm";
+import Trabalhos from "./pages/co-chairs/Trabalhos";
+import TrabalhoForm from "./pages/co-chairs/TrabalhoForm";
+import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
+import Categorias from "./pages/co-chairs/Categorias";
+import Atribuicoes from "./pages/co-chairs/Atribuicoes";
+import Rankings from "./pages/co-chairs/Rankings";
 import PreCadastro from "./pages/PreCadastro";
 import ProfessorCadastro from "./pages/ProfessorCadastro";
 

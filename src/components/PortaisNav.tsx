@@ -63,7 +63,7 @@ function getPortaisItems(role: UserRole): string[] {
   // Fixed, canonical order per role. The current page is NOT removed — it stays
   // in place (marked active) so the portal buttons never shift position.
   const byRole: Record<UserRole, string[]> = {
-    estudante: ["congresso"],
+    estudante: ["estudante", "congresso"],
     professor: ["estudante", "revisor", "congresso"],
     avaliador: ["dashboard", "estudante", "revisor", "congresso"],
     admin: ["dashboard", "estudante", "revisor", "admin", "congresso"],
