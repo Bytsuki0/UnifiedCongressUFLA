@@ -11,15 +11,18 @@ export default function AdminIndex() {
   const stats = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [users, regs, minis, certs, sched] = await Promise.all([
-        sb.from("profiles").select("id", { count: "exact", head: true }),
+      const [est, prof, aval, regs, minis, certs, sched] = await Promise.all([
+        sb.from("estudantes").select("id", { count: "exact", head: true }),
+        sb.from("professores").select("id", { count: "exact", head: true }),
+        sb.from("avaliadores").select("id", { count: "exact", head: true }),
         sb.from("congress_registrations").select("id", { count: "exact", head: true }),
         sb.from("minicourses").select("id", { count: "exact", head: true }),
         sb.from("certificates").select("id", { count: "exact", head: true }),
         sb.from("schedule").select("id", { count: "exact", head: true }),
       ]);
       return {
-        users: users.count ?? 0, regs: regs.count ?? 0,
+        users: (est.count ?? 0) + (prof.count ?? 0) + (aval.count ?? 0),
+        regs: regs.count ?? 0,
         minis: minis.count ?? 0, certs: certs.count ?? 0, sched: sched.count ?? 0,
       };
     },

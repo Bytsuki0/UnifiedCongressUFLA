@@ -34,23 +34,6 @@ const Index = () => {
         <Card className="shadow-[var(--shadow-card)]">
           <CardHeader>
             <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-              <FileText className="h-5 w-5" />
-            </div>
-            <CardTitle>Trabalhos</CardTitle>
-            <CardDescription>Submeta, visualize e edite trabalhos acadêmicos.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link to="/trabalhos">
-                Acessar <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-[var(--shadow-card)]">
-          <CardHeader>
-            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
               <ClipboardList className="h-5 w-5" />
             </div>
             <CardTitle>Atribuições</CardTitle>
