@@ -70,6 +70,19 @@ export async function listarTrabalhosAssociados(
   return (data ?? []) as unknown as AssociacaoComTrabalho[];
 }
 
+/** Uma associação específica (por id), com os dados do trabalho embarcados. */
+export async function obterAssociacao(
+  id: string,
+): Promise<AssociacaoComTrabalho | null> {
+  const { data, error } = await supabase
+    .from("trabalho_revisores")
+    .select("*, trabalho:trabalhos(*)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as AssociacaoComTrabalho) ?? null;
+}
+
 /** Critérios de avaliação de uma categoria, em ordem. */
 export async function listarCriterios(categoriaId: string): Promise<Criterio[]> {
   const { data, error } = await supabase
