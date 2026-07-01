@@ -82,12 +82,29 @@ export type Parecer = {
 export const MAX_REVISORES_POR_TRABALHO = 3;
 
 export type AvaliacaoStatus = "pendente" | "em_avaliacao" | "concluida";
+export type AvaliacaoDecisao = "aceito" | "rejeitado";
+
+// Notas por critério persistidas na avaliação (0 a 5 cada).
+export type AvaliacaoNotas = {
+  originalidade_relevancia: number;
+  clareza_objetivos: number;
+  fundamentacao_teorica: number;
+  metodologia: number;
+  analise_resultados: number;
+  qualidade_redacao: number;
+  impacto: number;
+};
 
 export type Avaliacao = {
   id: string;
   avaliador_id: string;
   trabalho_id: string;
   status: AvaliacaoStatus;
+  notas: Partial<AvaliacaoNotas>;
+  nota_geral: number | null;
+  decisao: AvaliacaoDecisao | null;
+  comentarios: string | null;
+  data_avaliacao: string | null;
   data_atribuicao: string;
   created_at: string;
 };

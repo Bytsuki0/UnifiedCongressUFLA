@@ -16,6 +16,7 @@ import {
   listarCriterios,
   obterParecer,
   salvarParecer,
+  espelharParecerEmAvaliacao,
 } from "@/services/revisorService";
 
 const RESULTADO_LABEL: Record<ResultadoParecer, string> = {
@@ -233,6 +234,14 @@ const Revisor = () => {
         revisorNome: user.nome,
         resultado: analiseResultado,
         itens,
+        comentarioGeral: analiseComentarioGeral.trim() || null,
+      });
+      // Espelha nota/decisão na tabela de avaliações para alimentar os Rankings.
+      await espelharParecerEmAvaliacao({
+        trabalhoId: analiseAtivo.trabalho.id,
+        revisorEmail: user.email,
+        notas: itens,
+        resultado: analiseResultado,
         comentarioGeral: analiseComentarioGeral.trim() || null,
       });
       toast.success("Parecer registrado com sucesso!");

@@ -20,6 +20,7 @@ import TrabalhoForm from "./pages/TrabalhoForm";
 import TrabalhoDetalhe from "./pages/TrabalhoDetalhe";
 import Categorias from "./pages/Categorias";
 import Atribuicoes from "./pages/Atribuicoes";
+import Rankings from "./pages/Rankings";
 import Revisor from "./pages/Revisor";
 import PreCadastro from "./pages/PreCadastro";
 import ProfessorCadastro from "./pages/ProfessorCadastro";
@@ -89,6 +90,7 @@ const App = () => (
                 <Route path="/trabalhos/:id/editar" element={<TrabalhoForm />} />
                 <Route path="/categorias" element={<Categorias />} />
                 <Route path="/atribuicoes" element={<Atribuicoes />} />
+                <Route path="/rankings" element={<Rankings />} />
               </Route>
             </Route>
 

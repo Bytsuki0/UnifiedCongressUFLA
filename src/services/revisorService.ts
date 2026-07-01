@@ -110,6 +110,44 @@ export async function salvarParecer(input: SalvarParecerInput): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Espelha um parecer na tabela `avaliacoes`, alimentando a página de Rankings.
+ * Só atualiza quando existe uma atribuição (avaliador registrado + trabalho)
+ * para o e-mail informado; caso contrário, é um no-op silencioso.
+ */
+export async function espelharParecerEmAvaliacao(input: {
+  trabalhoId: string;
+  revisorEmail: string;
+  notas: ParecerItem[];
+  resultado: ResultadoParecer;
+  comentarioGeral?: string | null;
+}): Promise<void> {
+  if (input.notas.length === 0) return;
+
+  const { data: avaliador } = await supabase
+    .from("avaliadores")
+    .select("id")
+    .ilike("email", input.revisorEmail)
+    .maybeSingle();
+  if (!avaliador) return; // revisor não é um avaliador com atribuição -> nada a espelhar
+
+  const media =
+    input.notas.reduce((soma, item) => soma + Number(item.nota), 0) / input.notas.length;
+  const decisao = input.resultado === "nao_aprovado" ? "rejeitado" : "aceito";
+
+  await supabase
+    .from("avaliacoes")
+    .update({
+      nota_geral: Number(media.toFixed(2)),
+      decisao,
+      comentarios: input.comentarioGeral?.trim() || null,
+      status: "concluida",
+      data_avaliacao: new Date().toISOString(),
+    })
+    .eq("avaliador_id", avaliador.id)
+    .eq("trabalho_id", input.trabalhoId);
+}
+
 /** Revisores associados a um trabalho. */
 export async function listarRevisoresDoTrabalho(
   trabalhoId: string,

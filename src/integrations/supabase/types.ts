@@ -17,25 +17,40 @@ export type Database = {
       avaliacoes: {
         Row: {
           avaliador_id: string
+          comentarios: string | null
           created_at: string
           data_atribuicao: string
+          data_avaliacao: string | null
+          decisao: string | null
           id: string
+          nota_geral: number | null
+          notas: Json
           status: Database["public"]["Enums"]["avaliacao_status"]
           trabalho_id: string
         }
         Insert: {
           avaliador_id: string
+          comentarios?: string | null
           created_at?: string
           data_atribuicao?: string
+          data_avaliacao?: string | null
+          decisao?: string | null
           id?: string
+          nota_geral?: number | null
+          notas?: Json
           status?: Database["public"]["Enums"]["avaliacao_status"]
           trabalho_id: string
         }
         Update: {
           avaliador_id?: string
+          comentarios?: string | null
           created_at?: string
           data_atribuicao?: string
+          data_avaliacao?: string | null
+          decisao?: string | null
           id?: string
+          nota_geral?: number | null
+          notas?: Json
           status?: Database["public"]["Enums"]["avaliacao_status"]
           trabalho_id?: string
         }
