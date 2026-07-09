@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { carregarPoolRevisores, distribuirRevisoresAutomaticamente } from "@/services/revisorService";
-import { MAX_PDF_BYTES, PDF_BUCKET, useTrabalhos } from "./shared";
+import { PDF_BUCKET } from "@/lib/pdfStorage";
+import { MAX_PDF_BYTES, useTrabalhos } from "./shared";
 
 const NovaSubmissao = () => {
   const navigate = useNavigate();
@@ -36,11 +36,17 @@ const NovaSubmissao = () => {
       toast.error("O PDF excede o limite de 10MB.");
       return;
     }
+    if (!user) {
+      toast.error("Sessão expirada. Entre novamente.");
+      return;
+    }
     setSubmitting(true);
 
-    // 1. Envia o PDF ao bucket de Storage (S3) e guarda só o link de acesso.
+    // 1. Envia o PDF ao bucket privado, na pasta do próprio usuário
+    //    (exigido pela política RLS do Storage). A tabela guarda o
+    //    caminho do objeto; o acesso é feito por URL assinada.
     const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${Date.now()}-${safeName}`;
+    const path = `${user.id}/${Date.now()}-${safeName}`;
     const { error: uploadError } = await supabase.storage
       .from(PDF_BUCKET)
       .upload(path, selectedFile, { contentType: "application/pdf", upsert: false });
@@ -50,7 +56,6 @@ const NovaSubmissao = () => {
       setSubmitting(false);
       return;
     }
-    const pdfUrl = supabase.storage.from(PDF_BUCKET).getPublicUrl(path).data.publicUrl;
 
     // 2. Insere o trabalho na tabela, com coautores e orientador.
     const coautores = coauthors
@@ -68,7 +73,7 @@ const NovaSubmissao = () => {
       autores,
       orientador_email: form.orientador.trim() || null,
       coautores,
-      pdf_url: pdfUrl,
+      pdf_url: path,
       data_submissao: new Date().toISOString().split("T")[0],
       status: "pendente",
     }).select("id").single();
@@ -77,12 +82,12 @@ const NovaSubmissao = () => {
       toast.error("Erro ao submeter trabalho. Tente novamente.");
     } else {
       toast.success("Trabalho submetido com sucesso!");
-      // Dispara a distribuição automática (tenta associar até 3 revisores ao
-      // novo trabalho). É best-effort: falhas aqui não bloqueiam a submissão.
+      // Distribuição automática de revisores agora roda no servidor
+      // (RPC SECURITY DEFINER) — o estudante não tem mais acesso às
+      // tabelas de revisores. Best-effort: falha não bloqueia o envio.
       if (novo?.id) {
         try {
-          const pool = await carregarPoolRevisores();
-          if (pool.length > 0) await distribuirRevisoresAutomaticamente(pool, [novo.id]);
+          await (supabase.rpc as any)("distribuir_revisores", { _trabalho_id: novo.id });
         } catch {
           /* distribuição automática silenciosa */
         }

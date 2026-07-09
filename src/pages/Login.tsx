@@ -1,41 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveMyRole } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-
-const ADMIN_EMAIL = "bytsuki066@gmail.com";
-
-async function detectProfile(userEmail: string): Promise<"estudante" | "professor" | "avaliador" | "admin"> {
-  if (userEmail === ADMIN_EMAIL) return "admin";
-
-  // Check avaliador first (professor with elevated role)
-  const { data: avalData } = await supabase
-    .from("avaliadores")
-    .select("id")
-    .eq("email", userEmail)
-    .maybeSingle();
-  if (avalData) return "avaliador";
-
-  // Check professor
-  const { data: profData } = await (supabase.from("professores" as never) as any)
-    .select("id")
-    .eq("email", userEmail)
-    .maybeSingle();
-  if (profData) return "professor";
-
-  // Check estudante
-  const { data: estData } = await (supabase.from("estudantes" as never) as any)
-    .select("id")
-    .eq("email", userEmail)
-    .maybeSingle();
-  if (estData) return "estudante";
-
-  // Fallback by email domain
-  if (userEmail.endsWith("@estudante.ufla.br")) return "estudante";
-  if (userEmail.endsWith("@ufla.br") || userEmail.endsWith("@ufla-br") || userEmail.endsWith("@ufla_br")) return "professor";
-
-  return "estudante";
-}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -55,13 +22,16 @@ const Login = () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
     if (error) {
-      toast.error("Credenciais inválidas. Verifique seu e-mail e senha.");
+      if (/email not confirmed/i.test(error.message)) {
+        toast.error("Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.");
+      } else {
+        toast.error("Credenciais inválidas. Verifique seu e-mail e senha.");
+      }
       setLoading(false);
       return;
     }
 
-    const userEmail = email.toLowerCase().trim();
-    const profile = await detectProfile(userEmail);
+    const profile = await resolveMyRole();
 
     if (profile === "admin") {
       toast.success("Bem-vindo, Administrador!");

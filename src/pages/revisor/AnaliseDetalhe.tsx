@@ -18,6 +18,7 @@ import {
   salvarParecer,
   espelharParecerEmAvaliacao,
 } from "@/services/revisorService";
+import { resolvePdfUrl } from "@/lib/pdfStorage";
 import { NOTA_OPCOES, TRABALHO_STATUS_LABEL } from "./shared";
 
 const AnaliseDetalhe = () => {
@@ -26,6 +27,8 @@ const AnaliseDetalhe = () => {
   const { user } = useAuth();
 
   const [assoc, setAssoc] = useState<AssociacaoComTrabalho | null>(null);
+  // URL assinada e temporária do PDF (o bucket é privado — SEC-05).
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<Record<string, string>>({});
   const [criterios, setCriterios] = useState<Criterio[]>([]);
   const [resultado, setResultado] = useState<ResultadoParecer | "">("");
@@ -52,6 +55,7 @@ const AnaliseDetalhe = () => {
         return;
       }
       setAssoc(a);
+      setPdfUrl(await resolvePdfUrl(trab.pdf_url));
       const crits = trab.categoria_id ? await listarCriterios(trab.categoria_id) : [];
       setCriterios(crits);
       const parecer = user?.email ? await obterParecer(trab.id, user.email) : null;
@@ -78,10 +82,10 @@ const AnaliseDetalhe = () => {
   // garantindo o download mesmo quando o navegador está configurado para abrir PDFs.
   async function baixarPdf() {
     const trab = assoc?.trabalho;
-    if (!trab?.pdf_url) return;
+    if (!trab || !pdfUrl) return;
     const nome = `${(trab.titulo || "trabalho").replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
     try {
-      const resp = await fetch(trab.pdf_url);
+      const resp = await fetch(pdfUrl);
       const blob = await resp.blob();
       const obj = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -92,7 +96,7 @@ const AnaliseDetalhe = () => {
       a.remove();
       URL.revokeObjectURL(obj);
     } catch {
-      window.open(trab.pdf_url, "_blank", "noopener,noreferrer");
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -155,13 +159,13 @@ const AnaliseDetalhe = () => {
             ? `${assoc.trabalho.categoria_id ? (categorias[assoc.trabalho.categoria_id] ?? "—") : "—"} · ${TRABALHO_STATUS_LABEL[assoc.trabalho.status] ?? assoc.trabalho.status}`
             : "—"}
         </span>
-        {assoc?.trabalho?.pdf_url && (
+        {pdfUrl && (
           <span style={{ display: "inline-flex", gap: "var(--space-2)" }}>
             <button type="button" className="btn btn-primary btn-sm" onClick={baixarPdf}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               BAIXAR PDF
             </button>
-            <a className="btn btn-outline btn-sm" href={assoc.trabalho.pdf_url} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-outline btn-sm" href={pdfUrl} target="_blank" rel="noopener noreferrer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               ABRIR EM NOVA ABA
             </a>
@@ -171,8 +175,8 @@ const AnaliseDetalhe = () => {
 
       <div className="avaliacao-layout">
         <div className="pdf-viewer">
-          {assoc?.trabalho?.pdf_url ? (
-            <PdfViewer url={assoc.trabalho.pdf_url} />
+          {pdfUrl ? (
+            <PdfViewer url={pdfUrl} />
           ) : (
             <>
               <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>

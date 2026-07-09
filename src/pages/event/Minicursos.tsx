@@ -23,9 +23,11 @@ export default function Minicursos() {
   const counts = useQuery({
     queryKey: ["mini-counts"],
     queryFn: async () => {
-      const { data } = await sb.from("minicourse_registrations").select("minicourse_id");
+      // RPC agregado: a tabela de inscrições agora é visível apenas
+      // para o próprio inscrito e a organização (RLS).
+      const { data } = await sb.rpc("minicourse_occupancy");
       const map: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { map[r.minicourse_id] = (map[r.minicourse_id] ?? 0) + 1; });
+      (data ?? []).forEach((r: any) => { map[r.minicourse_id] = Number(r.inscritos) || 0; });
       return map;
     },
   });

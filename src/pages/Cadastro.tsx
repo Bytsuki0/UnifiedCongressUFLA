@@ -24,6 +24,9 @@ const Cadastro = () => {
       return;
     }
     setLoading(true);
+    // O perfil (tabela estudantes) e o papel são criados no servidor por
+    // trigger (handle_new_user), a partir destes metadados — o domínio do
+    // e-mail é validado no banco, não apenas aqui no navegador.
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.senha,
@@ -33,9 +36,8 @@ const Cadastro = () => {
           matricula: form.matricula,
           periodo: form.periodo,
           curso: form.curso,
-          perfil: "estudante",
         },
-        emailRedirectTo: undefined,
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
 
@@ -46,18 +48,11 @@ const Cadastro = () => {
     }
 
     if (data.user) {
-      const { error: dbError } = await supabase.from("estudantes" as never).insert({
-        user_id: data.user.id,
-        nome: form.nome,
-        email: form.email,
-        matricula: form.matricula,
-        periodo: form.periodo,
-        curso: form.curso,
-      } as never);
-      if (dbError) {
-        console.error("Erro ao salvar perfil estudante:", dbError.message);
+      if (!data.session) {
+        toast.success("Conta criada! Enviamos um link de confirmação para o seu e-mail. Confirme antes de entrar.");
+      } else {
+        toast.success("Conta criada com sucesso! Faça login para continuar.");
       }
-      toast.success("Conta criada com sucesso! Faça login para continuar.");
       navigate("/login");
     } else {
       toast.error("Erro inesperado ao criar conta. Tente novamente.");

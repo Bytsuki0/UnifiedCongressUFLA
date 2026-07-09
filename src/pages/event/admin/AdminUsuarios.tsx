@@ -6,9 +6,6 @@ import { Trash2, Download } from "lucide-react";
 
 const sb = supabase as any;
 
-// Conta de administrador (baseada em e-mail, igual ao AuthContext) — nunca listada.
-const ADMIN_EMAIL = "bytsuki066@gmail.com";
-
 type Row = {
   id: string;
   nome: string;
@@ -24,28 +21,34 @@ export default function AdminUsuarios() {
   const { data: users } = useQuery<Row[]>({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const [est, prof, aval] = await Promise.all([
-        sb.from("estudantes").select("id, nome, email, curso, created_at"),
-        sb.from("professores").select("id, nome, email, departamento, created_at"),
+      // Contas de administrador vêm de user_roles (não de e-mail
+      // hardcoded) e nunca são listadas aqui.
+      const [est, prof, aval, admins] = await Promise.all([
+        sb.from("estudantes").select("id, user_id, nome, email, curso, created_at"),
+        sb.from("professores").select("id, user_id, nome, email, departamento, created_at"),
         sb.from("avaliadores").select("id, nome, email, instituicao, created_at"),
+        sb.from("user_roles").select("user_id").eq("role", "admin"),
       ]);
+      const adminIds = new Set(((admins.data ?? []) as { user_id: string }[]).map((r) => r.user_id));
       const rows: Row[] = [
-        ...(est.data ?? []).map((u: any) => ({
-          id: u.id, nome: u.nome, email: u.email, detalhe: u.curso ?? "",
-          tipo: "Estudante" as const, source: "estudantes" as const, created_at: u.created_at,
-        })),
-        ...(prof.data ?? []).map((u: any) => ({
-          id: u.id, nome: u.nome, email: u.email, detalhe: u.departamento ?? "",
-          tipo: "Professor" as const, source: "professores" as const, created_at: u.created_at,
-        })),
+        ...(est.data ?? [])
+          .filter((u: any) => !adminIds.has(u.user_id))
+          .map((u: any) => ({
+            id: u.id, nome: u.nome, email: u.email, detalhe: u.curso ?? "",
+            tipo: "Estudante" as const, source: "estudantes" as const, created_at: u.created_at,
+          })),
+        ...(prof.data ?? [])
+          .filter((u: any) => !adminIds.has(u.user_id))
+          .map((u: any) => ({
+            id: u.id, nome: u.nome, email: u.email, detalhe: u.departamento ?? "",
+            tipo: "Professor" as const, source: "professores" as const, created_at: u.created_at,
+          })),
         ...(aval.data ?? []).map((u: any) => ({
           id: u.id, nome: u.nome, email: u.email, detalhe: u.instituicao ?? "",
           tipo: "Avaliador" as const, source: "avaliadores" as const, created_at: u.created_at,
         })),
       ];
-      return rows
-        .filter((u) => u.email?.toLowerCase() !== ADMIN_EMAIL)
-        .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+      return rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
     },
   });
 

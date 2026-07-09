@@ -20,9 +20,8 @@ export type Submission = {
 
 export type Categoria = { id: string; nome: string };
 
-// Bucket de Storage onde os PDFs são enviados. É o mesmo bucket exposto
-// pelo endpoint S3-compatível do projeto (VITE_SUPABASE_S3_ENDPOINT).
-export const PDF_BUCKET = import.meta.env.VITE_SUPABASE_PDF_BUCKET || "Pdfs";
+// O bucket de PDFs (privado) e o helper de URL assinada vivem em
+// "@/lib/pdfStorage".
 export const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export const statusBadge = (s: string) => {

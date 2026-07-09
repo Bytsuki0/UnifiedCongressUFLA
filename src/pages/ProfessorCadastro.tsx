@@ -32,6 +32,9 @@ const ProfessorCadastro = () => {
     if (!emailFromState) { toast.error("E-mail não encontrado. Volte e tente novamente."); return; }
 
     setLoading(true);
+    // O perfil (tabela professores) e o papel são criados no servidor por
+    // trigger (handle_new_user), a partir destes metadados — o domínio do
+    // e-mail é validado no banco, não apenas aqui no navegador.
     const { data, error } = await supabase.auth.signUp({
       email: emailFromState,
       password: form.senha,
@@ -39,9 +42,8 @@ const ProfessorCadastro = () => {
         data: {
           nome: form.nome.trim(),
           departamento: form.departamento,
-          perfil: "professor",
         },
-        emailRedirectTo: undefined,
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
 
@@ -52,16 +54,11 @@ const ProfessorCadastro = () => {
     }
 
     if (data.user) {
-      const { error: dbError } = await supabase.from("professores" as never).insert({
-        user_id: data.user.id,
-        nome: form.nome.trim(),
-        email: emailFromState,
-        departamento: form.departamento,
-      } as never);
-      if (dbError) {
-        console.error("Erro ao salvar perfil professor:", dbError.message);
+      if (!data.session) {
+        toast.success("Conta criada! Enviamos um link de confirmação para o seu e-mail. Confirme antes de entrar.");
+      } else {
+        toast.success("Conta de professor criada com sucesso! Faça login para continuar.");
       }
-      toast.success("Conta de professor criada com sucesso! Faça login para continuar.");
       navigate("/login");
     } else {
       toast.error("Erro inesperado ao criar conta. Tente novamente.");

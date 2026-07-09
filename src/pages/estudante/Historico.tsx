@@ -1,9 +1,18 @@
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { openPdf } from "@/lib/pdfStorage";
 import { statusBadge, statusLabel, useTrabalhos } from "./shared";
 
 const Historico = () => {
   const navigate = useNavigate();
   const { trabalhos, loading, catNome } = useTrabalhos();
+
+  // O bucket de PDFs é privado: o acesso é feito por URL assinada,
+  // resolvida no momento do clique.
+  const verPdf = async (stored: string) => {
+    const ok = await openPdf(stored);
+    if (!ok) toast.error("Não foi possível abrir o PDF.");
+  };
 
   return (
     <div className="section active">
@@ -46,7 +55,7 @@ const Historico = () => {
                     <td>{catNome(t.categoria_id)}</td>
                     <td><span className={statusBadge(t.status)}>{statusLabel[t.status] ?? t.status}</span></td>
                     <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
-                    <td>{t.pdf_url ? <a href={t.pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</a> : "—"}</td>
+                    <td>{t.pdf_url ? <button type="button" onClick={() => verPdf(t.pdf_url!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
                   </tr>
                 ))}
               </tbody>

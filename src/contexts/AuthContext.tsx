@@ -17,24 +17,20 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({ user: null, role: null, loading: true });
 
-const ADMIN_EMAIL = "bytsuki066@gmail.com";
+const ROLE_PRIORITY: UserRole[] = ["admin", "avaliador", "professor", "estudante"];
 
-async function resolveRole(email: string): Promise<UserRole> {
-  if (email === ADMIN_EMAIL) return "admin";
-
-  const { data: avaliador } = await supabase
-    .from("avaliadores")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-  if (avaliador) return "avaliador";
-
-  const { data: professor } = await (supabase.from("professores" as never) as any)
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-  if (professor) return "professor";
-
+/**
+ * Papel do usuário logado, resolvido no servidor (public.user_roles via
+ * get_my_roles). A autorização real é aplicada por RLS no banco — este
+ * valor só orienta a navegação da interface.
+ */
+export async function resolveMyRole(): Promise<UserRole> {
+  const { data, error } = await (supabase.rpc as any)("get_my_roles");
+  if (!error && Array.isArray(data)) {
+    for (const role of ROLE_PRIORITY) {
+      if (data.includes(role)) return role;
+    }
+  }
   return "estudante";
 }
 
@@ -53,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = session.user.email!;
     const nome = session.user.user_metadata?.nome || email.split("@")[0];
     setUser({ id: session.user.id, email, nome });
-    const r = await resolveRole(email);
+    const r = await resolveMyRole();
     setRole(r);
     setLoading(false);
   };

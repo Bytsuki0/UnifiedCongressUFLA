@@ -95,10 +95,12 @@ async function ensureMigrationsTable() {
       filename    TEXT NOT NULL UNIQUE,
       applied_at  TIMESTAMPTZ DEFAULT NOW()
     );
-    GRANT ALL    ON public._migrations TO service_role;
-    GRANT SELECT ON public._migrations TO anon, authenticated;
-    GRANT USAGE, SELECT ON SEQUENCE public._migrations_id_seq
-      TO anon, authenticated, service_role;
+    -- Tabela interna: acessível apenas ao service_role/postgres,
+    -- nunca pela API pública (anon/authenticated).
+    GRANT ALL ON public._migrations TO service_role;
+    REVOKE ALL ON public._migrations FROM anon, authenticated;
+    GRANT USAGE, SELECT ON SEQUENCE public._migrations_id_seq TO service_role;
+    REVOKE ALL ON SEQUENCE public._migrations_id_seq FROM anon, authenticated;
   `);
   if (!ok) throw new Error(`Could not create _migrations table: ${error}`);
 }

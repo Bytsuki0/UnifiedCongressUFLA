@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ResultadoParecer } from "@/lib/types";
 import { AssociacaoComTrabalho, listarTrabalhosAssociados } from "@/services/revisorService";
+import { openPdf } from "@/lib/pdfStorage";
 import {
   RESULTADO_BADGE,
   RESULTADO_LABEL,
@@ -99,7 +100,7 @@ const Analise = () => {
                       <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t?.autores ?? "—"}</td>
                       <td>{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
                       <td>{t ? new Date(t.data_submissao).toLocaleDateString("pt-BR") : "—"}</td>
-                      <td>{t?.pdf_url ? <a href={t.pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</a> : "—"}</td>
+                      <td>{t?.pdf_url ? <button type="button" onClick={async () => { if (!(await openPdf(t.pdf_url))) toast.error("Não foi possível abrir o PDF."); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
                       <td>{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
                       <td>
                         <button className="btn btn-primary btn-sm" disabled={!t} onClick={() => navigate(`/revisor/analise/${a.id}`)}>
