@@ -1,6 +1,6 @@
 # Nexus Corp — Plataforma de Submissão Científica (UFLA)
 
-Academic paper submission and peer-review platform built for UFLA (Universidade Federal de Lavras). Researchers submit works, professors review them, and evaluators manage the full assessment cycle.
+Academic paper submission and peer-review platform built for UFLA (Universidade Federal de Lavras). Researchers submit works, professors review them, and evaluators manage the full assessment cycle
 
 ---
 
