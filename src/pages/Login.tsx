@@ -156,7 +156,7 @@ const Login = () => {
             </form>
 
             <p style={{ textAlign: "center", marginTop: 24, fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
-              Não tem conta? <Link to="/pre-cadastro" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Cadastre-se</Link>
+              Não tem conta? <Link to="/cadastro" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Cadastre-se</Link>
             </p>
           </section>
 

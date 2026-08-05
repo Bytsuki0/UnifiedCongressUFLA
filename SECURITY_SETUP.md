@@ -22,17 +22,22 @@ From now on, keep `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ACCESS_TOKEN` only
 in a CI/deploy secret store. `.env` (and `.env.example`) hold **only**
 browser-safe `VITE_*` values.
 
-## 2. Apply the hardening migration (SEC-01/02/04/05/09)
+## 2. Apply the migrations (SEC-01/02/04/05/09 + unified signup)
 
 ```bash
 # with the NEW access token exported in the shell, not in .env
 SUPABASE_ACCESS_TOKEN=... SUPABASE_SERVICE_ROLE_KEY=... npm run migrate
 ```
 
-This applies `supabase/migrations/20260709120000_security_hardening.sql`:
-role table (`user_roles`), owner-scoped/role-scoped RLS on every table,
-private buckets with per-owner policies, server-side signup validation,
-exact-match + rate-limited `verify_certificate`.
+This applies two migrations:
+
+- `20260709120000_security_hardening.sql` — role table (`user_roles`),
+  owner-scoped/role-scoped RLS on every table, private buckets with
+  per-owner policies, server-side signup validation, exact-match +
+  rate-limited `verify_certificate`.
+- `20260710120000_cadastro_unificado_externos.sql` — the `externo` role
+  for non-UFLA participants, plus per-profile required-field validation
+  in the signup trigger (see §6).
 
 ## 3. Seed the first admin (SEC-06)
 
@@ -83,11 +88,14 @@ behind a CDN/WAF:
   never stored). Students will not see their old submissions; staff sees
   everything. If needed, backfill `owner_id` manually by matching authors
   to `estudantes.user_id`.
-- **Allowed sign-up domains** are stored in `public.allowed_email_domains`
-  (`estudante.ufla.br` → estudante, `ufla.br` → professor). Sign-ups from
-  any other domain are rejected **in the database**. Admins can add
-  domains (e.g. for external congress participants) by inserting rows into
-  that table.
+- **Sign-up profiles are derived from the e-mail domain in the database**
+  via `public.allowed_email_domains`: `estudante.ufla.br` → estudante
+  (requires matrícula, período, curso), `ufla.br` / `ufla-br` / `ufla_br`
+  → professor (requires departamento). **Any other domain creates an
+  `externo` participant account** (name/e-mail/password only), which can
+  reach the `/congresso` area but not the submission or review portals.
+  A user can never obtain an institutional role without the matching
+  institutional address — the trigger ignores what the browser sends.
 - The `verify_certificate` RPC no longer matches code prefixes (exact code
   only) — QR links keep working; hand-typed partial codes no longer do.
 

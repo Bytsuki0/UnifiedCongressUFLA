@@ -6,13 +6,22 @@ import { Trash2, Download } from "lucide-react";
 
 const sb = supabase as any;
 
+// Participante externo: sem tabela institucional, vive só em profiles.
+type ExternoRow = {
+  id: string;
+  nome: string | null;
+  email: string | null;
+  instituicao: string | null;
+  created_at?: string;
+};
+
 type Row = {
   id: string;
   nome: string;
   email: string;
   detalhe: string; // curso / departamento / instituição
-  tipo: "Estudante" | "Professor" | "Avaliador";
-  source: "estudantes" | "professores" | "avaliadores";
+  tipo: "Estudante" | "Professor" | "Avaliador" | "Externo";
+  source: "estudantes" | "professores" | "avaliadores" | "profiles";
   created_at?: string;
 };
 
@@ -22,14 +31,25 @@ export default function AdminUsuarios() {
     queryKey: ["admin-users"],
     queryFn: async () => {
       // Contas de administrador vêm de user_roles (não de e-mail
-      // hardcoded) e nunca são listadas aqui.
-      const [est, prof, aval, admins] = await Promise.all([
+      // hardcoded) e nunca são listadas aqui. Contas externas não têm
+      // tabela de perfil institucional — vêm de profiles + user_roles.
+      const [est, prof, aval, admins, externoRoles] = await Promise.all([
         sb.from("estudantes").select("id, user_id, nome, email, curso, created_at"),
         sb.from("professores").select("id, user_id, nome, email, departamento, created_at"),
         sb.from("avaliadores").select("id, nome, email, instituicao, created_at"),
         sb.from("user_roles").select("user_id").eq("role", "admin"),
+        sb.from("user_roles").select("user_id").eq("role", "externo"),
       ]);
       const adminIds = new Set(((admins.data ?? []) as { user_id: string }[]).map((r) => r.user_id));
+
+      // user_roles não tem FK para profiles (ambos apontam para auth.users),
+      // então os dados do participante externo vêm em uma segunda consulta.
+      const externoIds = ((externoRoles.data ?? []) as { user_id: string }[])
+        .map((r) => r.user_id)
+        .filter((id) => !adminIds.has(id));
+      const externos: ExternoRow[] = externoIds.length
+        ? (await sb.from("profiles").select("id, nome, email, instituicao, created_at").in("id", externoIds)).data ?? []
+        : [];
       const rows: Row[] = [
         ...(est.data ?? [])
           .filter((u: any) => !adminIds.has(u.user_id))
@@ -46,6 +66,10 @@ export default function AdminUsuarios() {
         ...(aval.data ?? []).map((u: any) => ({
           id: u.id, nome: u.nome, email: u.email, detalhe: u.instituicao ?? "",
           tipo: "Avaliador" as const, source: "avaliadores" as const, created_at: u.created_at,
+        })),
+        ...externos.map((u) => ({
+          id: u.id, nome: u.nome ?? "", email: u.email ?? "", detalhe: u.instituicao ?? "",
+          tipo: "Externo" as const, source: "profiles" as const, created_at: u.created_at,
         })),
       ];
       return rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
@@ -77,6 +101,7 @@ export default function AdminUsuarios() {
       Estudante: "bg-muted",
       Professor: "bg-primary/15 text-primary",
       Avaliador: "bg-success/15 text-success",
+      Externo: "bg-accent/40",
     };
     return map[tipo];
   };

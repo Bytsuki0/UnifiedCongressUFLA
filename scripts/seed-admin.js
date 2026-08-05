@@ -4,27 +4,41 @@
  * EXISTING auth user, identified by e-mail.
  *
  * The admin identity is intentionally NOT hardcoded anywhere in the
- * codebase (see SEC-06 in SECURITY_ANALYSIS.md). Bootstrap the first
- * admin with:
+ * codebase (see SEC-06 in SECURITY_ANALYSIS.md). The account must already
+ * exist — sign up at /cadastro first, then promote it here.
  *
- *   ADMIN_EMAIL=someone@ufla.br npm run seed:admin
+ * Env vars:
+ *   VITE_SUPABASE_URL     — e.g. https://xxxx.supabase.co (read from .env)
+ *   SUPABASE_ACCESS_TOKEN — personal access token (management API)
+ *   ADMIN_EMAIL           — e-mail of the user to promote
  *
- * Requires env vars (from your secret store, NOT from a dev .env):
- *   VITE_SUPABASE_URL      — e.g. https://xxxx.supabase.co
- *   SUPABASE_ACCESS_TOKEN  — personal access token (management API)
- *   ADMIN_EMAIL            — e-mail of the user to promote
+ * Usage (PowerShell):
+ *   $env:SUPABASE_ACCESS_TOKEN = "sbp_..."
+ *   $env:ADMIN_EMAIL = "someone@ufla.br"
+ *   npm run seed:admin
  *
  * Further admins should be managed through the user_roles table by an
  * existing admin.
  */
 
+import { loadDotEnv } from "./load-dotenv.js";
+
+loadDotEnv();
+
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 
-if (!SUPABASE_URL || !ACCESS_TOKEN || !ADMIN_EMAIL) {
-  console.error("ERROR: VITE_SUPABASE_URL, SUPABASE_ACCESS_TOKEN and ADMIN_EMAIL must be set.");
-  console.error("Usage: ADMIN_EMAIL=someone@ufla.br npm run seed:admin");
+if (!SUPABASE_URL) {
+  console.error("ERROR: VITE_SUPABASE_URL must be set (normally read from .env).");
+  process.exit(1);
+}
+if (!ACCESS_TOKEN || !ADMIN_EMAIL) {
+  console.error("ERROR: SUPABASE_ACCESS_TOKEN and ADMIN_EMAIL must be set.");
+  console.error("PowerShell:");
+  console.error('  $env:SUPABASE_ACCESS_TOKEN = "sbp_..."');
+  console.error('  $env:ADMIN_EMAIL = "someone@ufla.br"');
+  console.error("  npm run seed:admin");
   process.exit(1);
 }
 if (!/^[^\s@']+@[^\s@']+\.[^\s@']+$/.test(ADMIN_EMAIL)) {

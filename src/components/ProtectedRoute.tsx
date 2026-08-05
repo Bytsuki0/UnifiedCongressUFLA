@@ -8,6 +8,7 @@ type Props = {
 };
 
 function redirectForRole(role: UserRole): string {
+  if (role === "externo") return "/congresso/dashboard";
   if (role === "estudante") return "/estudante";
   if (role === "professor") return "/revisor";
   return "/dashboard";

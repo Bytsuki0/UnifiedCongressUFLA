@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = "estudante" | "professor" | "avaliador" | "admin";
+export type UserRole = "estudante" | "professor" | "avaliador" | "admin" | "externo";
 
 export type AuthUser = {
   id: string;
@@ -17,7 +17,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({ user: null, role: null, loading: true });
 
-const ROLE_PRIORITY: UserRole[] = ["admin", "avaliador", "professor", "estudante"];
+const ROLE_PRIORITY: UserRole[] = ["admin", "avaliador", "professor", "estudante", "externo"];
 
 /**
  * Papel do usuário logado, resolvido no servidor (public.user_roles via
@@ -31,7 +31,8 @@ export async function resolveMyRole(): Promise<UserRole> {
       if (data.includes(role)) return role;
     }
   }
-  return "estudante";
+  // Sem papel resolvido, assume o menor privilégio.
+  return "externo";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

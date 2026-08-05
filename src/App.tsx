@@ -38,8 +38,6 @@ import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
 import Categorias from "./pages/co-chairs/Categorias";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import Rankings from "./pages/co-chairs/Rankings";
-import PreCadastro from "./pages/PreCadastro";
-import ProfessorCadastro from "./pages/ProfessorCadastro";
 
 // Event-management (QuadCode congress) pages — namespaced under /congresso
 import EventInformacoes from "./pages/event/Informacoes";
@@ -62,7 +60,8 @@ import AdminNotificacoes from "./pages/event/admin/AdminNotificacoes";
 
 const queryClient = new QueryClient();
 
-const ALL_ROLES = ["estudante", "professor", "avaliador", "admin"] as const;
+// Contas externas participam apenas da área do congresso (/congresso).
+const ALL_ROLES = ["estudante", "professor", "avaliador", "admin", "externo"] as const;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -76,8 +75,10 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
-            <Route path="/pre-cadastro" element={<PreCadastro />} />
-            <Route path="/professor-cadastro" element={<ProfessorCadastro />} />
+            {/* Rotas antigas de cadastro (pré-cadastro / professor) foram
+                unificadas em /cadastro. */}
+            <Route path="/pre-cadastro" element={<Navigate to="/cadastro" replace />} />
+            <Route path="/professor-cadastro" element={<Navigate to="/cadastro" replace />} />
 
             {/* Estudante: accessible by all authenticated roles */}
             <Route element={<ProtectedRoute allowedRoles={["estudante", "professor", "avaliador", "admin"]} />}>

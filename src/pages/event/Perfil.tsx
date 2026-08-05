@@ -9,8 +9,16 @@ import { QRCodeSVG } from "qrcode.react";
 
 const sb = supabase as any;
 
+const TIPO_POR_PAPEL: Record<string, string> = {
+  admin: "Administrador",
+  avaliador: "Avaliador",
+  professor: "Professor",
+  estudante: "Estudante",
+  externo: "Participante externo",
+};
+
 export default function Perfil() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const uid = user!.id;
   const email = user!.email;
   const qc = useQueryClient();
@@ -99,8 +107,9 @@ export default function Perfil() {
           <ReadOnly label="E-mail" value={email ?? ""} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <ReadOnly label="Curso" value={curso} />
-          <ReadOnly label="Perfil" value={account?.tipo ?? ""} />
+          {/* Contas externas não têm curso/departamento. */}
+          {curso && <ReadOnly label="Curso" value={curso} />}
+          <ReadOnly label="Perfil" value={account?.tipo ?? (role ? TIPO_POR_PAPEL[role] ?? "" : "")} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
