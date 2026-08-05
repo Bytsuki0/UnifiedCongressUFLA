@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
+import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
+import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,9 +18,18 @@ type Trabalho = {
 
 type Categoria = { id: string; nome: string };
 
+// Cada seção tem URL própria (/admin/<secao>) para poder ser linkada
+// de fora — foi assim que a antiga /congresso/admin/papeis migrou.
+const SECOES = ["auditoria", "conflitos", "papeis", "configuracoes", "notificacoes"] as const;
+type Secao = (typeof SECOES)[number];
+const secaoValida = (s?: string): Secao =>
+  SECOES.includes(s as Secao) ? (s as Secao) : "auditoria";
+
 const AdminPortal = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("auditoria");
+  const { secao } = useParams();
+  const activeSection = secaoValida(secao);
+  const setActiveSection = (s: Secao) => navigate(s === "auditoria" ? "/admin" : `/admin/${s}`);
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +75,7 @@ const AdminPortal = () => {
   const statusBadge: Record<string, string> = {
     pendente: "badge badge-amber",
     em_avaliacao: "badge badge-blue",
+    aprovado_correcoes: "badge badge-amber",
     aprovado: "badge badge-green",
     reprovado: "badge badge-red",
   };
@@ -71,6 +83,7 @@ const AdminPortal = () => {
   const statusLabel: Record<string, string> = {
     pendente: "Recebido",
     em_avaliacao: "Em Análise",
+    aprovado_correcoes: "Aprovado c/ correções",
     aprovado: "Aprovado",
     reprovado: "Reprovado",
   };
@@ -100,6 +113,7 @@ const AdminPortal = () => {
   const stats = {
     total: trabalhos.length,
     avaliacao: trabalhos.filter(t => t.status === "em_avaliacao").length,
+    correcoes: trabalhos.filter(t => t.status === "aprovado_correcoes").length,
     aprovadas: trabalhos.filter(t => t.status === "aprovado").length,
     reprovadas: trabalhos.filter(t => t.status === "reprovado").length,
   };
@@ -121,12 +135,13 @@ const AdminPortal = () => {
         </a>
 
         <nav className="sidebar-nav">
-          {[
+          {([
             { id: "auditoria", label: "Auditoria", icon: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></> },
             { id: "conflitos", label: "Conflitos", icon: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> },
+            { id: "papeis", label: "Papéis", icon: <><path d="M2 18v3h3l8.5-8.5a3.5 3.5 0 10-3-3L2 18z"/><circle cx="16.5" cy="7.5" r="1.5"/></> },
             { id: "configuracoes", label: "Configurações", icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></> },
             { id: "notificacoes", label: "Notificações", icon: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></> },
-          ].map(item => (
+          ] as { id: Secao; label: string; icon: React.ReactNode }[]).map(item => (
             <button
               key={item.id}
               className={`nav-item${activeSection === item.id ? " active" : ""}`}
@@ -177,6 +192,7 @@ const AdminPortal = () => {
               {[
                 { label: "Total", value: stats.total, bar: "bar-blue" },
                 { label: "Em Avaliação", value: stats.avaliacao, bar: "bar-blue" },
+                { label: "Aguardando correção", value: stats.correcoes, bar: "bar-blue" },
                 { label: "Aprovadas", value: stats.aprovadas, bar: "bar-green" },
                 { label: "Reprovadas", value: stats.reprovadas, bar: "bar-dark" },
               ].map(s => (
@@ -246,6 +262,11 @@ const AdminPortal = () => {
                             {t.status !== "aprovado" && (
                               <button className="btn btn-sm" style={{ background: "var(--color-success)", color: "#fff", border: "none", padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "aprovado")}>Aprovar</button>
                             )}
+                            {/* Abre a rodada de correção para o autor sem
+                                esperar os 3 pareceres (override manual). */}
+                            {t.status !== "aprovado_correcoes" && (
+                              <button className="btn btn-outline btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "aprovado_correcoes")}>Aprovar c/ correções</button>
+                            )}
                             {t.status !== "reprovado" && (
                               <button className="btn btn-danger btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "reprovado")}>Reprovar</button>
                             )}
@@ -266,22 +287,17 @@ const AdminPortal = () => {
               <h1 className="page-title">Atribuições bloqueadas automaticamente.</h1>
               <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Revise conflitos de interesse detectados pelo sistema.</p>
             </div>
-            <div className="alert alert-warning alert-admin">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <div><strong>REGRAS VIGENTES:</strong> Bloqueio automático para orientação direta, coautoria nos últimos 24 meses e vínculo de programa de pós-graduação.</div>
+            {activeSection === "conflitos" && <ConflitosPanel />}
+          </div>
+
+          {/* PAPÉIS */}
+          <div className={`section${activeSection === "papeis" ? " active" : ""}`}>
+            <div className="page-header">
+              <div className="page-overline">CONTROLE DE ACESSO</div>
+              <h1 className="page-title">Papéis das contas.</h1>
+              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Conceda ou remova qualquer papel de qualquer conta.</p>
             </div>
-            <div className="empty-state">
-              <div className="empty-state-icon" style={{ background: "var(--green-50)", color: "var(--green-700)" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <h3 className="empty-state-title">Nenhum conflito identificado</h3>
-              <p className="empty-state-description">Todos os revisores e atribuições estão em conformidade com as regras vigentes.</p>
-            </div>
+            {activeSection === "papeis" && <PapeisPanel />}
           </div>
 
           {/* CONFIGURAÇÕES */}

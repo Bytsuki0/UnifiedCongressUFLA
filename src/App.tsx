@@ -16,6 +16,7 @@ import EstudanteLayout from "./components/estudante/Layout";
 import EstudanteDashboard from "./pages/estudante/Dashboard";
 import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
 import EstudanteHistorico from "./pages/estudante/Historico";
+import EstudanteCorrecao from "./pages/estudante/Correcao";
 import EstudanteTemplates from "./pages/estudante/Templates";
 
 // Painel do Revisor — uma página por função, sob /revisor
@@ -87,6 +88,9 @@ const App = () => (
                 <Route path="dashboard" element={<EstudanteDashboard />} />
                 <Route path="nova-submissao" element={<EstudanteNovaSubmissao />} />
                 <Route path="historico" element={<EstudanteHistorico />} />
+                {/* Rodada de correção — só abre quando os pareceres
+                    consolidam em "aprovado com correções". */}
+                <Route path="correcao/:id" element={<EstudanteCorrecao />} />
                 <Route path="templates" element={<EstudanteTemplates />} />
               </Route>
             </Route>
@@ -104,9 +108,11 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Admin portal: admin only */}
+            {/* Admin portal: admin only. Cada seção tem URL própria
+                (/admin/papeis, /admin/conflitos, ...). */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminPortal />} />
+              <Route path="/admin/:secao" element={<AdminPortal />} />
             </Route>
 
             {/* Dashboard/Layout routes: avaliador and admin */}
@@ -151,6 +157,10 @@ const App = () => (
               <Route path="/congresso/admin/verificar" element={<AdminVerificar />} />
               <Route path="/congresso/admin/notificacoes" element={<AdminNotificacoes />} />
             </Route>
+
+            {/* A gestão de papéis mudou para o Portal Admin — conceder
+                avaliador/professor é o que monta o pool de revisores. */}
+            <Route path="/congresso/admin/papeis" element={<Navigate to="/admin/papeis" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

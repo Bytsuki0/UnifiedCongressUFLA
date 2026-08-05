@@ -1,0 +1,220 @@
+{
+  "gerado_em": "2026-08-05T03:53:58.752Z",
+  "preservados": [
+    "gustavo.silva39@estudante.ufla.br",
+    "gustavo.silva47@estudante.ufla.br"
+  ],
+  "contas": [
+    {
+      "id": "acb5fad9-91e0-4814-9d8a-477caee1ce17",
+      "email": "aluno@estudante.ufla.br",
+      "created_at": "2026-06-10 14:35:16.73656+00",
+      "last_sign_in_at": "2026-07-01 16:44:59.016613+00",
+      "nome": "Gustavo Vitor Da Silva",
+      "roles": null
+    },
+    {
+      "id": "61122157-72fe-496f-9ea6-7ed3c6386c67",
+      "email": "bianca@estudante.ufla.br",
+      "created_at": "2026-06-30 01:11:17.262343+00",
+      "last_sign_in_at": "2026-06-30 01:11:17.292157+00",
+      "nome": "bianca nunes",
+      "roles": null
+    },
+    {
+      "id": "644678c0-56ad-47ec-93d4-a28fa6534c00",
+      "email": "bytsuki066@gmail.com",
+      "created_at": "2026-06-10 14:34:34.163814+00",
+      "last_sign_in_at": "2026-07-01 19:54:24.999483+00",
+      "nome": "bytsuki066",
+      "roles": null
+    },
+    {
+      "id": "6ae7f550-06ac-40bc-9d40-a9d301f8d167",
+      "email": "enzo.valentim@estudante.ufla.br",
+      "created_at": "2026-06-20 18:19:21.214007+00",
+      "last_sign_in_at": "2026-06-30 01:47:39.912175+00",
+      "nome": "Enzo Valentim",
+      "roles": null
+    },
+    {
+      "id": "49cb1ee7-4c4a-4b36-bf56-d473c5c0b05f",
+      "email": "enzo.valentim@ufla.br",
+      "created_at": "2026-06-20 18:20:30.211745+00",
+      "last_sign_in_at": "2026-06-30 01:57:01.621187+00",
+      "nome": "Enzo Valentim",
+      "roles": [
+        "professor"
+      ]
+    },
+    {
+      "id": "3d1a2f75-515c-4d69-ae57-bc526b4ff9c8",
+      "email": "gustavo@ufla.br",
+      "created_at": "2026-06-10 14:33:41.253077+00",
+      "last_sign_in_at": "2026-07-01 16:01:34.500004+00",
+      "nome": "Gustavo Silva",
+      "roles": [
+        "professor"
+      ]
+    },
+    {
+      "id": "085d8732-a656-4843-bcc1-08f6c537a4a0",
+      "email": "nicolly@estudante.ufla.br",
+      "created_at": "2026-06-30 01:13:06.001091+00",
+      "last_sign_in_at": "2026-06-30 01:13:16.301064+00",
+      "nome": "NICOLLY",
+      "roles": null
+    }
+  ],
+  "trabalhos": [],
+  "avaliadores": [],
+  "estudantes": [
+    {
+      "id": "6fe91f69-d9ee-4ee3-841c-1c2d23eeaff2",
+      "user_id": "acb5fad9-91e0-4814-9d8a-477caee1ce17",
+      "nome": "Gustavo Vitor Da Silva",
+      "email": "aluno@estudante.ufla.br",
+      "matricula": "123451",
+      "periodo": "3",
+      "curso": "eng-soft",
+      "created_at": "2026-06-10 14:35:17.104615+00"
+    },
+    {
+      "id": "6ce85451-c9a2-4b1c-91f0-019e5848782a",
+      "user_id": "61122157-72fe-496f-9ea6-7ed3c6386c67",
+      "nome": "bianca nunes",
+      "email": "bianca@estudante.ufla.br",
+      "matricula": "202415003",
+      "periodo": "5",
+      "curso": "eng-soft",
+      "created_at": "2026-06-30 01:11:17.81968+00"
+    },
+    {
+      "id": "c2bea310-4214-4bff-9ff7-b0b058ff0414",
+      "user_id": "6ae7f550-06ac-40bc-9d40-a9d301f8d167",
+      "nome": "Enzo Valentim",
+      "email": "enzo.valentim@estudante.ufla.br",
+      "matricula": "202220611",
+      "periodo": "8",
+      "curso": "mat",
+      "created_at": "2026-06-20 18:19:21.978571+00"
+    },
+    {
+      "id": "dac36f72-5664-4be2-9653-70b90603e052",
+      "user_id": "085d8732-a656-4843-bcc1-08f6c537a4a0",
+      "nome": "NICOLLY",
+      "email": "NICOLLY@ESTUDANTE.UFLA.BR",
+      "matricula": "202315004",
+      "periodo": "6",
+      "curso": "eng-soft",
+      "created_at": "2026-06-30 01:13:06.369694+00"
+    }
+  ],
+  "professores": [
+    {
+      "id": "bc2814c4-22e8-4c23-a5cc-09d85d209941",
+      "user_id": "49cb1ee7-4c4a-4b36-bf56-d473c5c0b05f",
+      "nome": "Enzo Valentim",
+      "email": "enzo.valentim@ufla.br",
+      "departamento": "BICT",
+      "created_at": "2026-06-20 18:20:30.73133+00"
+    },
+    {
+      "id": "8bdfbf97-11c6-414b-9543-d4dbc90c734c",
+      "user_id": "3d1a2f75-515c-4d69-ae57-bc526b4ff9c8",
+      "nome": "Gustavo Silva",
+      "email": "gustavo@ufla.br",
+      "departamento": "Engenharia de Software",
+      "created_at": "2026-06-10 14:33:41.868285+00"
+    }
+  ],
+  "trabalho_revisores": [],
+  "pareceres": [],
+  "profiles": [
+    {
+      "id": "acb5fad9-91e0-4814-9d8a-477caee1ce17",
+      "nome": "Gustavo Vitor Da Silva",
+      "email": "aluno@estudante.ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "61122157-72fe-496f-9ea6-7ed3c6386c67",
+      "nome": "bianca nunes",
+      "email": "bianca@estudante.ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "644678c0-56ad-47ec-93d4-a28fa6534c00",
+      "nome": "bytsuki066",
+      "email": "bytsuki066@gmail.com",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "6ae7f550-06ac-40bc-9d40-a9d301f8d167",
+      "nome": "Enzo Valentim",
+      "email": "enzo.valentim@estudante.ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "49cb1ee7-4c4a-4b36-bf56-d473c5c0b05f",
+      "nome": "Enzo Valentim",
+      "email": "enzo.valentim@ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "3d1a2f75-515c-4d69-ae57-bc526b4ff9c8",
+      "nome": "Gustavo Silva",
+      "email": "gustavo@ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    },
+    {
+      "id": "085d8732-a656-4843-bcc1-08f6c537a4a0",
+      "nome": "NICOLLY",
+      "email": "nicolly@estudante.ufla.br",
+      "cpf": null,
+      "telefone": null,
+      "instituicao": null,
+      "curso": null,
+      "foto_perfil": null,
+      "created_at": "2026-08-05 02:50:21.52992+00",
+      "updated_at": "2026-08-05 02:50:21.52992+00"
+    }
+  ],
+  "pdfs_orfaos": []
+}

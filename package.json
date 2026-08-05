@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "node scripts/migrate.js",
-    "seed:admin": "node scripts/seed-admin.js"
+    "seed:admin": "node scripts/seed-admin.js",
+    "purge:contas": "node scripts/purge-contas.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

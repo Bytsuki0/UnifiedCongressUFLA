@@ -15,12 +15,14 @@ export const RESULTADO_BADGE: Record<ResultadoParecer, string> = {
 export const TRABALHO_STATUS_LABEL: Record<string, string> = {
   pendente: "Recebido",
   em_avaliacao: "Em Avaliação",
+  aprovado_correcoes: "Aprovado c/ correções",
   aprovado: "Aprovado",
   reprovado: "Reprovado",
 };
 export const TRABALHO_STATUS_BADGE: Record<string, string> = {
   pendente: "badge-amber",
   em_avaliacao: "badge-blue",
+  aprovado_correcoes: "badge-amber",
   aprovado: "badge-green",
   reprovado: "badge-red",
 };

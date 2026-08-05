@@ -1,0 +1,160 @@
+{
+  "exported_at": "2026-08-05T03:04:02.617609+00:00",
+  "trabalhos": [
+    {
+      "id": "4985324a-40e9-4415-93cf-8cd32768f95a",
+      "titulo": "Petra analise",
+      "resumo": "Testing",
+      "autores": "bytsuki066, Yasmin",
+      "categoria_id": "64b66dd3-0274-4132-97f8-b93ba88315cb",
+      "data_submissao": "2026-06-17",
+      "created_at": "2026-06-17T13:57:23.317568+00:00",
+      "status": "aprovado",
+      "orientador_email": "ana.festucci@ufla.br",
+      "coautores": [
+        {
+          "nome": "Yasmin",
+          "email": "yasmin@estudante"
+        }
+      ],
+      "pdf_url": "https://awkkkxelfhlpxktzzhzk.supabase.co/storage/v1/object/public/Pdfs/1781704640450-Gustavo_IC_Ana_Festucci.pdf",
+      "owner_id": null
+    },
+    {
+      "id": "cae18b56-ce2e-44a4-9de7-66bca2d5b00f",
+      "titulo": "Trabalho Garlan",
+      "resumo": "test",
+      "autores": "bytsuki066, Cris",
+      "categoria_id": "a3e499a9-dee9-439c-882e-60bc4fd7b6d1",
+      "data_submissao": "2026-06-17",
+      "created_at": "2026-06-17T16:20:25.562989+00:00",
+      "status": "pendente",
+      "orientador_email": "ana.festucii@ufla.br",
+      "coautores": [
+        {
+          "nome": "Cris",
+          "email": "cris@ufla.br"
+        }
+      ],
+      "pdf_url": "https://awkkkxelfhlpxktzzhzk.supabase.co/storage/v1/object/public/Pdfs/1781713223375-GarlanShaw1994.pdf",
+      "owner_id": null
+    },
+    {
+      "id": "ae34d855-0b5d-4421-9c18-c639190ef78e",
+      "titulo": "Testec1",
+      "resumo": "bosta",
+      "autores": "bytsuki066, Ana Festucci",
+      "categoria_id": "647cbecd-d466-45b3-b90a-aca77baa450e",
+      "data_submissao": "2026-06-25",
+      "created_at": "2026-06-25T13:18:53.173675+00:00",
+      "status": "aprovado",
+      "orientador_email": "ana.festucci@ufla.br",
+      "coautores": [
+        {
+          "nome": "Ana Festucci",
+          "email": "ana@ufla.br"
+        }
+      ],
+      "pdf_url": "https://awkkkxelfhlpxktzzhzk.supabase.co/storage/v1/object/public/Pdfs/1782393531098-Criterios_de_Aceite.pdf",
+      "owner_id": null
+    },
+    {
+      "id": "6924ee61-ea66-4b8c-964d-846a7125923e",
+      "titulo": "IDENTIFICAÇÃO AUTOMATIZADADECOMPETÊNCIASE NÍVELDEEXPERIÊNCIADEDESENVOLVEDORESAPARTIR DEHISTÓRICOSDEVERSÃO",
+      "resumo": "The identification of developers’ technical specialties based on observable evidence in source code can support\nactivities such as profile characterization, training recommendation, and software team analysis. This paper\npresents and evaluates an automated approach for inferring four dimensions of developers’ technical profiles:\nmain programming language, area of expertise, specific technical skills, and relative level of technical\nexperience inferred from public repositories. The method combines GitHub repository mining, identity\nresolution based on textual similarity, calculation of the Degree of Authorship, classification using languagespecific interquartile thresholds, and extraction of dependencies used in files attributed to each developer. The\nextracted dependencies are subsequently analyzed by a language model to produce a semantic representation\nof technical areas and skills. The approach was calibrated considering six programming languages: Java,\nJavaScript, Python, C, C++, and C#. In the validation, considering only cases with sufficient public evidence\nfor confirmation or refutation, the consolidated results indicated an accuracy of 97% for main programming\nlanguage, 80% for broad area of expertise, 86.77% for specific technical skills, and 75.22% for relative level\nof technical experience. The experience classification showed moderate agreement with public evidence\nfrom developers’ professional self-descriptions, with a weighted Kappa of 0.4427. These results suggest\nthat public code evidence can support the technical characterization of developers, especially in dimensions\ndirectly observable in the code, but should not be interpreted as equivalent to actual professional seniority",
+      "autores": "Enzo Valentim, lkknfknfnfkn",
+      "categoria_id": "df22c251-7161-4299-9633-9749f8e801a6",
+      "data_submissao": "2026-06-30",
+      "created_at": "2026-06-30T01:46:47.192442+00:00",
+      "status": "pendente",
+      "orientador_email": "blablabla@ufla.com",
+      "coautores": [
+        {
+          "nome": "lkknfknfnfkn",
+          "email": "blabla@ufla.br"
+        }
+      ],
+      "pdf_url": "https://awkkkxelfhlpxktzzhzk.supabase.co/storage/v1/object/public/Pdfs/1782784242178-TCC_-_ENZO_AUGUSTO_VALENTIM__3_.pdf",
+      "owner_id": null
+    }
+  ],
+  "trabalho_revisores": [
+    {
+      "id": "f767994d-9eca-407e-9a9b-86e77db2cdfb",
+      "trabalho_id": "6924ee61-ea66-4b8c-964d-846a7125923e",
+      "revisor_email": "enzo.valentim@ufla.br",
+      "revisor_nome": "Enzo Valentim",
+      "tipo": "avaliador",
+      "created_at": "2026-07-01T00:33:47.792388+00:00"
+    },
+    {
+      "id": "33a8c832-0cff-4ccd-bbbc-7c1ef6654b49",
+      "trabalho_id": "cae18b56-ce2e-44a4-9de7-66bca2d5b00f",
+      "revisor_email": "gustavo@ufla.br",
+      "revisor_nome": "Gustavo Silva",
+      "tipo": "professor",
+      "created_at": "2026-06-18T04:05:02.385834+00:00"
+    },
+    {
+      "id": "00ada90c-e1fc-4a5c-a981-2ce32b73390f",
+      "trabalho_id": "4985324a-40e9-4415-93cf-8cd32768f95a",
+      "revisor_email": "enzo.valentim@ufla.br",
+      "revisor_nome": "Enzo Valentim",
+      "tipo": "avaliador",
+      "created_at": "2026-07-01T00:33:55.976176+00:00"
+    },
+    {
+      "id": "4818a1e8-19a1-4854-a88b-e2d79f574e45",
+      "trabalho_id": "ae34d855-0b5d-4421-9c18-c639190ef78e",
+      "revisor_email": "gustavo@ufla.br",
+      "revisor_nome": "Gustavo Silva",
+      "tipo": "avaliador",
+      "created_at": "2026-07-01T00:33:56.158409+00:00"
+    }
+  ],
+  "pareceres": [
+    {
+      "id": "1bb5497d-85e6-4f2e-ae07-3efa102f8223",
+      "trabalho_id": "cae18b56-ce2e-44a4-9de7-66bca2d5b00f",
+      "revisor_email": "gustavo@ufla.br",
+      "revisor_nome": "Gustavo Silva",
+      "resultado": "aprovado",
+      "itens": [
+        {
+          "nota": 5,
+          "titulo": "Impacto social mensurável",
+          "comentario": "",
+          "criterio_id": "03496094-60b4-4d5e-a151-ec913ea7e8e7"
+        },
+        {
+          "nota": 5,
+          "titulo": "Articulação universidade-comunidade",
+          "comentario": "",
+          "criterio_id": "44c3a0f3-04f4-4b77-984b-4b3c798984e4"
+        },
+        {
+          "nota": 5,
+          "titulo": "Pertinência territorial",
+          "comentario": "",
+          "criterio_id": "69c721c3-fa98-484e-829d-df431dfd73d1"
+        },
+        {
+          "nota": 5,
+          "titulo": "Indicadores de continuidade",
+          "comentario": "",
+          "criterio_id": "7f1a17ca-b10a-420a-8c4d-a00bc922b000"
+        },
+        {
+          "nota": 5,
+          "titulo": "Participação ativa dos beneficiários",
+          "comentario": "",
+          "criterio_id": "53f9b8d9-c796-4fcf-a53c-0dfd350f6a7a"
+        }
+      ],
+      "comentario_geral": null,
+      "created_at": "2026-06-18T04:31:51.359275+00:00",
+      "updated_at": "2026-06-18T04:31:49.838+00:00"
+    }
+  ],
+  "avaliacoes": []
+}

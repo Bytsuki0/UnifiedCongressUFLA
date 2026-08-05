@@ -87,6 +87,8 @@ const NovaSubmissao = () => {
       // tabelas de revisores. Best-effort: falha não bloqueia o envio.
       if (novo?.id) {
         try {
+          // integrations/supabase/types.ts é anterior a esta RPC.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.rpc as any)("distribuir_revisores", { _trabalho_id: novo.id });
         } catch {
           /* distribuição automática silenciosa */

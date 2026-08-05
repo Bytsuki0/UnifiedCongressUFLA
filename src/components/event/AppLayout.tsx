@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useLocation, type To } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, GraduationCap, IdCard, Info, UserCircle2,
   Ticket, Shield, Bell, Users, QrCode, ChevronRight, X,
+  type LucideIcon,
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { PortaisNav } from "@/components/PortaisNav";
@@ -11,7 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useState, type ReactNode } from "react";
 
-type Item = { to: string; label: string; icon: React.ComponentType<{ size?: number }>; end?: boolean };
+type Item = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+};
 
 const ADMIN_OPEN_KEY = "congresso:adminOpen";
 const ADMIN_PREFIX = `${EVENT_BASE}/admin`;
@@ -35,6 +41,8 @@ const adminItems: Item[] = [
   { to: e("/admin/certificados"), label: "Certificados", icon: IdCard },
   { to: e("/admin/verificar"), label: "Presença & QR", icon: QrCode },
   { to: e("/admin/notificacoes"), label: "Notificações", icon: Bell },
+  // "Papéis" vive no Portal Admin (/admin/papeis) — chega-se lá pelo
+  // bloco PORTAIS no rodapé da barra lateral.
 ];
 
 const navItemClass = ({ isActive }: { isActive: boolean }) => `nav-item${isActive ? " active" : ""}`;

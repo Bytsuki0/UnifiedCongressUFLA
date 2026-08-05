@@ -1,13 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { statusBadge, statusLabel, useTrabalhos } from "./shared";
+import { AGUARDANDO_CORRECAO, statusBadge, statusLabel, useTrabalhos } from "./shared";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { trabalhos, loading, catNome } = useTrabalhos();
 
-  const ativas = trabalhos.filter(t => t.status === "pendente" || t.status === "em_avaliacao");
+  // "Aprovado com correções" ainda exige ação do autor — conta como ativa.
+  const aguardandoCorrecao = trabalhos.filter(t => t.status === AGUARDANDO_CORRECAO);
+  const ativas = trabalhos.filter(t => t.status === "pendente" || t.status === "em_avaliacao" || t.status === AGUARDANDO_CORRECAO);
   const emAvaliacao = trabalhos.filter(t => t.status === "em_avaliacao");
   const aprovadas = trabalhos.filter(t => t.status === "aprovado");
 
@@ -27,6 +29,25 @@ const Dashboard = () => {
             NOVA SUBMISSÃO
           </button>
         </div>
+
+        {aguardandoCorrecao.length > 0 && (
+          <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+              <span>
+                <strong>Correções pendentes.</strong> {aguardandoCorrecao.length === 1 ? "Um trabalho foi aprovado" : `${aguardandoCorrecao.length} trabalhos foram aprovados`} com necessidade de correções — reenvie o PDF corrigido para concluir a aprovação.
+              </span>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => navigate(aguardandoCorrecao.length === 1 ? `/estudante/correcao/${aguardandoCorrecao[0].id}` : "/estudante/historico")}
+              >
+                {aguardandoCorrecao.length === 1 ? "CORRIGIR AGORA" : "VER PENDÊNCIAS"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="dashboard-stats-grid">
           {[

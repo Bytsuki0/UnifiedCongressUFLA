@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardList, Sparkles, Trash2, UserCheck, FileText } from "lucide-react";
+import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Avaliador,
   LIMITE_TRABALHOS_POR_AVALIADOR,
   MAX_REVISORES_POR_TRABALHO,
-  Professor,
   ResultadoParecer,
   Trabalho,
   TrabalhoRevisor,
 } from "@/lib/types";
 import {
   associarRevisor,
+  carregarConflitos,
+  carregarPoolRevisores,
   distribuirRevisoresAutomaticamente,
+  indexarConflitos,
+  MotivoConflito,
   removerRevisor,
   RevisorOption,
 } from "@/services/revisorService";
@@ -63,12 +65,18 @@ const TIPO_LABEL: Record<"avaliador" | "professor", string> = {
 
 type ParecerLite = { trabalho_id: string; revisor_email: string; resultado: ResultadoParecer };
 
+const MOTIVO_TEXTO: Record<MotivoConflito, string> = {
+  autor: "é autor deste trabalho",
+  orientador: "é orientador deste trabalho",
+  coautor: "é coautor deste trabalho",
+};
+
 const Atribuicoes = () => {
-  const [avaliadores, setAvaliadores] = useState<Avaliador[]>([]);
-  const [professores, setProfessores] = useState<Professor[]>([]);
+  const [revisorOptions, setRevisorOptions] = useState<RevisorOption[]>([]);
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [revisores, setRevisores] = useState<TrabalhoRevisor[]>([]);
   const [pareceres, setPareceres] = useState<ParecerLite[]>([]);
+  const [conflitos, setConflitos] = useState<Map<string, Map<string, MotivoConflito>>>(new Map());
   const [trabalhoId, setTrabalhoId] = useState<string>("");
   const [revisorEmail, setRevisorEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -77,19 +85,18 @@ const Atribuicoes = () => {
   const carregar = async () => {
     setLoading(true);
     try {
-      const [{ data: av }, { data: pr }, { data: tr }, { data: rv }, { data: pa }] =
-        await Promise.all([
-          supabase.from("avaliadores").select("*").order("nome"),
-          supabase.from("professores").select("*").order("nome"),
-          supabase.from("trabalhos").select("*").order("titulo"),
-          supabase.from("trabalho_revisores").select("*").order("created_at"),
-          supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
-        ]);
-      setAvaliadores((av ?? []) as Avaliador[]);
-      setProfessores((pr ?? []) as Professor[]);
+      const [pool, { data: tr }, { data: rv }, { data: pa }, cfs] = await Promise.all([
+        carregarPoolRevisores(),
+        supabase.from("trabalhos").select("*").order("titulo"),
+        supabase.from("trabalho_revisores").select("*").order("created_at"),
+        supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
+        carregarConflitos(),
+      ]);
+      setRevisorOptions(pool);
       setTrabalhos((tr ?? []) as Trabalho[]);
       setRevisores((rv ?? []) as TrabalhoRevisor[]);
       setPareceres((pa ?? []) as ParecerLite[]);
+      setConflitos(indexarConflitos(cfs));
     } catch (e) {
       toast.error("Erro ao carregar dados");
     } finally {
@@ -101,19 +108,11 @@ const Atribuicoes = () => {
     carregar();
   }, []);
 
-  // Pool unificado de revisores: avaliadores + professores, únicos por e-mail.
-  const revisorOptions = useMemo<RevisorOption[]>(() => {
-    const map = new Map<string, RevisorOption>();
-    avaliadores.forEach((a) => {
-      if (a.email) map.set(a.email, { email: a.email, nome: a.nome, tipo: "avaliador" });
-    });
-    professores.forEach((p) => {
-      if (p.email && !map.has(p.email)) map.set(p.email, { email: p.email, nome: p.nome, tipo: "professor" });
-    });
-    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [avaliadores, professores]);
-
   const trabalhosPorId = useMemo(() => new Map(trabalhos.map((t) => [t.id, t])), [trabalhos]);
+
+  /** Motivo do impedimento deste e-mail neste trabalho, se houver. */
+  const motivoConflito = (tid: string, email: string): MotivoConflito | undefined =>
+    conflitos.get(tid)?.get(email.toLowerCase());
 
   const revisoresPorTrabalho = useMemo(() => {
     const m = new Map<string, TrabalhoRevisor[]>();
@@ -151,9 +150,19 @@ const Atribuicoes = () => {
   const revCount = trabalhoId ? (revisoresPorTrabalho.get(trabalhoId)?.length ?? 0) : 0;
   const revLimiteAtingido = revCount >= MAX_REVISORES_POR_TRABALHO;
 
+  // Revisores impedidos no trabalho selecionado (autor/orientador/coautor).
+  const impedidos = trabalhoId
+    ? revisorOptions.filter((o) => motivoConflito(trabalhoId, o.email))
+    : [];
+
   const handleAssociar = async () => {
     if (!trabalhoId || !revisorEmail) {
       toast.error("Selecione um trabalho e um revisor");
+      return;
+    }
+    const motivo = motivoConflito(trabalhoId, revisorEmail);
+    if (motivo) {
+      toast.error(`Conflito de interesse: esta pessoa ${MOTIVO_TEXTO[motivo]}.`);
       return;
     }
     const opt = revisorOptions.find((o) => o.email === revisorEmail);
@@ -217,7 +226,7 @@ const Atribuicoes = () => {
           <p className="text-muted-foreground">
             Associe revisores (avaliadores e professores, tratados igualmente) aos trabalhos. Até{" "}
             {MAX_REVISORES_POR_TRABALHO} revisores por trabalho · limite de {LIMITE_TRABALHOS_POR_AVALIADOR}{" "}
-            trabalhos por revisor.
+            trabalhos por revisor · autor, orientador e coautores não podem revisar o próprio trabalho.
           </p>
         </div>
         <Button onClick={handleAuto} disabled={submitting || loading} variant="secondary">
@@ -231,8 +240,10 @@ const Atribuicoes = () => {
         <CardHeader>
           <CardTitle>Associar revisor</CardTitle>
           <CardDescription>
-            Selecione um trabalho e um revisor — avaliadores e professores aparecem na mesma lista e são tratados da
-            mesma forma. O revisor verá o trabalho no portal do revisor pelo e-mail associado.
+            Selecione um trabalho e um revisor — a lista traz toda conta com papel de avaliador ou professor
+            (concedido em Papéis, no Portal Admin), tratadas da mesma forma. O revisor verá o trabalho no portal
+            do revisor pelo e-mail associado. Quem consta como autor, orientador ou coautor do trabalho aparece
+            impedido.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
@@ -268,20 +279,31 @@ const Atribuicoes = () => {
               <SelectContent>
                 {revisorOptions.length === 0 ? (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    Nenhum avaliador/professor cadastrado
+                    Nenhum revisor no pool — conceda o papel de professor ou avaliador em Papéis
                   </div>
                 ) : (
                   revisorOptions.map((o) => {
                     const carga = cargaPorRevisor.get(o.email) ?? 0;
+                    const motivo = trabalhoId ? motivoConflito(trabalhoId, o.email) : undefined;
                     return (
-                      <SelectItem key={o.email} value={o.email}>
+                      <SelectItem key={o.email} value={o.email} disabled={!!motivo}>
                         {o.nome} · {TIPO_LABEL[o.tipo]} — {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                        {motivo && ` · impedido (${motivo})`}
                       </SelectItem>
                     );
                   })
                 )}
               </SelectContent>
             </Select>
+            {impedidos.length > 0 && (
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                <span>
+                  {impedidos.length} revisor(es) impedido(s) neste trabalho por conflito de interesse:{" "}
+                  {impedidos.map((o) => o.email).join(", ")}
+                </span>
+              </p>
+            )}
           </div>
           <div className="flex items-end">
             <Button
@@ -353,7 +375,9 @@ const Atribuicoes = () => {
         {/* Por revisor */}
         <TabsContent value="por-revisor" className="space-y-4">
           {revisorOptions.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum avaliador/professor cadastrado.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum revisor no pool — conceda o papel de professor ou avaliador em Papéis (Portal Admin).
+            </p>
           )}
           {revisorOptions.map((o) => {
             const lista = revisoresPorEmail.get(o.email) ?? [];
