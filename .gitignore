@@ -24,7 +24,12 @@ dist-ssr
 *.sw?
 .env
 vite_project
-.claude
+# Claude Code: só o settings.json do projeto (allowlist compartilhada) é versionado;
+# settings.local.json e o resto de .claude/ ficam locais.
+.claude/*
+!.claude/settings.json
+# Instruções locais do Claude — não versionar (pedido do time)
+CLAUDE.md
 .config
 ./vite_project
 vite_project/*

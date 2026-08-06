@@ -1,0 +1,35 @@
+# Congresso Unificado ICTIN — Universidade Federal de Lavras
+#
+# Só as páginas públicas devem ser indexadas. Todo o resto exige login
+# e não tem por que aparecer em busca.
+#
+# ATENÇÃO: "Disallow" impede a VISITA do robô, não a indexação da URL —
+# um link externo ainda pode fazer a URL aparecer no resultado (sem
+# conteúdo). O bloqueio de verdade é o cabeçalho X-Robots-Tag: noindex,
+# configurado por caminho em vercel.json / no seu servidor. Os dois se
+# complementam.
+
+User-agent: *
+
+# Áreas autenticadas
+Disallow: /estudante
+Disallow: /revisor
+Disallow: /admin
+Disallow: /co-chairs
+Disallow: /congresso/admin
+Disallow: /congresso/dashboard
+Disallow: /congresso/inscricao
+Disallow: /congresso/minicursos
+Disallow: /congresso/certificados
+Disallow: /congresso/perfil
+
+# URLs antigas, hoje apenas redirecionamentos para /co-chairs
+Disallow: /dashboard
+Disallow: /avaliadores
+Disallow: /trabalhos
+Disallow: /categorias
+Disallow: /atribuicoes
+Disallow: /rankings
+
+# Público: / , /login , /cadastro , /congresso/informacoes ,
+# /congresso/programacao , /congresso/verificar

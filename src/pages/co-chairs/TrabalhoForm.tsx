@@ -60,7 +60,7 @@ const TrabalhoForm = () => {
         .maybeSingle();
       if (error || !data) {
         toast.error("Trabalho não encontrado");
-        navigate("/trabalhos");
+        navigate("/co-chairs/trabalhos");
         return;
       }
       setForm({
@@ -101,7 +101,7 @@ const TrabalhoForm = () => {
     if (error) toast.error(isEdit ? "Erro ao atualizar" : "Erro ao cadastrar");
     else {
       toast.success(isEdit ? "Trabalho atualizado" : "Trabalho cadastrado");
-      navigate("/trabalhos");
+      navigate("/co-chairs/trabalhos");
     }
     setSaving(false);
   };
@@ -109,7 +109,7 @@ const TrabalhoForm = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to="/trabalhos">
+        <Link to="/co-chairs/trabalhos">
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Link>
       </Button>
@@ -189,7 +189,7 @@ const TrabalhoForm = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => navigate("/trabalhos")}>
+              <Button type="button" variant="outline" onClick={() => navigate("/co-chairs/trabalhos")}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving}>

@@ -37,12 +37,12 @@ const TrabalhoDetalhe = () => {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/trabalhos">
+          <Link to="/co-chairs/trabalhos">
             <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Link>
         </Button>
         <Button asChild>
-          <Link to={`/trabalhos/${trabalho.id}/editar`}>
+          <Link to={`/co-chairs/trabalhos/${trabalho.id}/editar`}>
             <Pencil className="mr-2 h-4 w-4" /> Editar
           </Link>
         </Button>

@@ -27,7 +27,7 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
   },
   dashboard: {
     label: "Portal Controle",
-    to: "/dashboard",
+    to: "/co-chairs",
     icon: (
       <>
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>

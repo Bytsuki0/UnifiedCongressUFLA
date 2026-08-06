@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
+import { APP_SHORT } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 
 const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
@@ -34,7 +35,7 @@ const Layout = () => {
             </svg>
           </div>
           <div>
-            <div className="logo-text">NEXUS</div>
+            <div className="logo-text">{APP_SHORT}</div>
             <div className="logo-sub">Portal do Estudante</div>
           </div>
         </NavLink>

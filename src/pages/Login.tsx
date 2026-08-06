@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveMyRole } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { APP_MARK, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const Login = () => {
       navigate("/admin");
     } else if (profile === "avaliador") {
       toast.success("Bem-vindo ao Dashboard!");
-      navigate("/dashboard");
+      navigate("/co-chairs");
     } else if (profile === "professor") {
       toast.success("Bem-vindo ao Portal Revisor!");
       navigate("/revisor");
@@ -62,8 +63,8 @@ const Login = () => {
             </svg>
           </span>
           <span className="logo-info">
-            <span className="logo-name">NEXUS CORP</span>
-            <span className="logo-sub">Submissões Científicas</span>
+            <span className="logo-name">{APP_MARK}</span>
+            <span className="logo-sub">{APP_TAGLINE}</span>
           </span>
         </div>
 
@@ -89,7 +90,7 @@ const Login = () => {
         </div>
 
         <footer className="login-left-footer">
-          © 2026 Nexus Corp · Todos os direitos reservados.
+          © 2026 {APP_NAME} · Todos os direitos reservados.
         </footer>
       </aside>
 

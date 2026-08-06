@@ -1,5 +1,32 @@
+/**
+ * App.tsx — Raiz da aplicação: providers globais + mapa completo de rotas.
+ *
+ * O sistema é dividido em 5 áreas, cada uma com seu prefixo de URL e seu
+ * conjunto de papéis autorizados:
+ *
+ *   /            → páginas públicas (landing, login, cadastro)
+ *   /estudante   → submissão de trabalhos (autor); qualquer papel autenticado
+ *   /revisor     → análise/avaliação de trabalhos (professor, avaliador, admin)
+ *   /admin       → Portal Admin: gestão de papéis e conflitos (só admin)
+ *   /dashboard…  → gestão de co-chairs: trabalhos, categorias, atribuições,
+ *                  rankings (avaliador, admin)
+ *   /congresso   → área do evento: inscrição, minicursos, certificados,
+ *                  programação e o admin do evento
+ *
+ * O controle de acesso é feito por <ProtectedRoute allowedRoles={[...]} />,
+ * que envolve grupos de rotas. Isso é apenas a barreira de UI — a barreira
+ * real de dados é o RLS no Supabase.
+ *
+ * Ordem dos providers (de fora para dentro):
+ *   QueryClientProvider → cache de requisições (React Query)
+ *   TooltipProvider     → contexto dos tooltips do shadcn/ui
+ *   Toaster / Sonner    → as duas pilhas de notificação usadas no projeto
+ *   AuthProvider        → sessão do Supabase + papel do usuário
+ *   BrowserRouter       → roteamento
+ */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { DocumentTitle } from "@/components/DocumentTitle";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +38,8 @@ import Cadastro from "./pages/Cadastro";
 import AdminPortal from "./pages/AdminPortal";
 import NotFound from "./pages/NotFound.tsx";
 
-// Portal do Estudante — uma página por função, sob /estudante
+// Portal do Estudante — uma página por função, sob /estudante.
+// (Autor do trabalho: envia, acompanha e corrige submissões.)
 import EstudanteLayout from "./components/estudante/Layout";
 import EstudanteDashboard from "./pages/estudante/Dashboard";
 import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
@@ -28,7 +56,8 @@ import RevisorAvaliacao from "./pages/revisor/Avaliacao";
 import RevisorFormularios from "./pages/revisor/Formularios";
 import RevisorArquivo from "./pages/revisor/Arquivo";
 
-// Co-chairs (dashboard / "Gestão de Co-Chairs") — grouped under co-chairs/
+// Co-chairs ("Gestão de Co-Chairs") — agrupadas em co-chairs/.
+// Atenção: as URLs aqui NÃO têm prefixo (/dashboard, /trabalhos, ...).
 import Layout from "./components/co-chairs/Layout";
 import Index from "./pages/co-chairs/Index.tsx";
 import Avaliadores from "./pages/co-chairs/Avaliadores";
@@ -40,7 +69,7 @@ import Categorias from "./pages/co-chairs/Categorias";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import Rankings from "./pages/co-chairs/Rankings";
 
-// Event-management (QuadCode congress) pages — namespaced under /congresso
+// Páginas de gestão do evento (congresso) — todas sob /congresso.
 import EventInformacoes from "./pages/event/Informacoes";
 import EventProgramacao from "./pages/event/Programacao";
 import EventVerificar from "./pages/event/Verificar";
@@ -59,10 +88,31 @@ import AdminCertificados from "./pages/event/admin/AdminCertificados";
 import AdminVerificar from "./pages/event/admin/AdminVerificar";
 import AdminNotificacoes from "./pages/event/admin/AdminNotificacoes";
 
+// Cache compartilhado do React Query — instanciado uma única vez fora do
+// componente para não ser recriado a cada render.
 const queryClient = new QueryClient();
 
 // Contas externas participam apenas da área do congresso (/congresso).
 const ALL_ROLES = ["estudante", "professor", "avaliador", "admin", "externo"] as const;
+
+// As telas de co-chairs moravam na raiz ("/dashboard", "/trabalhos", ...).
+// Passaram para /co-chairs, como os demais portais; estas URLs antigas
+// continuam funcionando para não quebrar favoritos e links já enviados.
+const ROTAS_ANTIGAS_CO_CHAIRS = [
+  "/dashboard",
+  "/avaliadores",
+  "/avaliadores/*",
+  "/trabalhos",
+  "/trabalhos/*",
+  "/categorias",
+  "/atribuicoes",
+  "/rankings",
+];
+
+const RedirecionaCoChairs = () => {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={`/co-chairs${pathname}${search}${hash}`} replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -71,8 +121,10 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
+          {/* Ajusta o <title> a cada navegação (precisa estar dentro do Router). */}
+          <DocumentTitle />
           <Routes>
-            {/* Public routes */}
+            {/* Rotas públicas — sem autenticação. */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
@@ -81,7 +133,8 @@ const App = () => (
             <Route path="/pre-cadastro" element={<Navigate to="/cadastro" replace />} />
             <Route path="/professor-cadastro" element={<Navigate to="/cadastro" replace />} />
 
-            {/* Estudante: accessible by all authenticated roles */}
+            {/* Estudante: liberado para todos os papéis autenticados —
+                um professor/avaliador também pode submeter trabalho. */}
             <Route element={<ProtectedRoute allowedRoles={["estudante", "professor", "avaliador", "admin"]} />}>
               <Route path="/estudante" element={<EstudanteLayout />}>
                 <Route index element={<Navigate to="/estudante/dashboard" replace />} />
@@ -95,7 +148,7 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Revisor: professor, avaliador, admin */}
+            {/* Revisor: quem emite parecer. O papel "externo" fica de fora. */}
             <Route element={<ProtectedRoute allowedRoles={["professor", "avaliador", "admin"]} />}>
               <Route path="/revisor" element={<RevisorLayout />}>
                 <Route index element={<Navigate to="/revisor/analise" replace />} />
@@ -115,29 +168,38 @@ const App = () => (
               <Route path="/admin/:secao" element={<AdminPortal />} />
             </Route>
 
-            {/* Dashboard/Layout routes: avaliador and admin */}
+            {/* Gestão de co-chairs (avaliador e admin): cadastro de trabalhos,
+                categorias, distribuição de revisores e rankings finais. */}
             <Route element={<ProtectedRoute allowedRoles={["avaliador", "admin"]} />}>
-              <Route element={<Layout />}>
-                <Route path="/dashboard" element={<Index />} />
-                <Route path="/avaliadores" element={<Avaliadores />} />
-                <Route path="/avaliadores/novo" element={<AvaliadorForm />} />
-                <Route path="/trabalhos" element={<Trabalhos />} />
-                <Route path="/trabalhos/novo" element={<TrabalhoForm />} />
-                <Route path="/trabalhos/:id" element={<TrabalhoDetalhe />} />
-                <Route path="/trabalhos/:id/editar" element={<TrabalhoForm />} />
-                <Route path="/categorias" element={<Categorias />} />
-                <Route path="/atribuicoes" element={<Atribuicoes />} />
-                <Route path="/rankings" element={<Rankings />} />
+              <Route path="/co-chairs" element={<Layout />}>
+                <Route index element={<Navigate to="/co-chairs/dashboard" replace />} />
+                <Route path="dashboard" element={<Index />} />
+                <Route path="avaliadores" element={<Avaliadores />} />
+                <Route path="avaliadores/novo" element={<AvaliadorForm />} />
+                <Route path="trabalhos" element={<Trabalhos />} />
+                <Route path="trabalhos/novo" element={<TrabalhoForm />} />
+                <Route path="trabalhos/:id" element={<TrabalhoDetalhe />} />
+                <Route path="trabalhos/:id/editar" element={<TrabalhoForm />} />
+                <Route path="categorias" element={<Categorias />} />
+                <Route path="atribuicoes" element={<Atribuicoes />} />
+                <Route path="rankings" element={<Rankings />} />
               </Route>
             </Route>
 
-            {/* ===== Congresso (event management) — public pages ===== */}
+            {/* URLs antigas da raiz -> /co-chairs/... */}
+            {ROTAS_ANTIGAS_CO_CHAIRS.map((p) => (
+              <Route key={p} path={p} element={<RedirecionaCoChairs />} />
+            ))}
+
+            {/* ===== Congresso — páginas públicas =====
+                /verificar existe para conferir a autenticidade de um
+                certificado sem precisar de login. */}
             <Route path="/congresso/informacoes" element={<EventInformacoes />} />
             <Route path="/congresso/programacao" element={<EventProgramacao />} />
             <Route path="/congresso/verificar" element={<EventVerificar />} />
             <Route path="/congresso/verificar/:codigo" element={<EventVerificarCodigo />} />
 
-            {/* Congresso — logged-in pages: all four profiles */}
+            {/* Congresso — páginas logadas: aqui "externo" também entra. */}
             <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} />}>
               <Route path="/congresso/dashboard" element={<EventDashboard />} />
               <Route path="/congresso/inscricao" element={<EventInscricao />} />
@@ -146,7 +208,7 @@ const App = () => (
               <Route path="/congresso/perfil" element={<EventPerfil />} />
             </Route>
 
-            {/* Congresso — co-chairs (avaliador) and admin */}
+            {/* Congresso — painel administrativo do evento. */}
             <Route element={<ProtectedRoute allowedRoles={["avaliador", "admin"]} />}>
               <Route path="/congresso/admin" element={<AdminIndex />} />
               <Route path="/congresso/admin/usuarios" element={<AdminUsuarios />} />

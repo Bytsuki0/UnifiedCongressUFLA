@@ -63,7 +63,7 @@ const Trabalhos = () => {
           <p className="text-sm text-muted-foreground">Trabalhos submetidos ao congresso.</p>
         </div>
         <Button asChild>
-          <Link to="/trabalhos/novo">
+          <Link to="/co-chairs/trabalhos/novo">
             <Plus className="mr-2 h-4 w-4" /> Novo trabalho
           </Link>
         </Button>
@@ -104,12 +104,12 @@ const Trabalhos = () => {
                   <TableCell>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" asChild>
-                      <Link to={`/trabalhos/${t.id}`}>
+                      <Link to={`/co-chairs/trabalhos/${t.id}`}>
                         <Eye className="h-4 w-4" />
                       </Link>
                     </Button>
                     <Button variant="ghost" size="icon" asChild>
-                      <Link to={`/trabalhos/${t.id}/editar`}>
+                      <Link to={`/co-chairs/trabalhos/${t.id}/editar`}>
                         <Pencil className="h-4 w-4" />
                       </Link>
                     </Button>

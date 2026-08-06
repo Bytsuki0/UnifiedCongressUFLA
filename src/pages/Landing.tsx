@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { APP_MARK, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 const Landing = () => {
   useEffect(() => {
@@ -37,8 +38,8 @@ const Landing = () => {
             </svg>
           </div>
           <div className="logo-text-group">
-            <span className="logo-title">NEXUS CORP</span>
-            <span className="logo-subtitle">Submissões Científicas</span>
+            <span className="logo-title">{APP_MARK}</span>
+            <span className="logo-subtitle">{APP_TAGLINE}</span>
           </div>
         </Link>
 
@@ -166,7 +167,7 @@ const Landing = () => {
       </section>
 
       <footer className="landing-footer">
-        <div>© 2026 Nexus Corp · Universidade Federal de Lavras</div>
+        <div>© 2026 {APP_NAME} · Universidade Federal de Lavras</div>
         <div>Suporte: <a href="mailto:nexus@ufla.br">nexus@ufla.br</a></div>
       </footer>
     </div>

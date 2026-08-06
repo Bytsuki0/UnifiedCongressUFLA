@@ -5,6 +5,7 @@ import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { APP_SHORT } from "@/lib/brand";
 
 type Trabalho = {
   id: string;
@@ -129,7 +130,7 @@ const AdminPortal = () => {
             </svg>
           </div>
           <div>
-            <div className="logo-text">NEXUS ADMIN</div>
+            <div className="logo-text">{APP_SHORT}</div>
             <div className="logo-sub">Comissão Organizadora</div>
           </div>
         </a>

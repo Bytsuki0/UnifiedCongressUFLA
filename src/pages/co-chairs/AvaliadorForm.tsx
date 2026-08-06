@@ -57,7 +57,7 @@ const AvaliadorForm = () => {
       else toast.error("Erro ao promover professor");
     } else {
       toast.success(`${prof.nome} agora é avaliador!`);
-      navigate("/avaliadores");
+      navigate("/co-chairs/avaliadores");
     }
     setPromoting(null);
   };
@@ -65,7 +65,7 @@ const AvaliadorForm = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to="/avaliadores">
+        <Link to="/co-chairs/avaliadores">
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Link>
       </Button>

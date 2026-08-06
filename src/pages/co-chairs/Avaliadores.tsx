@@ -57,7 +57,7 @@ const Avaliadores = () => {
           <p className="text-sm text-muted-foreground">Gerencie os Co-chairs cadastrados.</p>
         </div>
         <Button asChild>
-          <Link to="/avaliadores/novo">
+          <Link to="/co-chairs/avaliadores/novo">
             <Plus className="mr-2 h-4 w-4" /> Novo co-chair
           </Link>
         </Button>

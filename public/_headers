@@ -1,0 +1,30 @@
+# Netlify / Cloudflare Pages — cabeçalhos por caminho.
+#
+# X-Robots-Tag é o bloqueio de indexação de verdade (o robots.txt só
+# impede a visita do robô, não a indexação da URL). Como a aplicação é
+# client-side, não há como emitir <meta name="robots"> por rota — o
+# cabeçalho HTTP resolve isso no servidor.
+
+/estudante/*
+  X-Robots-Tag: noindex, nofollow
+/revisor/*
+  X-Robots-Tag: noindex, nofollow
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+/co-chairs/*
+  X-Robots-Tag: noindex, nofollow
+/congresso/admin/*
+  X-Robots-Tag: noindex, nofollow
+/congresso/dashboard
+  X-Robots-Tag: noindex, nofollow
+/congresso/inscricao
+  X-Robots-Tag: noindex, nofollow
+/congresso/minicursos
+  X-Robots-Tag: noindex, nofollow
+/congresso/certificados
+  X-Robots-Tag: noindex, nofollow
+/congresso/perfil
+  X-Robots-Tag: noindex, nofollow
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

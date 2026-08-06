@@ -1,0 +1,44 @@
+# Congresso Unificado ICTIN — exemplo de configuração nginx.
+#
+# Copie para /etc/nginx/sites-available/ e ajuste server_name e root.
+# O ponto essencial é o `try_files ... /index.html`: sem ele, recarregar
+# a página em /estudante/historico devolve 404, porque o nginx procura
+# um arquivo nesse caminho e a aplicação é client-side.
+
+server {
+    listen 80;
+    server_name congresso.ufla.br;          # ajuste
+
+    root /var/www/congresso-ictin/dist;     # saída do `npm run build`
+    index index.html;
+
+    # Ativos com hash no nome: cache longo, seguro porque o nome muda
+    # a cada build.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # O index.html NUNCA pode ser cacheado: é ele que aponta para os
+    # ativos novos depois de cada deploy.
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # Áreas autenticadas: bloqueio real de indexação (o robots.txt
+    # sozinho não impede que a URL apareça na busca).
+    location ~ ^/(estudante|revisor|admin|co-chairs)(/|$) {
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri /index.html;
+    }
+    location ~ ^/congresso/(admin|dashboard|inscricao|minicursos|certificados|perfil)(/|$) {
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri /index.html;
+    }
+
+    # Reescrita de SPA — precisa vir por último.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

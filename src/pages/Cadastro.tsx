@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/brand";
 import {
   AREAS,
   MIN_SENHA,
@@ -111,7 +112,7 @@ const Cadastro = () => {
               <path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
             </svg>
           </span>
-          <span className="logo-text">NEXUS CORP</span>
+          <span className="logo-text">{APP_NAME}</span>
         </Link>
         <Link to="/" className="auth-header-back">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

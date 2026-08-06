@@ -24,7 +24,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/avaliadores">
+              <Link to="/co-chairs/avaliadores">
                 Acessar <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -41,7 +41,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/atribuicoes">
+              <Link to="/co-chairs/atribuicoes">
                 Acessar <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -58,7 +58,7 @@ const Index = () => {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/rankings">
+              <Link to="/co-chairs/rankings">
                 Acessar <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

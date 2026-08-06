@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { supabase } from "@/integrations/supabase/client";
 import { initials } from "@/pages/revisor/shared";
+import { APP_SHORT } from "@/lib/brand";
 
 const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/revisor/analise", label: "Análise de Trabalhos", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></> },
@@ -30,7 +31,7 @@ const Layout = () => {
             </svg>
           </div>
           <div>
-            <div className="logo-text">NEXUS</div>
+            <div className="logo-text">{APP_SHORT}</div>
             <div className="logo-sub">Revisor</div>
           </div>
         </NavLink>
