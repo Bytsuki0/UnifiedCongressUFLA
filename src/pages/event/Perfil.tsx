@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Upload, UserCircle2, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 const TIPO_POR_PAPEL: Record<string, string> = {
   admin: "Administrador",
@@ -55,7 +55,7 @@ export default function Perfil() {
       instituicao: profile?.instituicao ?? account?.instituicao ?? "",
     });
     if (profile?.foto_perfil) {
-      supabase.storage.from("avatars").createSignedUrl(profile.foto_perfil, 3600).then(({ data }: any) => {
+      supabase.storage.from("avatars").createSignedUrl(profile.foto_perfil, 3600).then(({ data }) => {
         setAvatarUrl(data?.signedUrl ?? null);
       });
     }

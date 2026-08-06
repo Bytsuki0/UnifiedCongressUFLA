@@ -40,3 +40,7 @@ vite_project/*
 docs/*
 .docs
 docs
+ReadLater.md
+email-verification-blueprint.md
+email-verification-notas.md
+email-verification-prompt.md

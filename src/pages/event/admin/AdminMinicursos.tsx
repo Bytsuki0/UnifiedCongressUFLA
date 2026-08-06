@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Users } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 type Form = {
   id?: string; nome: string; descricao: string; ministrante: string;
@@ -32,7 +32,7 @@ export default function AdminMinicursos() {
     queryFn: async () => {
       const { data } = await sb.from("minicourse_registrations").select("minicourse_id");
       const map: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { map[r.minicourse_id] = (map[r.minicourse_id] ?? 0) + 1; });
+      (data ?? []).forEach((r) => { map[r.minicourse_id] = (map[r.minicourse_id] ?? 0) + 1; });
       return map;
     },
   });
@@ -75,7 +75,7 @@ export default function AdminMinicursos() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          {list.data?.map((m: any) => (
+          {list.data?.map((m) => (
             <div key={m.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>

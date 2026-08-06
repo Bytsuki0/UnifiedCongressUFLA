@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Calendar, MapPin, FileText, CheckCircle2, XCircle, QrCode, GraduationCap, Clock, User } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function Inscricao() {
   const { user } = useAuth();
@@ -57,7 +57,7 @@ export default function Inscricao() {
   });
 
   const inscrito = !!reg.data;
-  const minis = (myMinis.data ?? []) as any[];
+  const minis = myMinis.data ?? [];
 
   return (
     <AppLayout>

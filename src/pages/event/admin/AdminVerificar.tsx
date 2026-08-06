@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Html5Qrcode } from "html5-qrcode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,7 @@ import { generateCertificatePdf } from "@/lib/certificate-pdf";
 import { Camera, X, Search, CheckCircle2, XCircle, Users, Award, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-const sb = supabase as any;
+const sb = supabase;
 
 type EventType = "minicourse" | "schedule";
 type Feedback = { ok: boolean; title: string; subtitle?: string; already?: boolean } | null;
@@ -23,7 +24,7 @@ export default function AdminVerificar() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [busy, setBusy] = useState(false);
   const [closing, setClosing] = useState(false);
-  const scannerRef = useRef<any>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastRef = useRef<{ code: string; at: number } | null>(null);
 
   const { data: minicourses } = useQuery({
@@ -33,7 +34,7 @@ export default function AdminVerificar() {
         .from("minicourses")
         .select("id, nome, carga_horaria, certificate_template_url")
         .order("data");
-      return (data ?? []).map((m: any) => ({
+      return (data ?? []).map((m) => ({
         id: m.id,
         titulo: m.nome,
         carga_horaria: m.carga_horaria,
@@ -51,7 +52,7 @@ export default function AdminVerificar() {
             .select("id, titulo, certificate_template_url")
             .order("data")
         ).data ?? []
-      ).map((s: any) => ({ ...s, template_url: s.certificate_template_url })),
+      ).map((s) => ({ ...s, template_url: s.certificate_template_url })),
   });
 
   const { data: attendances } = useQuery({
@@ -65,7 +66,7 @@ export default function AdminVerificar() {
         .eq("event_id", eventId)
         .order("checked_in_at", { ascending: false });
       if (error) throw error;
-      const ids = Array.from(new Set((atts ?? []).map((a: any) => a.user_id)));
+      const ids = Array.from(new Set((atts ?? []).map((a) => a.user_id)));
       let profMap: Record<string, { nome: string | null; email: string | null }> = {};
       if (ids.length) {
         const { data: profs } = await sb
@@ -73,10 +74,10 @@ export default function AdminVerificar() {
           .select("id, nome, email")
           .in("id", ids);
         profMap = Object.fromEntries(
-          (profs ?? []).map((p: any) => [p.id, { nome: p.nome, email: p.email }]),
+          (profs ?? []).map((p) => [p.id, { nome: p.nome, email: p.email }]),
         );
       }
-      return (atts ?? []).map((a: any) => ({ ...a, profile: profMap[a.user_id] ?? null }));
+      return (atts ?? []).map((a) => ({ ...a, profile: profMap[a.user_id] ?? null }));
     },
   });
 
@@ -98,19 +99,19 @@ export default function AdminVerificar() {
   // Auto-set carga from selected minicourse
   useEffect(() => {
     if (eventType === "minicourse" && eventId) {
-      const m = (minicourses ?? []).find((x: any) => x.id === eventId);
+      const m = (minicourses ?? []).find((x) => x.id === eventId);
       if (m?.carga_horaria) setCarga(m.carga_horaria);
     }
   }, [eventId, eventType, minicourses]);
 
   const eventLabel = useMemo(() => {
     const list = eventType === "minicourse" ? minicourses : schedule;
-    return (list ?? []).find((x: any) => x.id === eventId)?.titulo ?? "";
+    return (list ?? []).find((x) => x.id === eventId)?.titulo ?? "";
   }, [eventId, eventType, minicourses, schedule]);
 
   const eventInfo = useMemo(() => {
     const list = eventType === "minicourse" ? minicourses : schedule;
-    return (list ?? []).find((x: any) => x.id === eventId) ?? null;
+    return (list ?? []).find((x) => x.id === eventId) ?? null;
   }, [eventId, eventType, minicourses, schedule]);
 
   const mark = async (raw: string) => {
@@ -158,7 +159,7 @@ export default function AdminVerificar() {
       setFeedback({ ok: false, title: "Erro", subtitle: error.message });
       toast.error("Falha ao marcar");
     } else {
-      const row = (data?.[0] ?? null) as any;
+      const row = data?.[0] ?? null;
       if (!row) {
         setFeedback({ ok: false, title: "Participante não encontrado" });
       } else {
@@ -234,22 +235,22 @@ export default function AdminVerificar() {
     }
 
     try {
-      const certIds = (data ?? []).map((r: any) => r.certificate_id).filter(Boolean);
+      const certIds = (data ?? []).map((r) => r.certificate_id).filter(Boolean);
       const { data: certs, error: certErr } = await sb
         .from("certificates")
         .select("id, user_id, atividade, carga_horaria, verification_code, arquivo_url")
         .in("id", certIds);
       if (certErr) throw certErr;
 
-      const missing = (certs ?? []).filter((c: any) => !c.arquivo_url);
+      const missing = (certs ?? []).filter((c) => !c.arquivo_url);
       if (missing.length) {
-        const userIds = Array.from(new Set(missing.map((c: any) => c.user_id)));
+        const userIds = Array.from(new Set(missing.map((c) => c.user_id)));
         const { data: profiles, error: profErr } = await sb
           .from("profiles")
           .select("id, nome")
           .in("id", userIds);
         if (profErr) throw profErr;
-        const profileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
+        const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
 
         let templateBytes: Uint8Array | null = null;
         if (eventInfo?.template_url) {
@@ -262,7 +263,7 @@ export default function AdminVerificar() {
 
         const today = new Date().toLocaleDateString("pt-BR");
         const origin = typeof window !== "undefined" ? window.location.origin : "";
-        for (const cert of missing as any[]) {
+        for (const cert of missing) {
           const pdfBytes = await generateCertificatePdf(templateBytes, {
             nome: profileMap[cert.user_id]?.nome ?? "Participante",
             atividade: cert.atividade,
@@ -290,7 +291,7 @@ export default function AdminVerificar() {
     }
 
     setClosing(false);
-    const created = (data ?? []).filter((r: any) => r.created).length;
+    const created = (data ?? []).filter((r) => r.created).length;
     const skipped = (data ?? []).length - created;
     toast.success(`${created} emitido(s)${skipped ? `, ${skipped} já existia(m)` : ""}`);
   };
@@ -334,7 +335,7 @@ export default function AdminVerificar() {
               className="rounded-xl border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="">Selecione o evento…</option>
-              {(eventType === "minicourse" ? minicourses : schedule)?.map((x: any) => (
+              {(eventType === "minicourse" ? minicourses : schedule)?.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.titulo}
                 </option>
@@ -443,7 +444,7 @@ export default function AdminVerificar() {
             </p>
           )}
           <ul className="divide-y divide-border">
-            {attendances?.map((a: any) => (
+            {attendances?.map((a) => (
               <li key={a.id} className="py-2 flex items-center justify-between text-sm">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{a.profile?.nome ?? "—"}</div>

@@ -2,11 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { PDF_BUCKET } from "@/lib/pdfStorage";
 import type { ParecerItem, ResultadoParecer } from "@/lib/types";
 
-// integrations/supabase/types.ts é anterior às RPCs de decisão/correção,
-// por isso a chamada delas é destipada (o retorno é validado abaixo).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 /**
  * Parecer como o AUTOR o enxerga: sem nome nem e-mail do revisor
  * (avaliação às cegas) e só depois de fechada a decisão do trabalho.
@@ -21,11 +16,11 @@ export type ParecerAnonimo = {
 export async function carregarPareceresDoTrabalho(
   trabalhoId: string,
 ): Promise<ParecerAnonimo[]> {
-  const { data, error } = await sb.rpc("pareceres_do_meu_trabalho", {
+  const { data, error } = await supabase.rpc("pareceres_do_meu_trabalho", {
     _trabalho_id: trabalhoId,
   });
   if (error) throw error;
-  return ((data ?? []) as ParecerAnonimo[]).map((p) => ({
+  return ((data ?? []) as unknown as ParecerAnonimo[]).map((p) => ({
     ...p,
     itens: Array.isArray(p.itens) ? p.itens : [],
   }));
@@ -66,7 +61,7 @@ export async function enviarCorrecao(input: EnviarCorrecaoInput): Promise<void> 
     if (uploadError) throw new Error("Não foi possível enviar o novo PDF.");
   }
 
-  const { data, error } = await sb.rpc("enviar_correcao", {
+  const { data, error } = await supabase.rpc("enviar_correcao", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
     _resumo: input.resumo,

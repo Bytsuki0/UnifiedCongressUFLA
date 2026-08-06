@@ -24,7 +24,7 @@ const AvaliadorForm = () => {
     setLoading(true);
 
     const [profRes, avalRes] = await Promise.all([
-      (supabase.from("professores" as never) as any).select("id, nome, email, departamento").order("nome"),
+      supabase.from("professores").select("id, nome, email, departamento").order("nome"),
       supabase.from("avaliadores").select("email"),
     ]);
 
@@ -34,7 +34,7 @@ const AvaliadorForm = () => {
       return;
     }
 
-    const avalEmails = new Set<string>((avalRes.data ?? []).map((a: any) => a.email));
+    const avalEmails = new Set<string>((avalRes.data ?? []).map((a) => a.email));
     const eligible = (profRes.data ?? []).filter((p: Professor) => !avalEmails.has(p.email));
     setProfessors(eligible);
     setLoading(false);

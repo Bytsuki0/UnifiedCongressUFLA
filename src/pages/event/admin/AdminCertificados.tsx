@@ -9,7 +9,7 @@ import {
   Upload, Trash2, Search, FileText, ExternalLink,
 } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 type Source = "minicourse" | "schedule";
 type SelectedEvent = {
@@ -76,7 +76,7 @@ function EventPicker({ onPick }: { onPick: (e: SelectedEvent) => void }) {
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
           {minis.data?.length === 0 && <Empty>Nenhum minicurso cadastrado.</Empty>}
-          {minis.data?.map((m: any) => (
+          {minis.data?.map((m) => (
             <button key={m.id} onClick={() => onPick({ source: "minicourse", id: m.id, titulo: m.nome, carga_horaria: m.carga_horaria ?? 4, template_url: m.certificate_template_url })}
               className="flex flex-col items-start gap-1 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary hover:shadow-[var(--shadow-soft)]">
               <span className="font-semibold">{m.nome}</span>
@@ -96,7 +96,7 @@ function EventPicker({ onPick }: { onPick: (e: SelectedEvent) => void }) {
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
           {sched.data?.length === 0 && <Empty>Nenhuma atividade cadastrada.</Empty>}
-          {sched.data?.map((s: any) => (
+          {sched.data?.map((s) => (
             <button key={s.id} onClick={() => onPick({ source: "schedule", id: s.id, titulo: s.titulo, carga_horaria: 2, template_url: s.certificate_template_url })}
               className="flex flex-col items-start gap-1 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary hover:shadow-[var(--shadow-soft)]">
               <span className="rounded-full bg-accent/40 px-2 py-0.5 text-xs">{s.categoria}</span>
@@ -124,19 +124,24 @@ function ParticipantPicker({
   const parts = useQuery({
     queryKey: ["cert-parts", event.source, event.id],
     queryFn: async () => {
-      if (event.source === "minicourse") {
-        const { data } = await sb
-          .from("minicourse_registrations")
-          .select("user_id, profiles(id, nome, email, instituicao)")
-          .eq("minicourse_id", event.id)
-          .neq("status", "cancelled");
-        return (data ?? []).map((r: any) => r.profiles).filter(Boolean) as Array<{ id: string; nome: string; email: string; instituicao: string }>;
-      }
-      const { data } = await sb
-        .from("congress_registrations")
-        .select("user_id, profiles(id, nome, email, instituicao)")
-        .eq("status", "approved");
-      return (data ?? []).map((r: any) => r.profiles).filter(Boolean) as Array<{ id: string; nome: string; email: string; instituicao: string }>;
+      // Sem FK inscrição->profiles no banco, o embed profiles(...) do
+      // PostgREST não resolve (PGRST200) — junta-se no cliente.
+      const { data: regs, error } =
+        event.source === "minicourse"
+          ? await sb
+              .from("minicourse_registrations")
+              .select("user_id")
+              .eq("minicourse_id", event.id)
+              .neq("status", "cancelled")
+          : await sb.from("congress_registrations").select("user_id").eq("status", "approved");
+      if (error) throw error;
+      const ids = Array.from(new Set((regs ?? []).map((r) => r.user_id)));
+      if (ids.length === 0) return [];
+      const { data: profiles } = await sb
+        .from("profiles")
+        .select("id, nome, email, instituicao")
+        .in("id", ids);
+      return profiles ?? [];
     },
   });
 
@@ -144,11 +149,11 @@ function ParticipantPicker({
     queryKey: ["cert-existing", event.titulo],
     queryFn: async () => (await sb.from("certificates").select("user_id").eq("atividade", event.titulo)).data ?? [],
   });
-  const alreadySet = useMemo(() => new Set(((existing.data ?? []) as any[]).map((c) => c.user_id)), [existing.data]);
+  const alreadySet = useMemo(() => new Set((existing.data ?? []).map((c) => c.user_id)), [existing.data]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return ((parts.data ?? []) as any[]).filter((p) =>
+    return (parts.data ?? []).filter((p) =>
       !q || p.nome?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)
     );
   }, [parts.data, search]);
@@ -204,7 +209,7 @@ function ParticipantPicker({
 
       for (let i = 0; i < selectedIds.length; i++) {
         const uid = selectedIds[i];
-        const participant = ((parts.data ?? []) as any[]).find((p) => p.id === uid);
+        const participant = (parts.data ?? []).find((p) => p.id === uid);
         if (!participant) continue;
 
         // 1) Insert row to get id & verification_code
@@ -355,10 +360,21 @@ function IssuedList() {
   const [q, setQ] = useState("");
   const list = useQuery({
     queryKey: ["admin-certs-list"],
-    queryFn: async () => (await sb
-      .from("certificates")
-      .select("id, atividade, carga_horaria, data_liberacao, arquivo_url, verification_code, profiles(nome, email)")
-      .order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => {
+      // Sem FK certificates->profiles no banco, o embed profiles(...)
+      // do PostgREST não resolve (PGRST200) — junta-se no cliente.
+      const { data: certs, error } = await sb
+        .from("certificates")
+        .select("id, user_id, atividade, carga_horaria, data_liberacao, arquivo_url, verification_code")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const ids = Array.from(new Set((certs ?? []).map((c) => c.user_id)));
+      const { data: profiles } = ids.length
+        ? await sb.from("profiles").select("id, nome, email").in("id", ids)
+        : { data: [] };
+      const porId = new Map((profiles ?? []).map((p) => [p.id, p]));
+      return (certs ?? []).map((c) => ({ ...c, profiles: porId.get(c.user_id) ?? null }));
+    },
   });
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await sb.from("certificates").delete().eq("id", id); if (error) throw error; },
@@ -370,7 +386,7 @@ function IssuedList() {
     if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
 
-  const filtered = ((list.data ?? []) as any[]).filter((c) => {
+  const filtered = (list.data ?? []).filter((c) => {
     if (!q) return true;
     const s = q.toLowerCase();
     return c.atividade?.toLowerCase().includes(s)

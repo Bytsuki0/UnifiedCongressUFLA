@@ -1,3 +1,6 @@
+// Gerado automaticamente por `npm run gen:types` a partir do schema do banco.
+// NÃO editar à mão — rode o script novamente após cada migration aplicada.
+
 export type Json =
   | string
   | number
@@ -14,6 +17,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      _migrations: {
+        Row: {
+          applied_at: string | null
+          filename: string
+          id: number
+        }
+        Insert: {
+          applied_at?: string | null
+          filename: string
+          id?: number
+        }
+        Update: {
+          applied_at?: string | null
+          filename?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      allowed_email_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      attendances: {
+        Row: {
+          checked_in_at: string
+          checked_in_by: string | null
+          event_id: string
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       avaliacoes: {
         Row: {
           avaliador_id: string
@@ -78,7 +144,6 @@ export type Database = {
           id: string
           instituicao: string
           nome: string
-          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -86,7 +151,6 @@ export type Database = {
           id?: string
           instituicao: string
           nome: string
-          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -94,7 +158,6 @@ export type Database = {
           id?: string
           instituicao?: string
           nome?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -113,6 +176,78 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+        }
+        Relationships: []
+      }
+      certificates: {
+        Row: {
+          arquivo_url: string | null
+          atividade: string
+          carga_horaria: number
+          created_at: string
+          data_liberacao: string | null
+          email_sent_at: string | null
+          event_id: string | null
+          event_source: string | null
+          id: string
+          user_id: string
+          verification_code: string | null
+          verification_count: number
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          atividade: string
+          carga_horaria: number
+          created_at?: string
+          data_liberacao?: string | null
+          email_sent_at?: string | null
+          event_id?: string | null
+          event_source?: string | null
+          id?: string
+          user_id: string
+          verification_code?: string | null
+          verification_count?: number
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          atividade?: string
+          carga_horaria?: number
+          created_at?: string
+          data_liberacao?: string | null
+          email_sent_at?: string | null
+          event_id?: string | null
+          event_source?: string | null
+          id?: string
+          user_id?: string
+          verification_code?: string | null
+          verification_count?: number
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      congress_registrations: {
+        Row: {
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["registration_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -150,61 +285,170 @@ export type Database = {
       }
       estudantes: {
         Row: {
-          id: string
-          user_id: string | null
-          nome: string
-          email: string
-          matricula: string | null
-          periodo: string | null
+          created_at: string | null
           curso: string | null
-          created_at: string
+          email: string
+          id: string
+          matricula: string | null
+          nome: string
+          periodo: string | null
+          user_id: string | null
         }
         Insert: {
-          id?: string
-          user_id?: string | null
-          nome: string
-          email: string
-          matricula?: string | null
-          periodo?: string | null
+          created_at?: string | null
           curso?: string | null
-          created_at?: string
+          email: string
+          id?: string
+          matricula?: string | null
+          nome: string
+          periodo?: string | null
+          user_id?: string | null
         }
         Update: {
-          id?: string
-          user_id?: string | null
-          nome?: string
-          email?: string
-          matricula?: string | null
-          periodo?: string | null
+          created_at?: string | null
           curso?: string | null
-          created_at?: string
+          email?: string
+          id?: string
+          matricula?: string | null
+          nome?: string
+          periodo?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
-      professores: {
+      minicourse_registrations: {
         Row: {
-          id: string
-          user_id: string | null
-          nome: string
-          email: string
-          departamento: string
           created_at: string
+          id: string
+          minicourse_id: string
+          status: Database["public"]["Enums"]["registration_status"]
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id?: string | null
-          nome: string
-          email: string
-          departamento: string
           created_at?: string
+          id?: string
+          minicourse_id: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string | null
-          nome?: string
-          email?: string
-          departamento?: string
           created_at?: string
+          id?: string
+          minicourse_id?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minicourse_registrations_minicourse_id_fkey"
+            columns: ["minicourse_id"]
+            isOneToOne: false
+            referencedRelation: "minicourses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      minicourses: {
+        Row: {
+          carga_horaria: number
+          certificate_template_url: string | null
+          created_at: string
+          data: string
+          descricao: string | null
+          horario_fim: string
+          horario_inicio: string
+          id: string
+          local: string
+          ministrante: string
+          nome: string
+          vagas: number
+        }
+        Insert: {
+          carga_horaria?: number
+          certificate_template_url?: string | null
+          created_at?: string
+          data: string
+          descricao?: string | null
+          horario_fim: string
+          horario_inicio: string
+          id?: string
+          local: string
+          ministrante: string
+          nome: string
+          vagas: number
+        }
+        Update: {
+          carga_horaria?: number
+          certificate_template_url?: string | null
+          created_at?: string
+          data?: string
+          descricao?: string | null
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          local?: string
+          ministrante?: string
+          nome?: string
+          vagas?: number
+        }
+        Relationships: []
+      }
+      notification_reads: {
+        Row: {
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          audience: string
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          link: string | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          audience?: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link?: string | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          audience?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link?: string | null
+          title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -252,79 +496,167 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      professores: {
         Row: {
-          created_at: string
+          created_at: string | null
+          departamento: string
           email: string
           id: string
           nome: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          departamento: string
+          email: string
+          id?: string
+          nome: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          departamento?: string
+          email?: string
+          id?: string
+          nome?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          curso: string | null
+          email: string | null
+          email_confirmado_em: string | null
+          foto_perfil: string | null
+          id: string
+          instituicao: string | null
+          nome: string
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          curso?: string | null
+          email?: string | null
+          email_confirmado_em?: string | null
+          foto_perfil?: string | null
+          id: string
+          instituicao?: string | null
+          nome?: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          curso?: string | null
+          email?: string | null
+          email_confirmado_em?: string | null
+          foto_perfil?: string | null
+          id?: string
+          instituicao?: string | null
+          nome?: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          hits: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          hits?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          hits?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      schedule: {
+        Row: {
+          categoria: string
+          certificate_template_url: string | null
+          created_at: string
+          data: string
+          descricao: string | null
+          horario_fim: string
+          horario_inicio: string
+          id: string
+          local: string
+          palestrante: string | null
+          titulo: string
+        }
+        Insert: {
+          categoria: string
+          certificate_template_url?: string | null
+          created_at?: string
+          data: string
+          descricao?: string | null
+          horario_fim: string
+          horario_inicio: string
+          id?: string
+          local: string
+          palestrante?: string | null
+          titulo: string
+        }
+        Update: {
+          categoria?: string
+          certificate_template_url?: string | null
+          created_at?: string
+          data?: string
+          descricao?: string | null
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          local?: string
+          palestrante?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
+      tokens_email: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          message_id: string | null
+          proposito: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
           email: string
-          id: string
-          nome: string
+          expires_at: string
+          message_id?: string | null
+          proposito: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
           email?: string
-          id?: string
-          nome?: string
+          expires_at?: string
+          message_id?: string | null
+          proposito?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
         }
         Relationships: []
-      }
-      trabalhos: {
-        Row: {
-          aluno_id: string | null
-          autores: string
-          categoria_id: string
-          coautores: Json
-          created_at: string
-          data_submissao: string
-          id: string
-          orientador_email: string | null
-          pdf_url: string | null
-          resumo: string
-          status: string
-          titulo: string
-        }
-        Insert: {
-          aluno_id?: string | null
-          autores: string
-          categoria_id: string
-          coautores?: Json
-          created_at?: string
-          data_submissao?: string
-          id?: string
-          orientador_email?: string | null
-          pdf_url?: string | null
-          resumo: string
-          status?: string
-          titulo: string
-        }
-        Update: {
-          aluno_id?: string | null
-          autores?: string
-          categoria_id?: string
-          coautores?: Json
-          created_at?: string
-          data_submissao?: string
-          id?: string
-          orientador_email?: string | null
-          pdf_url?: string | null
-          resumo?: string
-          status?: string
-          titulo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trabalhos_categoria_id_fkey"
-            columns: ["categoria_id"]
-            isOneToOne: false
-            referencedRelation: "categorias"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       trabalho_revisores: {
         Row: {
@@ -361,55 +693,227 @@ export type Database = {
           },
         ]
       }
+      trabalhos: {
+        Row: {
+          autores: string
+          categoria_id: string | null
+          coautores: Json
+          correcoes_enviadas_em: string | null
+          created_at: string
+          data_submissao: string
+          id: string
+          orientador_email: string | null
+          owner_id: string | null
+          pdf_url: string | null
+          resumo: string
+          status: string
+          titulo: string
+        }
+        Insert: {
+          autores: string
+          categoria_id?: string | null
+          coautores?: Json
+          correcoes_enviadas_em?: string | null
+          created_at?: string
+          data_submissao?: string
+          id?: string
+          orientador_email?: string | null
+          owner_id?: string | null
+          pdf_url?: string | null
+          resumo: string
+          status?: string
+          titulo: string
+        }
+        Update: {
+          autores?: string
+          categoria_id?: string | null
+          coautores?: Json
+          correcoes_enviadas_em?: string | null
+          created_at?: string
+          data_submissao?: string
+          id?: string
+          orientador_email?: string | null
+          owner_id?: string | null
+          pdf_url?: string | null
+          resumo?: string
+          status?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trabalhos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
           user_id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      certificate_verifications: {
+        Row: {
+          atividade: string | null
+          carga_horaria: number | null
+          data_liberacao: string | null
+          participante_instituicao: string | null
+          participante_nome: string | null
+          verification_code: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      has_role: {
+      _conflitos_por_trabalho: {
+        Args: never
+        Returns: {
+          email: string
+          motivo: string
+          trabalho_id: string
+        }[]
+      }
+      _pool_revisores: {
+        Args: never
+        Returns: {
+          email: string
+          nome: string
+          tipo: string
+        }[]
+      }
+      aplicar_decisao: { Args: { _trabalho_id: string }; Returns: string }
+      close_event_and_issue_certificates: {
+        Args: { _carga_horaria: number; _event_id: string; _event_type: string }
+        Returns: {
+          certificate_id: string
+          created: boolean
+          user_id: string
+        }[]
+      }
+      confirmar_email: { Args: { p_token: string }; Returns: string }
+      conflitos_do_trabalho: {
+        Args: { _trabalho_id: string }
+        Returns: {
+          email: string
+          motivo: string
+        }[]
+      }
+      conflitos_por_trabalho: {
+        Args: never
+        Returns: {
+          email: string
+          motivo: string
+          trabalho_id: string
+        }[]
+      }
+      consume_rate_limit: {
+        Args: { _key: string; _max: number; _window_seconds: number }
+        Returns: boolean
+      }
+      criar_token_email: {
+        Args: { p_proposito?: string; p_user_id: string }
+        Returns: string
+      }
+      decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
+      distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
+      email_confirmado: { Args: never; Returns: boolean }
+      enviar_correcao: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          _pdf_url?: string
+          _resumo: string
+          _titulo: string
+          _trabalho_id: string
         }
-        Returns: boolean
+        Returns: string
       }
-      is_aluno_dono_trabalho: {
-        Args: { _trabalho_id: string; _user_id: string }
-        Returns: boolean
+      exigir_email_confirmado: { Args: never; Returns: undefined }
+      get_my_roles: { Args: never; Returns: string[] }
+      has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      is_app_admin: { Args: never; Returns: boolean }
+      is_event_staff: { Args: never; Returns: boolean }
+      mark_attendance: {
+        Args: { _event_id: string; _event_type: string; _user_id: string }
+        Returns: {
+          already: boolean
+          checked_in_at: string
+          evento_titulo: string
+          participante_email: string
+          participante_nome: string
+        }[]
       }
-      is_avaliador_de_trabalho: {
-        Args: { _trabalho_id: string; _user_id: string }
-        Returns: boolean
+      minicourse_occupancy: {
+        Args: never
+        Returns: {
+          inscritos: number
+          minicourse_id: string
+        }[]
       }
-      is_avaliador_user: {
-        Args: { _avaliador_id: string; _user_id: string }
-        Returns: boolean
+      pareceres_do_meu_trabalho: {
+        Args: { _trabalho_id: string }
+        Returns: {
+          comentario_geral: string
+          itens: Json
+          ordem: number
+          resultado: string
+        }[]
+      }
+      pool_revisores: {
+        Args: never
+        Returns: {
+          email: string
+          nome: string
+          tipo: string
+        }[]
+      }
+      verify_and_mark_certificate: {
+        Args: { _code: string }
+        Returns: {
+          atividade: string
+          carga_horaria: number
+          data_liberacao: string
+          participante_instituicao: string
+          participante_nome: string
+          verification_code: string
+          verification_count: number
+          verified_at: string
+        }[]
+      }
+      verify_certificate: {
+        Args: { _code: string }
+        Returns: {
+          atividade: string
+          carga_horaria: number
+          data_liberacao: string
+          participante_instituicao: string
+          participante_nome: string
+          verification_code: string
+        }[]
       }
     }
     Enums: {
-      app_role: "aluno" | "avaliador" | "gestor"
+      app_role: "admin" | "participant"
       avaliacao_status: "pendente" | "em_avaliacao" | "concluida"
+      registration_status: "pending" | "approved" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -537,8 +1041,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["aluno", "avaliador", "gestor"],
+      app_role: ["admin", "participant"],
       avaliacao_status: ["pendente", "em_avaliacao", "concluida"],
+      registration_status: ["pending", "approved", "cancelled"],
     },
   },
 } as const

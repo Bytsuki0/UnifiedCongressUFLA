@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 type Form = {
   id?: string; titulo: string; descricao: string; categoria: string;
@@ -55,7 +55,7 @@ export default function AdminProgramacao() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {list.data?.map((s: any) => (
+          {list.data?.map((s) => (
             <div key={s.id} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4">
               <div>
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{s.categoria}</span>

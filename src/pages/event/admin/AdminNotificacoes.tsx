@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Bell, Send, Trash2, Users, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function AdminNotificacoes() {
   const { user } = useAuth();
@@ -29,7 +29,7 @@ export default function AdminNotificacoes() {
     queryKey: ["mc-list"],
     queryFn: async () => {
       const { data } = await sb.from("minicourses").select("id, nome");
-      return (data ?? []).map((m: any) => ({ id: m.id, titulo: m.nome }));
+      return (data ?? []).map((m) => ({ id: m.id, titulo: m.nome }));
     },
   });
   const { data: schedule } = useQuery({
@@ -52,7 +52,7 @@ export default function AdminNotificacoes() {
           ? await sb.from("minicourse_registrations").select("user_id").eq("minicourse_id", eventId).neq("status", "cancelled")
           : await sb.from("congress_registrations").select("user_id");
         if (regsRes.error) throw regsRes.error;
-        const userIds = Array.from(new Set((regsRes.data ?? []).map((r: any) => r.user_id))).filter(Boolean);
+        const userIds = Array.from(new Set((regsRes.data ?? []).map((r) => r.user_id))).filter(Boolean);
         if (userIds.length === 0) { toast.error("Nenhum participante para esse evento"); setSending(false); return; }
         const rows = userIds.map((uid) => ({
           title, body, link: link || null, audience: "user", user_id: uid, created_by: user!.id,
@@ -63,8 +63,8 @@ export default function AdminNotificacoes() {
       toast.success("Notificação enviada");
       setTitle(""); setBody(""); setLink("");
       qc.invalidateQueries({ queryKey: ["admin-notifs"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao enviar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao enviar");
     } finally {
       setSending(false);
     }
@@ -103,7 +103,7 @@ export default function AdminNotificacoes() {
 
           {audience === "event" && (
             <div className="grid grid-cols-2 gap-2">
-              <select value={eventType} onChange={(e) => { setEventType(e.target.value as any); setEventId(""); }}
+              <select value={eventType} onChange={(e) => { setEventType(e.target.value as "minicourse" | "schedule"); setEventId(""); }}
                 className="rounded-xl border border-input bg-background px-3 py-2 text-sm">
                 <option value="minicourse">Minicurso</option>
                 <option value="schedule">Programação (congresso)</option>
@@ -112,8 +112,8 @@ export default function AdminNotificacoes() {
                 className="rounded-xl border border-input bg-background px-3 py-2 text-sm">
                 <option value="">Selecione…</option>
                 {eventType === "minicourse"
-                  ? (minicourses ?? []).map((m: any) => <option key={m.id} value={m.id}>{m.titulo}</option>)
-                  : (schedule ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.titulo}</option>)}
+                  ? (minicourses ?? []).map((m) => <option key={m.id} value={m.id}>{m.titulo}</option>)
+                  : (schedule ?? []).map((s) => <option key={s.id} value={s.id}>{s.titulo}</option>)}
               </select>
               {eventType === "schedule" && (
                 <p className="col-span-2 text-xs text-muted-foreground">A programação envia para todos os inscritos no congresso.</p>
@@ -139,7 +139,7 @@ export default function AdminNotificacoes() {
           <h2 className="font-semibold mb-3 flex items-center gap-2"><Bell className="h-4 w-4" /> Enviadas</h2>
           {(!list || list.length === 0) && <p className="text-sm text-muted-foreground">Nenhuma notificação ainda.</p>}
           <ul className="divide-y divide-border">
-            {list?.map((n: any) => (
+            {list?.map((n) => (
               <li key={n.id} className="py-3 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

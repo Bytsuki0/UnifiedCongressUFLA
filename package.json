@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "node scripts/migrate.js",
+    "gen:types": "node scripts/gen-types.js",
     "seed:admin": "node scripts/seed-admin.js",
     "purge:contas": "node scripts/purge-contas.js"
   },

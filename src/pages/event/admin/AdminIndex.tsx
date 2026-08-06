@@ -5,7 +5,7 @@ import { e } from "@/components/event/paths";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Ticket, GraduationCap, IdCard, Calendar, ArrowRight } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function AdminIndex() {
   const stats = useQuery({

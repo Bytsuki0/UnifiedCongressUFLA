@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, XCircle, Award, Calendar, Clock, User } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function VerificarCodigo() {
   const { codigo } = useParams<{ codigo: string }>();

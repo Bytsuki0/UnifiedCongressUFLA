@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Clock, MapPin, User, Users, CheckCircle2, XCircle } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function Minicursos() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function Minicursos() {
       // para o próprio inscrito e a organização (RLS).
       const { data } = await sb.rpc("minicourse_occupancy");
       const map: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { map[r.minicourse_id] = Number(r.inscritos) || 0; });
+      (data ?? []).forEach((r) => { map[r.minicourse_id] = Number(r.inscritos) || 0; });
       return map;
     },
   });
@@ -49,7 +49,7 @@ export default function Minicursos() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const enrolled = new Set(((myRegs.data ?? []) as any[]).map((r) => r.minicourse_id));
+  const enrolled = new Set((myRegs.data ?? []).map((r) => r.minicourse_id));
 
   return (
     <AppLayout>
@@ -66,7 +66,7 @@ export default function Minicursos() {
         {list.data?.length === 0 && <p className="text-muted-foreground">Nenhum minicurso cadastrado.</p>}
 
         <div className="grid gap-4 md:grid-cols-2">
-          {list.data?.map((m: any) => {
+          {list.data?.map((m) => {
             const taken = counts.data?.[m.id] ?? 0;
             const left = m.vagas - taken;
             const isIn = enrolled.has(m.id);

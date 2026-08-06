@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = "estudante" | "professor" | "avaliador" | "admin" | "externo";
@@ -25,7 +26,7 @@ const ROLE_PRIORITY: UserRole[] = ["admin", "avaliador", "professor", "estudante
  * valor só orienta a navegação da interface.
  */
 export async function resolveMyRole(): Promise<UserRole> {
-  const { data, error } = await (supabase.rpc as any)("get_my_roles");
+  const { data, error } = await supabase.rpc("get_my_roles");
   if (!error && Array.isArray(data)) {
     for (const role of ROLE_PRIORITY) {
       if (data.includes(role)) return role;
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const applySession = async (session: any) => {
+  const applySession = async (session: Session | null) => {
     if (!session) {
       setUser(null);
       setRole(null);

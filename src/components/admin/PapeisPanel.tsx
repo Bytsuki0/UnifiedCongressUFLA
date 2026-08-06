@@ -5,11 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { UserRole } from "@/contexts/AuthContext";
 
-// integrations/supabase/types.ts é anterior às migrações de segurança
-// (user_roles.role virou TEXT), por isso o acesso destas tabelas é destipado.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 // Papéis atribuíveis. Precisa bater com o CHECK de public.user_roles.
 const ROLES: { value: UserRole; label: string; hint: string }[] = [
   { value: "admin", label: "Admin", hint: "Acesso total, incluindo esta tela" },
@@ -40,8 +35,8 @@ export function PapeisPanel() {
     queryKey: ["admin-papeis"],
     queryFn: async () => {
       const [{ data: profiles }, { data: roles }] = await Promise.all([
-        sb.from("profiles").select("id, nome, email").order("nome"),
-        sb.from("user_roles").select("user_id, role"),
+        supabase.from("profiles").select("id, nome, email").order("nome"),
+        supabase.from("user_roles").select("user_id, role"),
       ]);
       const porUsuario = new Map<string, UserRole[]>();
       ((roles ?? []) as { user_id: string; role: UserRole }[]).forEach((r) => {
@@ -59,10 +54,10 @@ export function PapeisPanel() {
   const alternar = useMutation({
     mutationFn: async ({ conta, role, tinha }: { conta: Conta; role: UserRole; tinha: boolean }) => {
       if (tinha) {
-        const { error } = await sb.from("user_roles").delete().eq("user_id", conta.id).eq("role", role);
+        const { error } = await supabase.from("user_roles").delete().eq("user_id", conta.id).eq("role", role);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("user_roles").insert({ user_id: conta.id, role });
+        const { error } = await supabase.from("user_roles").insert({ user_id: conta.id, role });
         if (error) throw error;
       }
     },

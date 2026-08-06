@@ -4,17 +4,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Check, X, Trash2, Download } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function AdminInscricoes() {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["admin-regs"],
-    queryFn: async () =>
-      (await sb
+    queryFn: async () => {
+      // Sem FK inscrição->profiles no banco, o embed profiles(...) do
+      // PostgREST não resolve (PGRST200) — junta-se no cliente, como
+      // em AdminVerificar.
+      const { data: regs, error } = await sb
         .from("congress_registrations")
-        .select("id, status, created_at, profiles(nome, email, instituicao)")
-        .order("created_at", { ascending: false })).data ?? [],
+        .select("id, user_id, status, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const ids = Array.from(new Set((regs ?? []).map((r) => r.user_id)));
+      const { data: profiles } = ids.length
+        ? await sb.from("profiles").select("id, nome, email, instituicao").in("id", ids)
+        : { data: [] };
+      const porId = new Map((profiles ?? []).map((p) => [p.id, p]));
+      return (regs ?? []).map((r) => ({ ...r, profiles: porId.get(r.user_id) ?? null }));
+    },
   });
 
   const setStatus = useMutation({
@@ -33,7 +44,7 @@ export default function AdminInscricoes() {
   });
 
   const exportCsv = () => {
-    const rows = ((data ?? []) as any[]).map((r) => `"${r.profiles?.nome ?? ""}","${r.profiles?.email ?? ""}","${r.status}"`);
+    const rows = (data ?? []).map((r) => `"${r.profiles?.nome ?? ""}","${r.profiles?.email ?? ""}","${r.status}"`);
     const csv = "nome,email,status\n" + rows.join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "inscricoes.csv"; a.click();
@@ -63,7 +74,7 @@ export default function AdminInscricoes() {
               </tr>
             </thead>
             <tbody>
-              {data?.map((r: any) => (
+              {data?.map((r) => (
                 <tr key={r.id} className="border-t border-border">
                   <td className="p-3">{r.profiles?.nome}</td>
                   <td className="p-3 text-muted-foreground">{r.profiles?.email}</td>

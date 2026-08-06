@@ -1,16 +1,20 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { ShieldCheck, Search, ArrowLeft, XCircle, CheckCircle2 } from "lucide-react";
 import { DecorativeBg } from "@/components/event/DecorativeBg";
 import { Logo } from "@/components/event/Logo";
 
-const sb = supabase as any;
+const sb = supabase;
+
+// Linha devolvida pela RPC pública de verificação de certificado.
+type Certificado = Database["public"]["Functions"]["verify_certificate"]["Returns"][number];
 
 export default function VerificarPublico() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any | null>(null);
+  const [result, setResult] = useState<Certificado | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   const extractCode = (raw: string) => {

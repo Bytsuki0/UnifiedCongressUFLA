@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Trash2, Download } from "lucide-react";
 
-const sb = supabase as any;
+const sb = supabase;
 
 // Participante externo: sem tabela institucional, vive só em profiles.
 type ExternoRow = {
@@ -52,18 +52,18 @@ export default function AdminUsuarios() {
         : [];
       const rows: Row[] = [
         ...(est.data ?? [])
-          .filter((u: any) => !adminIds.has(u.user_id))
-          .map((u: any) => ({
+          .filter((u) => !adminIds.has(u.user_id))
+          .map((u) => ({
             id: u.id, nome: u.nome, email: u.email, detalhe: u.curso ?? "",
             tipo: "Estudante" as const, source: "estudantes" as const, created_at: u.created_at,
           })),
         ...(prof.data ?? [])
-          .filter((u: any) => !adminIds.has(u.user_id))
-          .map((u: any) => ({
+          .filter((u) => !adminIds.has(u.user_id))
+          .map((u) => ({
             id: u.id, nome: u.nome, email: u.email, detalhe: u.departamento ?? "",
             tipo: "Professor" as const, source: "professores" as const, created_at: u.created_at,
           })),
-        ...(aval.data ?? []).map((u: any) => ({
+        ...(aval.data ?? []).map((u) => ({
           id: u.id, nome: u.nome, email: u.email, detalhe: u.instituicao ?? "",
           tipo: "Avaliador" as const, source: "avaliadores" as const, created_at: u.created_at,
         })),

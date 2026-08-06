@@ -6,7 +6,7 @@ import { e } from "@/components/event/paths";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -62,7 +62,7 @@ export default function Dashboard() {
 
         <Section title="Próximas atividades">
           {next.data?.length === 0 && <Empty>Programação ainda não publicada</Empty>}
-          {next.data?.map((a: any) => (
+          {next.data?.map((a) => (
             <div key={a.id} className="flex items-center justify-between rounded-xl border border-border p-4">
               <div>
                 <p className="font-semibold">{a.titulo}</p>
@@ -78,7 +78,7 @@ export default function Dashboard() {
 
         <Section title="Meus minicursos">
           {minis.data?.length === 0 && <Empty>Você ainda não inscreveu em minicursos. <Link to={e("/minicursos")} className="text-primary hover:underline">Ver minicursos</Link></Empty>}
-          {minis.data?.map((m: any) => (
+          {minis.data?.map((m) => (
             <div key={m.id} className="rounded-xl border border-border p-4">
               <p className="font-semibold">{m.minicourses?.nome}</p>
               <p className="text-xs text-muted-foreground">{m.minicourses?.data} • {m.minicourses?.horario_inicio} • {m.minicourses?.local}</p>

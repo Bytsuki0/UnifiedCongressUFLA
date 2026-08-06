@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Award, Download, Eye, Clock, X, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function Certificados() {
   const { user } = useAuth();
@@ -69,7 +69,7 @@ export default function Certificados() {
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
-          {data?.map((c: any) => {
+          {data?.map((c) => {
             const available = !!c.data_liberacao && !!c.arquivo_url;
             const validated = !!c.verified_at;
             return (

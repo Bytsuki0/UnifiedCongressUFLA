@@ -10,11 +10,6 @@ import {
   TrabalhoRevisor,
 } from "@/lib/types";
 
-// integrations/supabase/types.ts é anterior às RPCs de pool/conflitos,
-// por isso a chamada delas é destipada (o retorno é validado abaixo).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
-
 /**
  * Pool unificado de revisores, único por e-mail.
  *
@@ -25,7 +20,7 @@ const sb = supabase as any;
  * `user_roles` e `auth.users`.
  */
 export async function carregarPoolRevisores(): Promise<RevisorOption[]> {
-  const { data, error } = await sb.rpc("pool_revisores");
+  const { data, error } = await supabase.rpc("pool_revisores");
   if (error) throw error;
   return ((data ?? []) as RevisorOption[]).slice().sort((a, b) => a.nome.localeCompare(b.nome));
 }
@@ -53,7 +48,7 @@ export type Conflito = {
  * banco, esta consulta só permite refletir isso na interface.
  */
 export async function carregarConflitos(): Promise<Conflito[]> {
-  const { data, error } = await sb.rpc("conflitos_por_trabalho");
+  const { data, error } = await supabase.rpc("conflitos_por_trabalho");
   if (error) throw error;
   return (data ?? []) as Conflito[];
 }

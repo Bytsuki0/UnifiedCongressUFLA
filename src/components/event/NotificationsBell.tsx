@@ -4,8 +4,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const sb = supabase as any;
-
 type Notif = {
   id: string;
   title: string;
@@ -24,11 +22,11 @@ export function NotificationsBell() {
   const load = async () => {
     if (!user) return;
     const [{ data: n }, { data: r }] = await Promise.all([
-      sb.from("notifications").select("*").order("created_at", { ascending: false }).limit(30),
-      sb.from("notification_reads").select("notification_id").eq("user_id", user.id),
+      supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(30),
+      supabase.from("notification_reads").select("notification_id").eq("user_id", user.id),
     ]);
     setItems((n ?? []) as Notif[]);
-    setReadIds(new Set((r ?? []).map((x: any) => x.notification_id)));
+    setReadIds(new Set((r ?? []).map((x) => x.notification_id)));
   };
 
   useEffect(() => {
@@ -47,7 +45,7 @@ export function NotificationsBell() {
   const markRead = async (id: string) => {
     if (!user) return;
     setReadIds((s) => new Set(s).add(id));
-    await sb.from("notification_reads").insert({ user_id: user.id, notification_id: id });
+    await supabase.from("notification_reads").insert({ user_id: user.id, notification_id: id });
   };
 
   const markAll = async () => {
@@ -55,7 +53,7 @@ export function NotificationsBell() {
     const toInsert = unread.map((i) => ({ user_id: user.id, notification_id: i.id }));
     if (toInsert.length === 0) return;
     setReadIds(new Set([...readIds, ...toInsert.map((x) => x.notification_id)]));
-    await sb.from("notification_reads").insert(toInsert);
+    await supabase.from("notification_reads").insert(toInsert);
   };
 
   if (!user) return null;

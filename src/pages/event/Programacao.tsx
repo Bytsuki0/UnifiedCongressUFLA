@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/event/AppLayout";
 import { DecorativeBg } from "@/components/event/DecorativeBg";
 import { Logo } from "@/components/event/Logo";
 
-const sb = supabase as any;
+const sb = supabase;
 
 export default function Programacao() {
   const { user } = useAuth();
@@ -21,12 +21,12 @@ export default function Programacao() {
   });
 
   const cats = ["Todos", "Palestra", "Oficina", "Minicurso", "Mesa redonda", "Cerimônia"];
-  const filtered = ((data ?? []) as any[]).filter((a) => {
+  const filtered = (data ?? []).filter((a) => {
     if (cat !== "Todos" && a.categoria !== cat) return false;
     if (search && !`${a.titulo} ${a.palestrante ?? ""} ${a.local}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
-  const byDay: Record<string, any[]> = {};
+  const byDay: Record<string, typeof filtered> = {};
   filtered.forEach((a) => { (byDay[a.data] ??= []).push(a); });
 
   const content = (
