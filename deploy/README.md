@@ -46,5 +46,4 @@ Só as `VITE_*` são embutidas no bundle e, portanto, **públicas**:
 
 `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN` e a senha do banco
 são segredos de linha de comando (migrações, scripts) e **nunca** devem
-entrar no `.env` do build nem nas variáveis da hospedagem. Ver
-`SECURITY_SETUP.md`.
+entrar no `.env` do build nem nas variáveis da hospedagem.

@@ -30,6 +30,9 @@ vite_project
 !.claude/settings.json
 # Instruções locais do Claude — não versionar (pedido do time)
 CLAUDE.md
+# Documentação interna de segurança — não versionar
+SECURITY_ANALYSIS.md
+SECURITY_SETUP.md
 .config
 ./vite_project
 vite_project/*
