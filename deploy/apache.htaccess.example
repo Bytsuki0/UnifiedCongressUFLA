@@ -25,6 +25,8 @@
 <IfModule mod_headers.c>
   SetEnvIf Request_URI "^/(estudante|revisor|admin|co-chairs)(/|$)" PRIVADO=1
   SetEnvIf Request_URI "^/congresso/(admin|dashboard|inscricao|minicursos|certificados|perfil)(/|$)" PRIVADO=1
+  # Verificação de e-mail: /confirmar-email é pública, mas leva token na URL.
+  SetEnvIf Request_URI "^/(confirmar-email|verifique-email)(/|$)" PRIVADO=1
   Header set X-Robots-Tag "noindex, nofollow" env=PRIVADO
 
   <FilesMatch "\.(js|css|svg|woff2?)$">

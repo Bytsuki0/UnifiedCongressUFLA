@@ -23,6 +23,12 @@ Disallow: /congresso/minicursos
 Disallow: /congresso/certificados
 Disallow: /congresso/perfil
 
+# Verificação de e-mail: /confirmar-email é pública, mas a URL carrega o
+# token de uso único — nenhum robô tem o que fazer com ela (e visitá-la
+# seria clicar no link no lugar do usuário). /verifique-email exige sessão.
+Disallow: /confirmar-email
+Disallow: /verifique-email
+
 # URLs antigas, hoje apenas redirecionamentos para /co-chairs
 Disallow: /dashboard
 Disallow: /avaliadores
@@ -33,3 +39,4 @@ Disallow: /rankings
 
 # Público: / , /login , /cadastro , /congresso/informacoes ,
 # /congresso/programacao , /congresso/verificar
+# (/confirmar-email também é público, mas fica fora do índice — ver acima)

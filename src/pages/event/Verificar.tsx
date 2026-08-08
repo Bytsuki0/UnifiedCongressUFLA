@@ -1,15 +1,12 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import {
+  verificarCertificado,
+  type CertificadoVerificado as Certificado,
+} from "@/services/certificadosService";
 import { ShieldCheck, Search, ArrowLeft, XCircle, CheckCircle2 } from "lucide-react";
 import { DecorativeBg } from "@/components/event/DecorativeBg";
 import { Logo } from "@/components/event/Logo";
-
-const sb = supabase;
-
-// Linha devolvida pela RPC pública de verificação de certificado.
-type Certificado = Database["public"]["Functions"]["verify_certificate"]["Returns"][number];
 
 export default function VerificarPublico() {
   const [code, setCode] = useState("");
@@ -30,13 +27,15 @@ export default function VerificarPublico() {
     setLoading(true);
     setResult(null);
     setNotFound(false);
-    const { data, error } = await sb.rpc("verify_certificate", { _code: c });
-    setLoading(false);
-    if (error || !data || data.length === 0) {
+    try {
+      const encontrado = await verificarCertificado(c);
+      if (!encontrado) setNotFound(true);
+      else setResult(encontrado);
+    } catch {
       setNotFound(true);
-      return;
+    } finally {
+      setLoading(false);
     }
-    setResult(data[0]);
   };
 
   return (

@@ -1,12 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  enviarNotificacao,
+  excluirNotificacao,
+  listarNotificacoesAdmin,
+} from "@/services/notificacoesService";
+import { listarMinicursosParaSelecao } from "@/services/minicursosService";
+import { listarProgramacaoParaSelecao } from "@/services/programacaoService";
 import { Bell, Send, Trash2, Users, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
-
-const sb = supabase;
 
 export default function AdminNotificacoes() {
   const { user } = useAuth();
@@ -21,45 +25,29 @@ export default function AdminNotificacoes() {
 
   const { data: list } = useQuery({
     queryKey: ["admin-notifs"],
-    queryFn: async () =>
-      (await sb.from("notifications").select("*").order("created_at", { ascending: false }).limit(100)).data ?? [],
+    queryFn: listarNotificacoesAdmin,
   });
 
   const { data: minicourses } = useQuery({
     queryKey: ["mc-list"],
-    queryFn: async () => {
-      const { data } = await sb.from("minicourses").select("id, nome");
-      return (data ?? []).map((m) => ({ id: m.id, titulo: m.nome }));
-    },
+    queryFn: listarMinicursosParaSelecao,
   });
   const { data: schedule } = useQuery({
     queryKey: ["sch-list"],
-    queryFn: async () => (await sb.from("schedule").select("id, titulo")).data ?? [],
+    queryFn: listarProgramacaoParaSelecao,
   });
 
   const send = async () => {
     if (!title.trim() || !body.trim()) { toast.error("Preencha título e corpo"); return; }
+    if (audience === "event" && !eventId) { toast.error("Selecione o evento"); return; }
     setSending(true);
     try {
-      if (audience === "all") {
-        const { error } = await sb.from("notifications").insert({
-          title, body, link: link || null, audience: "all", created_by: user!.id,
-        });
-        if (error) throw error;
-      } else {
-        if (!eventId) { toast.error("Selecione o evento"); setSending(false); return; }
-        const regsRes = eventType === "minicourse"
-          ? await sb.from("minicourse_registrations").select("user_id").eq("minicourse_id", eventId).neq("status", "cancelled")
-          : await sb.from("congress_registrations").select("user_id");
-        if (regsRes.error) throw regsRes.error;
-        const userIds = Array.from(new Set((regsRes.data ?? []).map((r) => r.user_id))).filter(Boolean);
-        if (userIds.length === 0) { toast.error("Nenhum participante para esse evento"); setSending(false); return; }
-        const rows = userIds.map((uid) => ({
-          title, body, link: link || null, audience: "user", user_id: uid, created_by: user!.id,
-        }));
-        const { error } = await sb.from("notifications").insert(rows);
-        if (error) throw error;
-      }
+      const base = { titulo: title, corpo: body, link: link || null, autorId: user!.id };
+      await enviarNotificacao(
+        audience === "all"
+          ? { alvo: "todos", ...base }
+          : { alvo: eventType, eventoId: eventId, ...base },
+      );
       toast.success("Notificação enviada");
       setTitle(""); setBody(""); setLink("");
       qc.invalidateQueries({ queryKey: ["admin-notifs"] });
@@ -72,10 +60,13 @@ export default function AdminNotificacoes() {
 
   const remove = async (id: string) => {
     if (!confirm("Excluir esta notificação?")) return;
-    const { error } = await sb.from("notifications").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Excluída");
-    qc.invalidateQueries({ queryKey: ["admin-notifs"] });
+    try {
+      await excluirNotificacao(id);
+      toast.success("Excluída");
+      qc.invalidateQueries({ queryKey: ["admin-notifs"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao excluir");
+    }
   };
 
   return (

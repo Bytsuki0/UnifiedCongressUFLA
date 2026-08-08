@@ -68,18 +68,22 @@ for (const arquivo of arquivos) {
     nomes.add(m[1]);
   }
 
-  const linhas = conteudo.split(/\r?\n/);
+  // A busca é no arquivo inteiro, não linha a linha: o encadeamento do
+  // supabase-js quebra em várias linhas com frequência
+  //   const { data } = await sb
+  //     .from("minicourses")
+  // e um casamento por linha não enxerga isso — foi assim que 4 chamadas
+  // passaram batido na primeira versão desta trava.
   for (const nome of nomes) {
-    const padrao = new RegExp(`\\b${nome}\\s*\\.\\s*(${METODOS.join("|")})\\b`);
-    linhas.forEach((linha, i) => {
-      if (padrao.test(linha)) {
-        violacoes.push({
-          arquivo: relativo.replace(/\\/g, "/"),
-          linha: i + 1,
-          trecho: linha.trim().slice(0, 90),
-        });
-      }
-    });
+    const padrao = new RegExp(`\\b${nome}\\s*\\.\\s*(?:${METODOS.join("|")})\\b`, "g");
+    for (const m of conteudo.matchAll(padrao)) {
+      const linha = conteudo.slice(0, m.index).split(/\r?\n/).length;
+      violacoes.push({
+        arquivo: relativo.replace(/\\/g, "/"),
+        linha,
+        trecho: m[0].replace(/\s+/g, " "),
+      });
+    }
   }
 }
 

@@ -36,6 +36,10 @@
     {
       "source": "/congresso/(dashboard|inscricao|minicursos|certificados|perfil)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/(confirmar-email|verifique-email)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
 }

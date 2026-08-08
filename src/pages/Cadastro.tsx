@@ -10,6 +10,7 @@ import {
   PERIODOS,
   classifyEmail,
 } from "@/lib/cadastro";
+import { enviarEmailDeVerificacao } from "@/services/verificacaoEmailService";
 
 const Cadastro = () => {
   const navigate = useNavigate();
@@ -91,11 +92,22 @@ const Cadastro = () => {
 
     if (data.user) {
       if (!data.session) {
+        // Só acontece se o autoconfirm do GoTrue for desligado no painel.
         toast.success("Conta criada! Enviamos um link de confirmação para o seu e-mail. Confirme antes de entrar.");
+        navigate("/login");
       } else {
-        toast.success("Conta criada com sucesso! Faça login para continuar.");
+        // O envio fica FORA da transação de cadastro: se o Brevo estiver
+        // fora do ar, a conta continua criada e o botão de reenvio da
+        // /verifique-email cura o caso. Nunca prender o cadastro no e-mail.
+        const envio = await enviarEmailDeVerificacao();
+        const enviado = envio.estado === "enviado";
+        if (enviado) {
+          toast.success("Conta criada! Enviamos um link de confirmação para o seu e-mail.");
+        } else {
+          toast.error("Conta criada, mas o e-mail de confirmação não saiu. Reenvie na próxima tela.");
+        }
+        navigate("/verifique-email", { state: { enviado } });
       }
-      navigate("/login");
     } else {
       toast.error("Erro inesperado ao criar conta. Tente novamente.");
     }

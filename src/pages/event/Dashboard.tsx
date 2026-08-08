@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Ticket, GraduationCap, Award, Calendar, ChevronRight } from "lucide-react";
 import { AppLayout } from "@/components/event/AppLayout";
 import { e } from "@/components/event/paths";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-const sb = supabase;
+import { obterPerfil } from "@/services/perfilService";
+import { minhaInscricao } from "@/services/inscricoesService";
+import { listarMeusMinicursos } from "@/services/minicursosService";
+import { listarMeusCertificadosLiberados } from "@/services/certificadosService";
+import { proximasAtividades } from "@/services/programacaoService";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -14,29 +16,23 @@ export default function Dashboard() {
 
   const profile = useQuery({
     queryKey: ["profile", uid],
-    queryFn: async () => (await sb.from("profiles").select("*").eq("id", uid).maybeSingle()).data,
+    queryFn: () => obterPerfil(uid),
   });
   const congress = useQuery({
     queryKey: ["congress-reg", uid],
-    queryFn: async () => (await sb.from("congress_registrations").select("*").eq("user_id", uid).maybeSingle()).data,
+    queryFn: () => minhaInscricao(uid),
   });
   const minis = useQuery({
     queryKey: ["my-minis", uid],
-    queryFn: async () =>
-      (await sb
-        .from("minicourse_registrations")
-        .select("id, minicourses(nome, data, horario_inicio, local)")
-        .eq("user_id", uid)).data ?? [],
+    queryFn: () => listarMeusMinicursos(uid),
   });
   const certs = useQuery({
     queryKey: ["my-certs", uid],
-    queryFn: async () =>
-      (await sb.from("certificates").select("*").eq("user_id", uid).not("data_liberacao", "is", null)).data ?? [],
+    queryFn: () => listarMeusCertificadosLiberados(uid),
   });
   const next = useQuery({
     queryKey: ["next-schedule"],
-    queryFn: async () =>
-      (await sb.from("schedule").select("*").order("data").order("horario_inicio").limit(3)).data ?? [],
+    queryFn: () => proximasAtividades(3),
   });
 
   const nome = profile.data?.nome?.split(" ")[0] ?? "Participante";

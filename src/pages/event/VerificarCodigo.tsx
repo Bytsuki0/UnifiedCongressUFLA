@@ -1,26 +1,14 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { verificarCertificado } from "@/services/certificadosService";
 import { CheckCircle2, XCircle, Award, Calendar, Clock, User } from "lucide-react";
-
-const sb = supabase;
 
 export default function VerificarCodigo() {
   const { codigo } = useParams<{ codigo: string }>();
   const { data, isLoading } = useQuery({
     queryKey: ["verify", codigo],
-    queryFn: async () => {
-      const { data, error } = await sb.rpc("verify_certificate", { _code: codigo });
-      if (error) throw error;
-      return (data?.[0] ?? null) as null | {
-        verification_code: string;
-        atividade: string;
-        carga_horaria: number;
-        data_liberacao: string;
-        participante_nome: string | null;
-        participante_instituicao: string | null;
-      };
-    },
+    queryFn: () => verificarCertificado(codigo!),
+    enabled: !!codigo,
   });
 
   return (

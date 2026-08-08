@@ -2,13 +2,19 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
 import { e } from "@/components/event/paths";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  cancelarMinhaInscricao,
+  inscrever,
+  minhaInscricao,
+} from "@/services/inscricoesService";
+import {
+  cancelarInscricaoEmMinicurso,
+  listarMinhasInscricoesDetalhadas,
+} from "@/services/minicursosService";
 import { toast } from "sonner";
 import { Calendar, MapPin, FileText, CheckCircle2, XCircle, QrCode, GraduationCap, Clock, User } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-
-const sb = supabase;
 
 export default function Inscricao() {
   const { user } = useAuth();
@@ -17,41 +23,26 @@ export default function Inscricao() {
 
   const reg = useQuery({
     queryKey: ["congress-reg", uid],
-    queryFn: async () => (await sb.from("congress_registrations").select("*").eq("user_id", uid).maybeSingle()).data,
+    queryFn: () => minhaInscricao(uid),
   });
 
   const myMinis = useQuery({
     queryKey: ["my-minis-full", uid],
-    queryFn: async () => {
-      const { data } = await sb
-        .from("minicourse_registrations")
-        .select("id, minicourse_id, status, minicourses(id, nome, descricao, ministrante, data, horario_inicio, horario_fim, local)")
-        .eq("user_id", uid);
-      return data ?? [];
-    },
+    queryFn: () => listarMinhasInscricoesDetalhadas(uid),
   });
 
   const register = useMutation({
-    mutationFn: async () => {
-      const { error } = await sb.from("congress_registrations").insert({ user_id: uid });
-      if (error) throw error;
-    },
+    mutationFn: () => inscrever(uid),
     onSuccess: () => { toast.success("Inscrição realizada!"); qc.invalidateQueries({ queryKey: ["congress-reg", uid] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const cancel = useMutation({
-    mutationFn: async () => {
-      const { error } = await sb.from("congress_registrations").delete().eq("user_id", uid);
-      if (error) throw error;
-    },
+    mutationFn: () => cancelarMinhaInscricao(uid),
     onSuccess: () => { toast.success("Inscrição cancelada"); qc.invalidateQueries({ queryKey: ["congress-reg", uid] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const unsubMini = useMutation({
-    mutationFn: async (minicourse_id: string) => {
-      const { error } = await sb.from("minicourse_registrations").delete().eq("user_id", uid).eq("minicourse_id", minicourse_id);
-      if (error) throw error;
-    },
+    mutationFn: (minicourse_id: string) => cancelarInscricaoEmMinicurso(uid, minicourse_id),
     onSuccess: () => { toast.success("Inscrição cancelada"); qc.invalidateQueries(); },
     onError: (e: Error) => toast.error(e.message),
   });

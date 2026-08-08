@@ -193,3 +193,24 @@ export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
 
   return novo.id;
 }
+
+/**
+ * Trabalho do próprio autor, para a tela de correção.
+ *
+ * O filtro por `owner_id` é redundante com o RLS na leitura, mas garante
+ * que a tela nunca abra o trabalho de outra pessoa para um usuário da
+ * organização — que PODE lê-lo, e não deveria corrigi-lo por aqui.
+ */
+export async function obterMeuTrabalho(
+  id: string,
+  ownerId: string,
+): Promise<Trabalho | null> {
+  const { data, error } = await supabase
+    .from("trabalhos")
+    .select("*")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

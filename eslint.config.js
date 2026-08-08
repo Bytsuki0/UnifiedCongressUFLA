@@ -5,7 +5,11 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // supabase/functions/** roda em Deno (globais `Deno`, imports `jsr:`/URL):
+  // é outro runtime, com outro type-checker. Passar o ESLint do frontend nele
+  // só produziria ruído — o `tsc` do projeto já o ignora (tsconfig.app.json
+  // inclui apenas `src`).
+  { ignores: ["dist", "supabase/functions/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

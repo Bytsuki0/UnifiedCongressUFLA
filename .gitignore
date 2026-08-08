@@ -44,6 +44,13 @@ docs/*
 .docs
 docs
 ReadLater.md
-email-verification-blueprint.md
-email-verification-notas.md
-email-verification-prompt.md
+
+# Backups: contêm TODOS os dados do congresso — perfis, e-mails, trabalhos
+# submetidos e os PDFs. Nunca versionar. Guardar fora desta máquina.
+supabase/backups/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

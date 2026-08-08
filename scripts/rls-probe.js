@@ -32,6 +32,20 @@ const URL = process.env.VITE_SUPABASE_URL;
 const KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const COM_ESCRITA = process.argv.includes("--write");
 
+/**
+ * Autoteste: prova que a sonda SABE detectar um vazamento.
+ *
+ * Uma sonda que só devolve "tudo OK" é indistinguível de uma sonda
+ * quebrada. Com --autoteste, as duas tabelas que `anon` PODE ler por
+ * desenho (minicourses, schedule) são reclassificadas como "negada".
+ * A sonda tem então obrigação de acusá-las como vazamento e sair != 0;
+ * se sair 0, o caminho de detecção está furado e o resultado limpo da
+ * execução normal não vale nada.
+ *
+ * Não altera schema nem dados — só a expectativa, contra dados reais.
+ */
+const AUTOTESTE = process.argv.includes("--autoteste");
+
 if (!URL || !KEY) {
   console.error(
     "Faltam VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY (.env ou ambiente)."
@@ -124,6 +138,16 @@ const RPCS_INOCUAS = [
 // ---------------------------------------------------------------------
 console.log(`\nProjeto: ${URL}`);
 console.log(`Chave:   ${KEY.slice(0, 12)}… (publishable/anon)\n`);
+if (AUTOTESTE) {
+  TABELAS.minicourses = "negada";
+  TABELAS.schedule = "negada";
+  console.log(
+    "\x1b[33mAUTOTESTE\x1b[0m: minicourses e schedule foram marcadas como " +
+      "'negada'.\n  São legivelmente públicas, então a sonda TEM de acusar " +
+      "vazamento nas duas.\n  Se esta execução passar, a sonda está cega.\n",
+  );
+}
+
 console.log("Fase 1 — leitura anônima das tabelas:");
 
 for (const [tabela, esperado] of Object.entries(TABELAS)) {
@@ -271,6 +295,21 @@ if (!A_EMAIL || !A_SENHA || !B_EMAIL || !B_SENHA) {
 
     if (erroA) {
       falhou(`não consegui logar como autor A (${erroA.message})`);
+    } else if ((await clienteA.rpc("is_event_staff")).data === true) {
+      // Guarda contra um falso positivo caro: com `avaliador` ou `admin`,
+      // is_event_staff() é true e as policies de trabalhos/profiles/
+      // user_roles/pareceres liberam a base inteira POR DESENHO. A sonda
+      // acusaria cinco "vazamentos" que são o comportamento correto, e o
+      // relatório perderia o sentido. A fase exige autores comuns.
+      const papeis = (await clienteA.rpc("get_my_roles")).data ?? [];
+      falhou(
+        `a conta A (${A_EMAIL}) é da ORGANIZAÇÃO — papéis: ${papeis.join(", ")}.\n` +
+          "       is_event_staff() = true, então ler e editar os trabalhos de\n" +
+          "       terceiros é o comportamento CORRETO do RLS, não um vazamento.\n" +
+          "       Esta fase precisa de duas contas de autor comum (sem\n" +
+          "       'avaliador' nem 'admin'). Remova os papéis em /admin/papeis\n" +
+          "       ou use outras duas contas, e rode de novo.",
+      );
     } else {
       const comoA = async (rotulo, consulta) => {
         const { data, error } = await consulta();

@@ -107,6 +107,14 @@ try {
 }
 
 // 5. HTTP tem que ir para HTTPS.
+//
+// Em *.workers.dev a zona é da Cloudflare, não nossa: o "Always Use HTTPS"
+// não é configurável e o host responde 200 em claro. Não dá para corrigir,
+// então ali isso é NOTA. No domínio próprio é FALHA — lá o redirecionamento
+// depende de um botão que é nosso, e servir a aplicação em claro expõe a
+// sessão de quem digita o endereço sem https.
+const ehWorkersDev = /\.workers\.dev$/i.test(new URL(URL_BASE).hostname);
+
 if (URL_BASE.startsWith("https://")) {
   const semTls = URL_BASE.replace("https://", "http://");
   try {
@@ -117,13 +125,32 @@ if (URL_BASE.startsWith("https://")) {
     if (resp.status === 301 || resp.status === 308 || resp.status === 302) {
       ok(`http → https (${resp.status})`);
     } else if (resp.status === 200) {
-      falhou("http respondeu 200 sem redirecionar para https");
+      if (ehWorkersDev) {
+        console.log(
+          "  \x1b[36mNOTA \x1b[0m http responde 200 em claro — em *.workers.dev a zona é\n" +
+            "         da Cloudflare e o redirecionamento não é configurável.\n" +
+            "         No domínio próprio isto vira FALHA: ligar 'Always Use\n" +
+            "         HTTPS' na zona antes de anunciar o endereço.",
+        );
+      } else {
+        falhou(
+          "http respondeu 200 sem redirecionar — ligar 'Always Use HTTPS' na zona",
+        );
+      }
     } else {
       ok(`http respondeu ${resp.status} (não serve conteúdo em claro)`);
     }
   } catch (err) {
     ok(`http recusou conexão (${err.message.slice(0, 40)})`);
   }
+}
+
+// 6. HSTS — obriga o navegador a usar https nas visitas seguintes.
+{
+  const { headers } = await buscar("/");
+  const hsts = headers.get("strict-transport-security");
+  if (hsts && /max-age=\d+/.test(hsts)) ok(`HSTS presente: ${hsts}`);
+  else falhou("Strict-Transport-Security ausente — _headers não chegou ao dist/");
 }
 
 // 6. O build no ar é o que acabou de subir?

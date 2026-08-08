@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  contarInscritosPorMinicurso,
+  excluirMinicurso,
+  listarMinicursosAdmin,
+  salvarMinicurso,
+} from "@/services/minicursosService";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Users } from "lucide-react";
-
-const sb = supabase;
 
 type Form = {
   id?: string; nome: string; descricao: string; ministrante: string;
@@ -25,37 +28,23 @@ export default function AdminMinicursos() {
 
   const list = useQuery({
     queryKey: ["admin-minis"],
-    queryFn: async () => (await sb.from("minicourses").select("*").order("data")).data ?? [],
+    queryFn: listarMinicursosAdmin,
   });
   const regs = useQuery({
     queryKey: ["mini-counts"],
-    queryFn: async () => {
-      const { data } = await sb.from("minicourse_registrations").select("minicourse_id");
-      const map: Record<string, number> = {};
-      (data ?? []).forEach((r) => { map[r.minicourse_id] = (map[r.minicourse_id] ?? 0) + 1; });
-      return map;
-    },
+    queryFn: contarInscritosPorMinicurso,
   });
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       const { id, ...rest } = form;
-      if (id) {
-        const { error } = await sb.from("minicourses").update(rest).eq("id", id);
-        if (error) throw error;
-      } else {
-        const { error } = await sb.from("minicourses").insert(rest);
-        if (error) throw error;
-      }
+      return salvarMinicurso(id, rest);
     },
     onSuccess: () => { toast.success("Salvo"); setOpen(false); setForm(empty); qc.invalidateQueries({ queryKey: ["admin-minis"] }); qc.invalidateQueries({ queryKey: ["minicourses"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.from("minicourses").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: excluirMinicurso,
     onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["admin-minis"] }); },
   });
 

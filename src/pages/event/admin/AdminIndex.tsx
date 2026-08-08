@@ -2,28 +2,20 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
 import { e } from "@/components/event/paths";
-import { supabase } from "@/integrations/supabase/client";
+import { resumoDoEvento } from "@/services/usuariosService";
 import { Users, Ticket, GraduationCap, IdCard, Calendar, ArrowRight } from "lucide-react";
-
-const sb = supabase;
 
 export default function AdminIndex() {
   const stats = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [est, prof, aval, regs, minis, certs, sched] = await Promise.all([
-        sb.from("estudantes").select("id", { count: "exact", head: true }),
-        sb.from("professores").select("id", { count: "exact", head: true }),
-        sb.from("avaliadores").select("id", { count: "exact", head: true }),
-        sb.from("congress_registrations").select("id", { count: "exact", head: true }),
-        sb.from("minicourses").select("id", { count: "exact", head: true }),
-        sb.from("certificates").select("id", { count: "exact", head: true }),
-        sb.from("schedule").select("id", { count: "exact", head: true }),
-      ]);
+      const r = await resumoDoEvento();
       return {
-        users: (est.count ?? 0) + (prof.count ?? 0) + (aval.count ?? 0),
-        regs: regs.count ?? 0,
-        minis: minis.count ?? 0, certs: certs.count ?? 0, sched: sched.count ?? 0,
+        users: r.estudantes + r.professores + r.avaliadores,
+        regs: r.inscricoes,
+        minis: r.minicursos,
+        certs: r.certificados,
+        sched: r.programacao,
       };
     },
   });

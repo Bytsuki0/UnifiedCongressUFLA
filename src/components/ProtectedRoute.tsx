@@ -2,29 +2,36 @@ import { useEffect } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/contexts/AuthContext";
+import { portalDoPapel } from "@/lib/portais";
 
 type Props = {
   allowedRoles: UserRole[];
+  /**
+   * Desvia para /verifique-email quem ainda não confirmou o e-mail.
+   * Só a própria /verifique-email passa `false` — do contrário ela
+   * desviaria para si mesma em laço.
+   *
+   * É cortesia de interface, não segurança: a conta não confirmada que
+   * driblar isto continua batendo no RLS, que recusa os dados gateados.
+   */
+  exigeEmailConfirmado?: boolean;
 };
 
-function redirectForRole(role: UserRole): string {
-  if (role === "externo") return "/congresso/dashboard";
-  if (role === "estudante") return "/estudante";
-  if (role === "professor") return "/revisor";
-  return "/co-chairs";
-}
-
-export const ProtectedRoute = ({ allowedRoles }: Props) => {
-  const { role, loading } = useAuth();
+export const ProtectedRoute = ({ allowedRoles, exigeEmailConfirmado = true }: Props) => {
+  const { role, emailConfirmado, loading } = useAuth();
   const navigate = useNavigate();
+
+  // `null` significa "não sabemos" (RPC falhou) — não bloqueia.
+  const faltaConfirmar = exigeEmailConfirmado && emailConfirmado === false;
 
   useEffect(() => {
     if (loading) return;
     if (!role) { navigate("/login"); return; }
+    if (faltaConfirmar) { navigate("/verifique-email"); return; }
     if (!allowedRoles.includes(role)) {
-      navigate(redirectForRole(role));
+      navigate(portalDoPapel(role));
     }
-  }, [role, loading, navigate, allowedRoles]);
+  }, [role, faltaConfirmar, loading, navigate, allowedRoles]);
 
   if (loading) {
     return (
@@ -34,6 +41,6 @@ export const ProtectedRoute = ({ allowedRoles }: Props) => {
     );
   }
 
-  if (!role || !allowedRoles.includes(role)) return null;
+  if (!role || faltaConfirmar || !allowedRoles.includes(role)) return null;
   return <Outlet />;
 };

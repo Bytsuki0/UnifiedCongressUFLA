@@ -2,13 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
 import { generateCertificatePdf } from "@/lib/certificate-pdf";
-import { anexarPdfAoCertificado, baixarTemplate } from "@/services/certificadosService";
+import {
+  anexarPdfAoCertificado,
+  assinarPresencas,
+  baixarTemplate,
+  fecharEventoEEmitirCertificados,
+  listarMinicursosParaCheckin,
+  listarPresencas,
+  listarProgramacaoParaCheckin,
+  marcarPresenca,
+  obterCertificadosPorIds,
+} from "@/services/certificadosService";
+import { listarPerfisPorIds } from "@/services/usuariosService";
 import { Camera, X, Search, CheckCircle2, XCircle, Users, Award, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-const sb = supabase;
 
 type EventType = "minicourse" | "schedule";
 type Feedback = { ok: boolean; title: string; subtitle?: string; already?: boolean } | null;
@@ -30,71 +38,24 @@ export default function AdminVerificar() {
 
   const { data: minicourses } = useQuery({
     queryKey: ["mc-options"],
-    queryFn: async () => {
-      const { data } = await sb
-        .from("minicourses")
-        .select("id, nome, carga_horaria, certificate_template_url")
-        .order("data");
-      return (data ?? []).map((m) => ({
-        id: m.id,
-        titulo: m.nome,
-        carga_horaria: m.carga_horaria,
-        template_url: m.certificate_template_url,
-      }));
-    },
+    queryFn: listarMinicursosParaCheckin,
   });
   const { data: schedule } = useQuery({
     queryKey: ["sch-options"],
-    queryFn: async () =>
-      (
-        (
-          await sb
-            .from("schedule")
-            .select("id, titulo, certificate_template_url")
-            .order("data")
-        ).data ?? []
-      ).map((s) => ({ ...s, template_url: s.certificate_template_url })),
+    queryFn: listarProgramacaoParaCheckin,
   });
 
   const { data: attendances } = useQuery({
     queryKey: ["attendances", eventType, eventId],
     enabled: !!eventId,
-    queryFn: async () => {
-      const { data: atts, error } = await sb
-        .from("attendances")
-        .select("id, user_id, checked_in_at")
-        .eq("event_type", eventType)
-        .eq("event_id", eventId)
-        .order("checked_in_at", { ascending: false });
-      if (error) throw error;
-      const ids = Array.from(new Set((atts ?? []).map((a) => a.user_id)));
-      let profMap: Record<string, { nome: string | null; email: string | null }> = {};
-      if (ids.length) {
-        const { data: profs } = await sb
-          .from("profiles")
-          .select("id, nome, email")
-          .in("id", ids);
-        profMap = Object.fromEntries(
-          (profs ?? []).map((p) => [p.id, { nome: p.nome, email: p.email }]),
-        );
-      }
-      return (atts ?? []).map((a) => ({ ...a, profile: profMap[a.user_id] ?? null }));
-    },
+    queryFn: () => listarPresencas(eventType, eventId),
   });
 
   useEffect(() => {
     if (!eventId) return;
-    const ch = supabase
-      .channel(`att-${eventType}-${eventId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "attendances", filter: `event_id=eq.${eventId}` },
-        () => qc.invalidateQueries({ queryKey: ["attendances", eventType, eventId] }),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return assinarPresencas(eventType, eventId, () =>
+      qc.invalidateQueries({ queryKey: ["attendances", eventType, eventId] }),
+    );
   }, [eventId, eventType, qc]);
 
   // Auto-set carga from selected minicourse
@@ -150,11 +111,13 @@ export default function AdminVerificar() {
     lastRef.current = { code: dedupKey, at: now };
 
     setBusy(true);
-    const { data, error } = await sb.rpc("mark_attendance", {
-      _event_type: useType,
-      _event_id: useEventId,
-      _user_id: uid,
-    });
+    let data: Awaited<ReturnType<typeof marcarPresenca>> | null = null;
+    let error: Error | null = null;
+    try {
+      data = await marcarPresenca(useType, useEventId, uid);
+    } catch (err) {
+      error = err instanceof Error ? err : new Error("Falha ao marcar");
+    }
     setBusy(false);
     if (error) {
       setFeedback({ ok: false, title: "Erro", subtitle: error.message });
@@ -224,34 +187,24 @@ export default function AdminVerificar() {
     )
       return;
     setClosing(true);
-    const { data, error } = await sb.rpc("close_event_and_issue_certificates", {
-      _event_type: eventType,
-      _event_id: eventId,
-      _carga_horaria: carga,
-    });
-    if (error) {
-      toast.error(error.message);
+    let data: Awaited<ReturnType<typeof fecharEventoEEmitirCertificados>>;
+    try {
+      data = await fecharEventoEEmitirCertificados(eventType, eventId, carga);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao fechar o evento");
       setClosing(false);
       return;
     }
 
     try {
       const certIds = (data ?? []).map((r) => r.certificate_id).filter(Boolean);
-      const { data: certs, error: certErr } = await sb
-        .from("certificates")
-        .select("id, user_id, atividade, carga_horaria, verification_code, arquivo_url")
-        .in("id", certIds);
-      if (certErr) throw certErr;
+      const certs = await obterCertificadosPorIds(certIds);
 
-      const missing = (certs ?? []).filter((c) => !c.arquivo_url);
+      const missing = certs.filter((c) => !c.arquivo_url);
       if (missing.length) {
         const userIds = Array.from(new Set(missing.map((c) => c.user_id)));
-        const { data: profiles, error: profErr } = await sb
-          .from("profiles")
-          .select("id, nome")
-          .in("id", userIds);
-        if (profErr) throw profErr;
-        const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
+        const profiles = await listarPerfisPorIds(userIds);
+        const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
 
         let templateBytes: Uint8Array | null = null;
         if (eventInfo?.template_url) {

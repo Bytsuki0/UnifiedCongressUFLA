@@ -1,13 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateCertificatePdf } from "@/lib/certificate-pdf";
 import {
   anexarPdfAoCertificado,
   baixarTemplate,
   enviarTemplate,
+  criarCertificado,
+  excluirCertificado,
+  idsComCertificadoDaAtividade,
+  listarCertificadosComPerfil,
+  listarMinicursosParaEmissao,
+  listarParticipantesParaEmissao,
+  listarProgramacaoParaEmissao,
   urlAssinadaDoCertificado,
   urlAssinadaDoTemplate,
 } from "@/services/certificadosService";
@@ -15,8 +21,6 @@ import {
   Award, CheckCircle2, GraduationCap, Calendar, ArrowLeft,
   Upload, Trash2, Search, FileText, ExternalLink,
 } from "lucide-react";
-
-const sb = supabase;
 
 type Source = "minicourse" | "schedule";
 type SelectedEvent = {
@@ -68,11 +72,11 @@ export default function AdminCertificados() {
 function EventPicker({ onPick }: { onPick: (e: SelectedEvent) => void }) {
   const minis = useQuery({
     queryKey: ["admin-cert-minis"],
-    queryFn: async () => (await sb.from("minicourses").select("id, nome, carga_horaria, data, horario_inicio, local, certificate_template_url").order("data")).data ?? [],
+    queryFn: listarMinicursosParaEmissao,
   });
   const sched = useQuery({
     queryKey: ["admin-cert-sched"],
-    queryFn: async () => (await sb.from("schedule").select("id, titulo, categoria, data, horario_inicio, horario_fim, local, certificate_template_url").order("data").order("horario_inicio")).data ?? [],
+    queryFn: listarProgramacaoParaEmissao,
   });
 
   return (
@@ -130,33 +134,14 @@ function ParticipantPicker({
 
   const parts = useQuery({
     queryKey: ["cert-parts", event.source, event.id],
-    queryFn: async () => {
-      // Sem FK inscrição->profiles no banco, o embed profiles(...) do
-      // PostgREST não resolve (PGRST200) — junta-se no cliente.
-      const { data: regs, error } =
-        event.source === "minicourse"
-          ? await sb
-              .from("minicourse_registrations")
-              .select("user_id")
-              .eq("minicourse_id", event.id)
-              .neq("status", "cancelled")
-          : await sb.from("congress_registrations").select("user_id").eq("status", "approved");
-      if (error) throw error;
-      const ids = Array.from(new Set((regs ?? []).map((r) => r.user_id)));
-      if (ids.length === 0) return [];
-      const { data: profiles } = await sb
-        .from("profiles")
-        .select("id, nome, email, instituicao")
-        .in("id", ids);
-      return profiles ?? [];
-    },
+    queryFn: () => listarParticipantesParaEmissao(event.source, event.id),
   });
 
   const existing = useQuery({
     queryKey: ["cert-existing", event.titulo],
-    queryFn: async () => (await sb.from("certificates").select("user_id").eq("atividade", event.titulo)).data ?? [],
+    queryFn: () => idsComCertificadoDaAtividade(event.titulo),
   });
-  const alreadySet = useMemo(() => new Set((existing.data ?? []).map((c) => c.user_id)), [existing.data]);
+  const alreadySet = useMemo(() => new Set(existing.data ?? []), [existing.data]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -212,20 +197,14 @@ function ParticipantPicker({
         const participant = (parts.data ?? []).find((p) => p.id === uid);
         if (!participant) continue;
 
-        // 1) Insert row to get id & verification_code
-        const { data: inserted, error: insErr } = await sb
-          .from("certificates")
-          .insert({
-            user_id: uid,
-            atividade: event.titulo,
-            carga_horaria: hours,
-            event_id: event.id,
-            event_source: event.source,
-            data_liberacao: new Date().toISOString(),
-          })
-          .select("id, verification_code")
-          .single();
-        if (insErr) throw insErr;
+        // 1) Cria a linha para obter id e código de verificação
+        const inserted = await criarCertificado({
+          userId: uid,
+          atividade: event.titulo,
+          cargaHoraria: hours,
+          eventoId: event.id,
+          origem: event.source,
+        });
 
         // 2) Generate PDF
         const pdfBytes = await generateCertificatePdf(templateBytes, {
@@ -354,24 +333,10 @@ function IssuedList() {
   const [q, setQ] = useState("");
   const list = useQuery({
     queryKey: ["admin-certs-list"],
-    queryFn: async () => {
-      // Sem FK certificates->profiles no banco, o embed profiles(...)
-      // do PostgREST não resolve (PGRST200) — junta-se no cliente.
-      const { data: certs, error } = await sb
-        .from("certificates")
-        .select("id, user_id, atividade, carga_horaria, data_liberacao, arquivo_url, verification_code")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const ids = Array.from(new Set((certs ?? []).map((c) => c.user_id)));
-      const { data: profiles } = ids.length
-        ? await sb.from("profiles").select("id, nome, email").in("id", ids)
-        : { data: [] };
-      const porId = new Map((profiles ?? []).map((p) => [p.id, p]));
-      return (certs ?? []).map((c) => ({ ...c, profiles: porId.get(c.user_id) ?? null }));
-    },
+    queryFn: listarCertificadosComPerfil,
   });
   const del = useMutation({
-    mutationFn: async (id: string) => { const { error } = await sb.from("certificates").delete().eq("id", id); if (error) throw error; },
+    mutationFn: excluirCertificado,
     onSuccess: () => { toast.success("Removido"); qc.invalidateQueries(); },
   });
 

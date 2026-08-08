@@ -1,45 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  atualizarStatusDaInscricao,
+  excluirInscricao,
+  listarInscricoesComPerfil,
+  type StatusDaInscricao,
+} from "@/services/inscricoesService";
 import { toast } from "sonner";
 import { Check, X, Trash2, Download } from "lucide-react";
-
-const sb = supabase;
 
 export default function AdminInscricoes() {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["admin-regs"],
-    queryFn: async () => {
-      // Sem FK inscrição->profiles no banco, o embed profiles(...) do
-      // PostgREST não resolve (PGRST200) — junta-se no cliente, como
-      // em AdminVerificar.
-      const { data: regs, error } = await sb
-        .from("congress_registrations")
-        .select("id, user_id, status, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const ids = Array.from(new Set((regs ?? []).map((r) => r.user_id)));
-      const { data: profiles } = ids.length
-        ? await sb.from("profiles").select("id, nome, email, instituicao").in("id", ids)
-        : { data: [] };
-      const porId = new Map((profiles ?? []).map((p) => [p.id, p]));
-      return (regs ?? []).map((r) => ({ ...r, profiles: porId.get(r.user_id) ?? null }));
-    },
+    queryFn: listarInscricoesComPerfil,
   });
 
   const setStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "approved" | "cancelled" | "pending" }) => {
-      const { error } = await sb.from("congress_registrations").update({ status }).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, status }: { id: string; status: StatusDaInscricao }) =>
+      atualizarStatusDaInscricao(id, status),
     onSuccess: () => { toast.success("Atualizado"); qc.invalidateQueries({ queryKey: ["admin-regs"] }); },
   });
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb.from("congress_registrations").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: excluirInscricao,
     onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["admin-regs"] }); },
   });
 

@@ -37,6 +37,13 @@ server {
         try_files $uri /index.html;
     }
 
+    # Verificação de e-mail: /confirmar-email é pública, mas a URL carrega
+    # o token de uso único; /verifique-email exige sessão. Fora do índice.
+    location ~ ^/(confirmar-email|verifique-email)$ {
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri /index.html;
+    }
+
     # Reescrita de SPA — precisa vir por último.
     location / {
         try_files $uri $uri/ /index.html;

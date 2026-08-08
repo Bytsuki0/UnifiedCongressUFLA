@@ -14,6 +14,10 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/", "Início"],
   ["/login", "Entrar"],
   ["/cadastro", "Criar conta"],
+  ["/confirmar-email", "Confirmar e-mail"],
+
+  // Autenticada, mas sem portal: a sala de espera de quem não confirmou.
+  ["/verifique-email", "Confirme seu e-mail"],
 
   // Portal do Estudante
   ["/estudante/dashboard", "Painel do estudante"],

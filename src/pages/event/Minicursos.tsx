@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  cancelarInscricaoEmMinicurso,
+  inscreverEmMinicurso,
+  listarMinhasInscricoesEmMinicursos,
+  listarMinicursos,
+  ocupacaoDosMinicursos,
+} from "@/services/minicursosService";
 import { toast } from "sonner";
 import { Clock, MapPin, User, Users, CheckCircle2, XCircle } from "lucide-react";
-
-const sb = supabase;
 
 export default function Minicursos() {
   const { user } = useAuth();
@@ -14,42 +18,31 @@ export default function Minicursos() {
 
   const list = useQuery({
     queryKey: ["minicourses"],
-    queryFn: async () => (await sb.from("minicourses").select("*").order("data").order("horario_inicio")).data ?? [],
+    queryFn: listarMinicursos,
   });
   const myRegs = useQuery({
     queryKey: ["my-mini-regs", uid],
-    queryFn: async () => (await sb.from("minicourse_registrations").select("minicourse_id").eq("user_id", uid)).data ?? [],
+    queryFn: () => listarMinhasInscricoesEmMinicursos(uid),
   });
+  // Ocupação vem de RPC agregada: a tabela de inscrições é visível apenas
+  // para o próprio inscrito e a organização (RLS).
   const counts = useQuery({
     queryKey: ["mini-counts"],
-    queryFn: async () => {
-      // RPC agregado: a tabela de inscrições agora é visível apenas
-      // para o próprio inscrito e a organização (RLS).
-      const { data } = await sb.rpc("minicourse_occupancy");
-      const map: Record<string, number> = {};
-      (data ?? []).forEach((r) => { map[r.minicourse_id] = Number(r.inscritos) || 0; });
-      return map;
-    },
+    queryFn: ocupacaoDosMinicursos,
   });
 
   const subscribe = useMutation({
-    mutationFn: async (minicourse_id: string) => {
-      const { error } = await sb.from("minicourse_registrations").insert({ user_id: uid, minicourse_id });
-      if (error) throw error;
-    },
+    mutationFn: (minicourse_id: string) => inscreverEmMinicurso(uid, minicourse_id),
     onSuccess: () => { toast.success("Inscrição confirmada!"); qc.invalidateQueries(); },
     onError: (e: Error) => toast.error(e.message),
   });
   const unsub = useMutation({
-    mutationFn: async (minicourse_id: string) => {
-      const { error } = await sb.from("minicourse_registrations").delete().eq("user_id", uid).eq("minicourse_id", minicourse_id);
-      if (error) throw error;
-    },
+    mutationFn: (minicourse_id: string) => cancelarInscricaoEmMinicurso(uid, minicourse_id),
     onSuccess: () => { toast.success("Inscrição cancelada"); qc.invalidateQueries(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const enrolled = new Set((myRegs.data ?? []).map((r) => r.minicourse_id));
+  const enrolled = new Set(myRegs.data ?? []);
 
   return (
     <AppLayout>

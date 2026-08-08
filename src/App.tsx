@@ -35,6 +35,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import ConfirmarEmail from "./pages/ConfirmarEmail";
+import VerifiqueEmail from "./pages/VerifiqueEmail";
 import AdminPortal from "./pages/AdminPortal";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -132,6 +134,19 @@ const App = () => (
                 unificadas em /cadastro. */}
             <Route path="/pre-cadastro" element={<Navigate to="/cadastro" replace />} />
             <Route path="/professor-cadastro" element={<Navigate to="/cadastro" replace />} />
+
+            {/* Confirmação de e-mail: o link do e-mail costuma abrir no
+                celular, sem sessão — a rota é pública e a RPC que ela chama
+                é executável por `anon`. */}
+            <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+
+            {/* Sala de espera de quem ainda não confirmou. Autenticada (o
+                reenvio é sempre "para mim mesmo"), e a ÚNICA rota protegida
+                que dispensa a confirmação — do contrário desviaria para si
+                mesma em laço. */}
+            <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} exigeEmailConfirmado={false} />}>
+              <Route path="/verifique-email" element={<VerifiqueEmail />} />
+            </Route>
 
             {/* Estudante: liberado para todos os papéis autenticados —
                 um professor/avaliador também pode submeter trabalho. */}

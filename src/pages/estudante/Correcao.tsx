@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { obterMeuTrabalho } from "@/services/trabalhosService";
 import { openPdf } from "@/lib/pdfStorage";
 import { RESULTADO_OPTIONS, type ResultadoParecer } from "@/lib/types";
 import {
@@ -42,14 +42,9 @@ const Correcao = () => {
     // Só o autor abre esta tela. A RLS deixa a organização ler qualquer
     // trabalho, então o recorte por dono é feito aqui — e o banco recusa
     // a correção de terceiros de qualquer forma (RPC enviar_correcao).
-    const { data, error } = await supabase
-      .from("trabalhos")
-      .select("*")
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .maybeSingle();
+    const data = await obterMeuTrabalho(id, user.id).catch(() => null);
 
-    if (error || !data) {
+    if (!data) {
       toast.error("Trabalho não encontrado.");
       navigate("/estudante/historico");
       return;

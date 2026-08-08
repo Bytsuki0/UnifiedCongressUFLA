@@ -11,6 +11,9 @@
  * Env vars:
  *   VITE_SUPABASE_URL     — lido do .env
  *   SUPABASE_ACCESS_TOKEN — personal access token (supabase.com/dashboard/account/tokens)
+ *   SUPABASE_SERVICE_ROLE_KEY — opcional; SEM ela os arquivos do Storage
+ *                           não saem (o blob não é alcançável por SQL) e o
+ *                           script apenas lista o que ficou para trás
  *   KEEP_EMAILS           — opcional, lista separada por vírgula que
  *                           SUBSTITUI a lista padrão abaixo
  *
@@ -19,14 +22,28 @@
  *   node scripts/purge-contas.js            # simulação: só mostra o que sairia
  *   node scripts/purge-contas.js --apply    # executa (grava backup antes)
  *
- * A simulação é o padrão. O backup JSON de tudo que será apagado vai
- * para supabase/backups/purge-contas-<data>.json antes de qualquer
- * DELETE, e o --apply só continua se o backup for gravado.
+ * A simulação é o padrão. O backup de tudo que será apagado vai para
+ * supabase/backups/purge-contas-<data>.json (linhas) e
+ * supabase/backups/purge-contas-<data>-arquivos/ (os PDFs baixados) antes
+ * de qualquer DELETE, e o --apply só continua se o backup for gravado.
+ *
+ * Arquivos: a pasta de cada usuário no Storage é o `auth.uid()` dele
+ * (`<bucket>/<user_id>/...`), então "arquivo da conta removida" é
+ * exatamente "objeto cujo primeiro segmento do caminho é um id removido".
+ *
+ * Objetos soltos na RAIZ do bucket `Pdfs` (sem pasta de usuário) são
+ * anteriores a esse padrão: não pertencem a conta nenhuma, então apagar
+ * contas nunca os alcança. Por padrão são só relatados; `--orfaos` inclui
+ * esses arquivos na remoção. A varredura é restrita a `Pdfs` de propósito —
+ * em `certificate-templates` o primeiro segmento é a categoria do modelo
+ * ("minicourse", "schedule"), não um usuário, e varrer lá apagaria os
+ * modelos de certificado do evento.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
 import { loadDotEnv } from "./load-dotenv.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,9 +63,12 @@ const KEEP = (process.env.KEEP_EMAILS
   .filter(Boolean);
 
 const APPLY = process.argv.includes("--apply");
+/** Inclui na remoção os arquivos soltos na raiz de `Pdfs` (sem dono). */
+const ORFAOS = process.argv.includes("--orfaos");
 
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL) {
   console.error("ERRO: VITE_SUPABASE_URL precisa estar definida (normalmente vem do .env).");
@@ -169,15 +189,45 @@ async function main() {
     return;
   }
 
-  // PDFs que ficarão órfãos no Storage (o blob não sai por SQL).
+  // Arquivos das contas removidas, em TODOS os buckets. O blob não sai
+  // por SQL: storage.objects é só o índice, então a remoção de verdade
+  // passa pela API de Storage, com a service_role.
   const idsRemovidos = new Set(inventario.contas.map((c) => c.id));
-  const pdfs = await sql(`SELECT name FROM storage.objects WHERE bucket_id = 'Pdfs' ORDER BY name`);
-  const pdfsOrfaos = pdfs.filter((o) => idsRemovidos.has(String(o.name).split("/")[0]));
+  const objetos = await sql(
+    `SELECT bucket_id, name, (metadata->>'size')::bigint AS bytes
+       FROM storage.objects ORDER BY bucket_id, name`,
+  );
+  const arquivosDasContas = objetos.filter((o) => idsRemovidos.has(String(o.name).split("/")[0]));
+  // Objetos na raiz de `Pdfs`, sem pasta de usuário: não pertencem a conta
+  // nenhuma, então nenhuma remoção de conta os alcança. Só saem com --orfaos.
+  const orfaosSemDono = objetos.filter(
+    (o) =>
+      o.bucket_id === "Pdfs" && !/^[0-9a-f-]{36}$/i.test(String(o.name).split("/")[0]),
+  );
+  const aRemover = ORFAOS ? [...arquivosDasContas, ...orfaosSemDono] : arquivosDasContas;
 
   console.log(`\nContas a remover (${inventario.contas.length}):`);
   inventario.contas.forEach((c) => {
     console.log(`  - ${c.email}  [${(c.roles ?? []).join(", ") || "sem papel"}]`);
   });
+
+  console.log(`\nArquivos das contas removidas (${arquivosDasContas.length}):`);
+  arquivosDasContas.forEach((o) => console.log(`  - ${o.bucket_id}/${o.name}  (${o.bytes ?? "?"} bytes)`));
+
+  if (orfaosSemDono.length > 0) {
+    console.log(
+      `\n${ORFAOS ? "Órfãos da raiz de \"Pdfs\", TAMBÉM removidos (--orfaos)" : "ℹ  Órfãos na raiz de \"Pdfs\" — sem dono, NÃO serão tocados (use --orfaos)"}` +
+        ` (${orfaosSemDono.length}):`,
+    );
+    orfaosSemDono.forEach((o) => console.log(`  ${ORFAOS ? "-" : "  "} ${o.name}  (${o.bytes ?? "?"} bytes)`));
+  }
+
+  if (aRemover.length > 0 && !SERVICE_ROLE) {
+    console.log(
+      "\n⚠  SUPABASE_SERVICE_ROLE_KEY ausente: os arquivos acima NÃO sairão.\n" +
+        '   PowerShell:  $env:SUPABASE_SERVICE_ROLE_KEY = "sb_secret_..."',
+    );
+  }
 
   if (!APPLY) {
     console.log("\nSimulação concluída. Para executar de verdade:");
@@ -191,12 +241,47 @@ async function main() {
   const arquivo = path.join(dir, `purge-contas-${new Date().toISOString().slice(0, 10)}.json`);
   fs.writeFileSync(
     arquivo,
-    JSON.stringify({ gerado_em: new Date().toISOString(), preservados: KEEP, ...inventario, pdfs_orfaos: pdfsOrfaos }, null, 2),
+    JSON.stringify(
+      {
+        gerado_em: new Date().toISOString(),
+        preservados: KEEP,
+        ...inventario,
+        arquivos_removidos: aRemover,
+        orfaos_sem_dono: { removidos: ORFAOS, lista: orfaosSemDono },
+      },
+      null,
+      2,
+    ),
     "utf8",
   );
   console.log(`\nBackup gravado em ${path.relative(path.join(__dirname, ".."), arquivo)}`);
 
-  // 3. Remoção
+  // 2b. Os PDFs em si, baixados ANTES de sumirem. Sem isto o backup JSON
+  //     guardaria só o caminho de um arquivo que não existe mais.
+  const admin = SERVICE_ROLE
+    ? createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
+    : null;
+
+  const dirArquivos = arquivo.replace(/\.json$/, "-arquivos");
+  if (admin && aRemover.length > 0) {
+    console.log("\nBaixando os arquivos antes de apagar:");
+    for (const o of aRemover) {
+      const { data, error } = await admin.storage.from(o.bucket_id).download(o.name);
+      if (error || !data) {
+        throw new Error(
+          `não consegui baixar ${o.bucket_id}/${o.name} (${error?.message ?? "vazio"}) — ` +
+            "abortando ANTES de qualquer DELETE, para não apagar sem cópia",
+        );
+      }
+      const destino = path.join(dirArquivos, o.bucket_id, o.name);
+      fs.mkdirSync(path.dirname(destino), { recursive: true });
+      fs.writeFileSync(destino, Buffer.from(await data.arrayBuffer()));
+      console.log(`  ✓ ${o.bucket_id}/${o.name}`);
+    }
+    console.log(`  → ${path.relative(path.join(__dirname, ".."), dirArquivos)}`);
+  }
+
+  // 3. Remoção — banco primeiro, arquivos depois.
   console.log("\nRemovendo:");
   for (const [descricao, query] of PASSOS) {
     process.stdout.write(`  ${descricao} ... `);
@@ -204,14 +289,34 @@ async function main() {
     console.log("✓");
   }
 
+  if (admin && aRemover.length > 0) {
+    const porBucket = new Map();
+    for (const o of aRemover) {
+      if (!porBucket.has(o.bucket_id)) porBucket.set(o.bucket_id, []);
+      porBucket.get(o.bucket_id).push(o.name);
+    }
+    for (const [bucket, nomes] of porBucket) {
+      process.stdout.write(`  ${nomes.length} arquivo(s) do bucket ${bucket} ... `);
+      const { error } = await admin.storage.from(bucket).remove(nomes);
+      console.log(error ? `FALHOU: ${error.message}` : "✓");
+    }
+  }
+
   const restantes = await sql("SELECT email FROM auth.users ORDER BY email");
   console.log(`\n✓ Concluído. Contas restantes (${restantes.length}):`);
   restantes.forEach((u) => console.log(`  - ${u.email}`));
 
-  if (pdfsOrfaos.length > 0) {
-    console.log(`\n⚠  ${pdfsOrfaos.length} PDF(s) no bucket "Pdfs" pertenciam às contas removidas.`);
-    console.log("   O arquivo em si não sai por SQL — apague pelo painel (Storage → Pdfs):");
-    pdfsOrfaos.forEach((o) => console.log(`     ${o.name}`));
+  const sobraram = await sql(
+    `SELECT bucket_id, name FROM storage.objects ORDER BY bucket_id, name`,
+  );
+  console.log(`\nArquivos restantes no Storage (${sobraram.length}):`);
+  sobraram.forEach((o) => console.log(`  - ${o.bucket_id}/${o.name}`));
+
+  if (!admin && aRemover.length > 0) {
+    console.log(
+      `\n⚠  ${aRemover.length} arquivo(s) das contas removidas CONTINUAM no Storage` +
+        " (faltou SUPABASE_SERVICE_ROLE_KEY). Apague pelo painel ou rode de novo com a chave.",
+    );
   }
 }
 

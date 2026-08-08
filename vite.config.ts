@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // Carimbo do build: identifica exatamente qual bundle está no ar.
 // Gerado uma vez por execução do Vite e usado em dois lugares — a constante
 // __BUILD_ID__ (src/lib/config.ts) e a <meta name="build-id"> do index.html,
@@ -31,7 +33,7 @@ export default defineConfig({
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
-  plugins: [react(), carimbarBuildId()],
+  plugins: [react(), carimbarBuildId(), cloudflare()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

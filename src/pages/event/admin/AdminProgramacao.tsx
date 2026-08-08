@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  excluirItemProgramacao,
+  listarProgramacao,
+  salvarItemProgramacao,
+} from "@/services/programacaoService";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
-
-const sb = supabase;
 
 type Form = {
   id?: string; titulo: string; descricao: string; categoria: string;
@@ -23,19 +25,18 @@ export default function AdminProgramacao() {
 
   const list = useQuery({
     queryKey: ["admin-sched"],
-    queryFn: async () => (await sb.from("schedule").select("*").order("data").order("horario_inicio")).data ?? [],
+    queryFn: listarProgramacao,
   });
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       const { id, ...rest } = form;
-      if (id) { const { error } = await sb.from("schedule").update(rest).eq("id", id); if (error) throw error; }
-      else { const { error } = await sb.from("schedule").insert(rest); if (error) throw error; }
+      return salvarItemProgramacao(id, rest);
     },
     onSuccess: () => { toast.success("Salvo"); setOpen(false); setForm(empty); qc.invalidateQueries(); },
     onError: (e: Error) => toast.error(e.message),
   });
   const del = useMutation({
-    mutationFn: async (id: string) => { const { error } = await sb.from("schedule").delete().eq("id", id); if (error) throw error; },
+    mutationFn: excluirItemProgramacao,
     onSuccess: () => { toast.success("Removido"); qc.invalidateQueries(); },
   });
 

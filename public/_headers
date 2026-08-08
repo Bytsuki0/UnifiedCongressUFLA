@@ -13,6 +13,12 @@
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  # Sem includeSubDomains de propósito: em *.workers.dev o cabeçalho vale
+  # só para este host, e não queremos falar pelo domínio inteiro.
+  # NÃO substitui o "Always Use HTTPS" da zona: o HSTS só protege a
+  # PARTIR da segunda visita; a primeira requisição em http continua em
+  # claro até a zona redirecionar.
+  Strict-Transport-Security: max-age=31536000
 
 # O shell da SPA nunca pode ser cacheado: ele carrega /assets/index-<hash>.js.
 # Se o index.html ficar velho no cache, o navegador pede um hash que não
@@ -39,6 +45,13 @@
 /congresso/certificados
   X-Robots-Tag: noindex, nofollow
 /congresso/perfil
+  X-Robots-Tag: noindex, nofollow
+
+# Verificação de e-mail: a primeira é pública mas leva token na URL, a
+# segunda exige sessão. Nenhuma das duas deve entrar em índice de busca.
+/confirmar-email
+  X-Robots-Tag: noindex, nofollow
+/verifique-email
   X-Robots-Tag: noindex, nofollow
 
 /assets/*

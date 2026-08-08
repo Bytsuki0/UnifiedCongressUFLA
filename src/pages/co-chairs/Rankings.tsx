@@ -1,20 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Award, Medal } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  listarAvaliacoesParaRanking,
+  type RankingAvaliacao,
+} from "@/services/avaliacaoService";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-type RankingAvaliacao = {
-  nota_geral: number | null;
-  trabalhos: {
-    id: string;
-    titulo: string;
-    autores: string;
-    categorias: { id: string; nome: string } | null;
-  } | null;
-};
 
 type RankingItem = {
   trabalhoId: string;
@@ -31,19 +24,13 @@ const Rankings = () => {
 
   const carregar = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("avaliacoes")
-      .select("nota_geral, trabalhos(id, titulo, autores, categorias(id, nome))")
-      .not("nota_geral", "is", null);
-
-    if (error) {
+    try {
+      setAvaliacoes(await listarAvaliacoesParaRanking());
+    } catch {
       toast.error("Erro ao carregar rankings");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setAvaliacoes((data ?? []) as unknown as RankingAvaliacao[]);
-    setLoading(false);
   };
 
   useEffect(() => {

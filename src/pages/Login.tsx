@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveMyRole } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { APP_MARK, APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { portalDoPapel, saudacaoDoPapel } from "@/lib/portais";
+import { emailEstaConfirmado } from "@/services/verificacaoEmailService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -23,6 +25,9 @@ const Login = () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
     if (error) {
+      // "Email not confirmed" é do GoTrue e hoje não acontece: o autoconfirm
+      // está ligado e a confirmação é nossa, por RLS. Fica como rede de
+      // segurança caso alguém desligue o autoconfirm no painel.
       if (/email not confirmed/i.test(error.message)) {
         toast.error("Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.");
       } else {
@@ -32,21 +37,19 @@ const Login = () => {
       return;
     }
 
-    const profile = await resolveMyRole();
+    const [profile, confirmado] = await Promise.all([resolveMyRole(), emailEstaConfirmado()]);
 
-    if (profile === "admin") {
-      toast.success("Bem-vindo, Administrador!");
-      navigate("/admin");
-    } else if (profile === "avaliador") {
-      toast.success("Bem-vindo ao Dashboard!");
-      navigate("/co-chairs");
-    } else if (profile === "professor") {
-      toast.success("Bem-vindo ao Portal Revisor!");
-      navigate("/revisor");
-    } else {
-      toast.success("Bem-vindo ao Portal Estudante!");
-      navigate("/estudante");
+    // Login é permitido sem confirmar — o que o RLS recusa são os dados.
+    // Mandar direto para a sala de espera evita a tela vazia sem explicação.
+    if (confirmado === false) {
+      toast.info("Falta confirmar seu e-mail para liberar a conta.");
+      navigate("/verifique-email");
+      setLoading(false);
+      return;
     }
+
+    toast.success(saudacaoDoPapel(profile));
+    navigate(portalDoPapel(profile));
 
     setLoading(false);
   };

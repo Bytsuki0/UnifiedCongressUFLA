@@ -29,6 +29,8 @@ describe("títulos de página", () => {
     ["/congresso/admin", "Administração do congresso"],
     ["/congresso/admin/usuarios", "Usuários"],
     ["/estudante/correcao/abc-123", "Enviar correção"],
+    ["/confirmar-email", "Confirmar e-mail"],
+    ["/verifique-email", "Confirme seu e-mail"],
   ])("%s -> %s", (caminho, esperado) => {
     expect(tituloDaRota(caminho)).toBe(`${esperado} · ${APP_NAME}`);
   });

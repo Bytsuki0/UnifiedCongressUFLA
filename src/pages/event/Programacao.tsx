@@ -2,13 +2,11 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Calendar, Search, Filter, MapPin, Clock, User as UserIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { listarProgramacao } from "@/services/programacaoService";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/event/AppLayout";
 import { DecorativeBg } from "@/components/event/DecorativeBg";
 import { Logo } from "@/components/event/Logo";
-
-const sb = supabase;
 
 export default function Programacao() {
   const { user } = useAuth();
@@ -17,7 +15,7 @@ export default function Programacao() {
 
   const { data } = useQuery({
     queryKey: ["public-schedule"],
-    queryFn: async () => (await sb.from("schedule").select("*").order("data").order("horario_inicio")).data ?? [],
+    queryFn: listarProgramacao,
   });
 
   const cats = ["Todos", "Palestra", "Oficina", "Minicurso", "Mesa redonda", "Cerimônia"];
