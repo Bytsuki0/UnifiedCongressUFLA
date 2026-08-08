@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  enviarAvatar,
+  obterDadosDaConta,
+  obterPerfil,
+  salvarPerfil,
+  urlAssinadaDoAvatar,
+} from "@/services/perfilService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Upload, UserCircle2, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-
-const sb = supabase;
 
 const TIPO_POR_PAPEL: Record<string, string> = {
   admin: "Administrador",
@@ -24,22 +28,15 @@ export default function Perfil() {
   const qc = useQueryClient();
   const { data: profile } = useQuery({
     queryKey: ["profile", uid],
-    queryFn: async () => (await sb.from("profiles").select("*").eq("id", uid).maybeSingle()).data,
+    queryFn: () => obterPerfil(uid),
   });
 
   // Dados vindos do cadastro/login real (estudantes/professores/avaliadores).
   // Nome e curso são a fonte da verdade da conta logada.
   const { data: account } = useQuery({
     queryKey: ["account-perfil", email],
-    queryFn: async () => {
-      const est = (await sb.from("estudantes").select("nome, email, curso").eq("email", email).maybeSingle()).data;
-      if (est) return { nome: est.nome, curso: est.curso ?? "", instituicao: "UFLA", tipo: "Estudante" };
-      const prof = (await sb.from("professores").select("nome, email, departamento").eq("email", email).maybeSingle()).data;
-      if (prof) return { nome: prof.nome, curso: prof.departamento ?? "", instituicao: "UFLA", tipo: "Professor" };
-      const aval = (await sb.from("avaliadores").select("nome, email, instituicao").eq("email", email).maybeSingle()).data;
-      if (aval) return { nome: aval.nome, curso: "", instituicao: aval.instituicao ?? "", tipo: "Avaliador" };
-      return null;
-    },
+    queryFn: () => obterDadosDaConta(email!),
+    enabled: !!email,
   });
 
   const [form, setForm] = useState({ telefone: "", instituicao: "" });
@@ -55,33 +52,26 @@ export default function Perfil() {
       instituicao: profile?.instituicao ?? account?.instituicao ?? "",
     });
     if (profile?.foto_perfil) {
-      supabase.storage.from("avatars").createSignedUrl(profile.foto_perfil, 3600).then(({ data }) => {
-        setAvatarUrl(data?.signedUrl ?? null);
-      });
+      urlAssinadaDoAvatar(profile.foto_perfil).then(setAvatarUrl);
     }
   }, [profile, account]);
 
   const save = useMutation({
-    mutationFn: async () => {
-      // upsert so it works even when no profile row exists yet.
+    mutationFn: () =>
       // nome/curso vêm da conta logada e são gravados junto para manter o registro consistente.
-      const { error } = await sb.from("profiles").upsert(
-        { id: uid, email, nome, curso, ...form },
-        { onConflict: "id" },
-      );
-      if (error) throw error;
-    },
+      salvarPerfil({ userId: uid, email, nome, curso, ...form }),
     onSuccess: () => { toast.success("Perfil atualizado"); qc.invalidateQueries({ queryKey: ["profile", uid] }); },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const upload = async (file: File) => {
-    const path = `${uid}/avatar-${Date.now()}.${file.name.split(".").pop()}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) return toast.error(error.message);
-    await sb.from("profiles").upsert({ id: uid, email, nome: nome || (email ?? ""), foto_perfil: path }, { onConflict: "id" });
-    qc.invalidateQueries({ queryKey: ["profile", uid] });
-    toast.success("Foto atualizada");
+    try {
+      await enviarAvatar(uid, email, nome, file);
+      qc.invalidateQueries({ queryKey: ["profile", uid] });
+      toast.success("Foto atualizada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar a foto");
+    }
   };
 
   return (

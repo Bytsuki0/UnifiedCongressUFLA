@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateCertificatePdf } from "@/lib/certificate-pdf";
 import {
+  anexarPdfAoCertificado,
+  baixarTemplate,
+  enviarTemplate,
+  urlAssinadaDoCertificado,
+  urlAssinadaDoTemplate,
+} from "@/services/certificadosService";
+import {
   Award, CheckCircle2, GraduationCap, Calendar, ArrowLeft,
   Upload, Trash2, Search, FileText, ExternalLink,
 } from "lucide-react";
@@ -170,12 +177,7 @@ function ParticipantPicker({
   const uploadTemplate = async (file: File) => {
     setUploading(true);
     try {
-      const path = `${event.source}/${event.id}.pdf`;
-      const { error } = await supabase.storage.from("certificate-templates").upload(path, file, { upsert: true, contentType: "application/pdf" });
-      if (error) throw error;
-      const table = event.source === "minicourse" ? "minicourses" : "schedule";
-      const { error: upErr } = await sb.from(table).update({ certificate_template_url: path }).eq("id", event.id);
-      if (upErr) throw upErr;
+      const path = await enviarTemplate(event.source, event.id, file);
       setEvent({ ...event, template_url: path });
       toast.success("Template salvo");
       qc.invalidateQueries({ queryKey: ["admin-cert-minis"] });
@@ -189,8 +191,8 @@ function ParticipantPicker({
 
   const previewTemplate = async () => {
     if (!event.template_url) return;
-    const { data } = await supabase.storage.from("certificate-templates").createSignedUrl(event.template_url, 120);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await urlAssinadaDoTemplate(event.template_url);
+    if (url) window.open(url, "_blank");
   };
 
   const emit = useMutation({
@@ -198,9 +200,7 @@ function ParticipantPicker({
       // Load template once
       let templateBytes: Uint8Array | null = null;
       if (event.template_url) {
-        const { data, error } = await supabase.storage.from("certificate-templates").download(event.template_url);
-        if (error) throw error;
-        templateBytes = new Uint8Array(await data.arrayBuffer());
+        templateBytes = await baixarTemplate(event.template_url);
       }
 
       setProgress({ done: 0, total: selectedIds.length });
@@ -237,14 +237,8 @@ function ParticipantPicker({
           verifyUrl: `${origin}/congresso/verificar/${inserted.verification_code ?? ""}`,
         });
 
-        // 3) Upload PDF
-        const path = `${uid}/${inserted.id}-clickable.pdf`;
-        const { error: upErr } = await supabase.storage.from("certificates")
-          .upload(path, pdfBytes, { upsert: true, contentType: "application/pdf" });
-        if (upErr) throw upErr;
-
-        // 4) Save path
-        await sb.from("certificates").update({ arquivo_url: path }).eq("id", inserted.id);
+        // 3) Sobe o PDF e aponta o registro para ele
+        await anexarPdfAoCertificado(inserted.id, uid, pdfBytes);
         setProgress({ done: i + 1, total: selectedIds.length });
       }
     },
@@ -382,8 +376,8 @@ function IssuedList() {
   });
 
   const preview = async (path: string) => {
-    const { data } = await supabase.storage.from("certificates").createSignedUrl(path, 120);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await urlAssinadaDoCertificado(path);
+    if (url) window.open(url, "_blank");
   };
 
   const filtered = (list.data ?? []).filter((c) => {

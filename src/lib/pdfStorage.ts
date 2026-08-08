@@ -1,9 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PDF_BUCKET } from "@/lib/config";
 
 // Bucket privado onde os PDFs dos trabalhos são armazenados. O acesso é
 // feito exclusivamente por URLs assinadas com expiração (o bucket não é
-// mais público — SEC-05).
-export const PDF_BUCKET = import.meta.env.VITE_SUPABASE_PDF_BUCKET || "Pdfs";
+// mais público — SEC-05). O valor vive em config.ts; reexportado aqui
+// porque os componentes já importam daqui.
+export { PDF_BUCKET };
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1h
 

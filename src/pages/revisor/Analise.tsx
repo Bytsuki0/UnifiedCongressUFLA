@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ResultadoParecer } from "@/lib/types";
-import { AssociacaoComTrabalho, listarTrabalhosAssociados } from "@/services/revisorService";
+import { mapaCategorias } from "@/services/categoriasService";
+import {
+  AssociacaoComTrabalho,
+  listarResultadosDoRevisor,
+  listarTrabalhosAssociados,
+} from "@/services/revisorService";
 import { openPdf } from "@/lib/pdfStorage";
 import {
   RESULTADO_BADGE,
@@ -25,18 +29,14 @@ const Analise = () => {
     if (!user?.email) return;
     setLoading(true);
     try {
-      const [rows, { data: cats }, { data: pars }] = await Promise.all([
+      const [rows, cats, pars] = await Promise.all([
         listarTrabalhosAssociados(user.email),
-        supabase.from("categorias").select("id, nome"),
-        supabase.from("pareceres").select("trabalho_id, resultado").eq("revisor_email", user.email),
+        mapaCategorias(),
+        listarResultadosDoRevisor(user.email),
       ]);
       setAssocs(rows);
-      const map: Record<string, string> = {};
-      (cats ?? []).forEach((c) => { map[c.id] = c.nome; });
-      setCategorias(map);
-      const pmap: Record<string, ResultadoParecer> = {};
-      (pars ?? []).forEach((p) => { pmap[p.trabalho_id] = p.resultado as ResultadoParecer; });
-      setPareceres(pmap);
+      setCategorias(cats);
+      setPareceres(pars);
     } catch {
       toast.error("Erro ao carregar trabalhos associados.");
     } finally {

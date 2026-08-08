@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   LIMITE_TRABALHOS_POR_AVALIADOR,
   MAX_REVISORES_POR_TRABALHO,
@@ -11,11 +10,11 @@ import {
 } from "@/lib/types";
 import {
   associarRevisor,
-  carregarConflitos,
-  carregarPoolRevisores,
+  carregarPainelAtribuicoes,
   distribuirRevisoresAutomaticamente,
   indexarConflitos,
   MotivoConflito,
+  ParecerLite,
   removerRevisor,
   RevisorOption,
 } from "@/services/revisorService";
@@ -63,7 +62,6 @@ const TIPO_LABEL: Record<"avaliador" | "professor", string> = {
   professor: "Professor",
 };
 
-type ParecerLite = { trabalho_id: string; revisor_email: string; resultado: ResultadoParecer };
 
 const MOTIVO_TEXTO: Record<MotivoConflito, string> = {
   autor: "é autor deste trabalho",
@@ -85,18 +83,12 @@ const Atribuicoes = () => {
   const carregar = async () => {
     setLoading(true);
     try {
-      const [pool, { data: tr }, { data: rv }, { data: pa }, cfs] = await Promise.all([
-        carregarPoolRevisores(),
-        supabase.from("trabalhos").select("*").order("titulo"),
-        supabase.from("trabalho_revisores").select("*").order("created_at"),
-        supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
-        carregarConflitos(),
-      ]);
-      setRevisorOptions(pool);
-      setTrabalhos((tr ?? []) as Trabalho[]);
-      setRevisores((rv ?? []) as TrabalhoRevisor[]);
-      setPareceres((pa ?? []) as ParecerLite[]);
-      setConflitos(indexarConflitos(cfs));
+      const dados = await carregarPainelAtribuicoes();
+      setRevisorOptions(dados.pool);
+      setTrabalhos(dados.trabalhos);
+      setRevisores(dados.revisores);
+      setPareceres(dados.pareceres);
+      setConflitos(indexarConflitos(dados.conflitos));
     } catch (e) {
       toast.error("Erro ao carregar dados");
     } finally {

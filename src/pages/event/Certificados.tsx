@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/event/AppLayout";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  assinarMeusCertificados,
+  baixarCertificadoComoBlobUrl,
+  listarMeusCertificados,
+} from "@/services/certificadosService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Award, Download, Eye, Clock, X, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-
-const sb = supabase;
 
 export default function Certificados() {
   const { user } = useAuth();
@@ -15,22 +17,18 @@ export default function Certificados() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["my-certs", uid],
-    queryFn: async () => (await sb.from("certificates").select("*").eq("user_id", uid).order("created_at", { ascending: false })).data ?? [],
+    queryFn: () => listarMeusCertificados(uid),
   });
 
-  useEffect(() => {
-    const ch = supabase
-      .channel("my-certs-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "certificates", filter: `user_id=eq.${uid}` },
-        () => qc.invalidateQueries({ queryKey: ["my-certs", uid] }))
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [uid, qc]);
+  useEffect(
+    () => assinarMeusCertificados(uid, () => qc.invalidateQueries({ queryKey: ["my-certs", uid] })),
+    [uid, qc],
+  );
 
   const getBlobUrl = async (path: string) => {
-    const { data: file, error } = await supabase.storage.from("certificates").download(path);
-    if (error || !file) { toast.error("Não foi possível baixar o arquivo"); return null; }
-    return URL.createObjectURL(new Blob([file], { type: "application/pdf" }));
+    const url = await baixarCertificadoComoBlobUrl(path);
+    if (!url) toast.error("Não foi possível baixar o arquivo");
+    return url;
   };
 
   const closePreview = () => {

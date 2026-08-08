@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import { Bell, Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-type Notif = {
-  id: string;
-  title: string;
-  body: string;
-  link: string | null;
-  audience: "user" | "all";
-  created_at: string;
-};
+import {
+  assinarNotificacoes,
+  carregarNotificacoes,
+  marcarComoLida,
+  marcarVariasComoLidas,
+  type Notificacao as Notif,
+} from "@/services/notificacoesService";
 
 export function NotificationsBell() {
   const { user } = useAuth();
@@ -21,22 +18,19 @@ export function NotificationsBell() {
 
   const load = async () => {
     if (!user) return;
-    const [{ data: n }, { data: r }] = await Promise.all([
-      supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(30),
-      supabase.from("notification_reads").select("notification_id").eq("user_id", user.id),
-    ]);
-    setItems((n ?? []) as Notif[]);
-    setReadIds(new Set((r ?? []).map((x) => x.notification_id)));
+    try {
+      const { itens, lidas } = await carregarNotificacoes(user.id);
+      setItems(itens);
+      setReadIds(lidas);
+    } catch {
+      /* sino é acessório: falha não interrompe a navegação */
+    }
   };
 
   useEffect(() => {
     if (!user) return;
     load();
-    const ch = supabase
-      .channel("notifications-bell")
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return assinarNotificacoes(load);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -45,15 +39,15 @@ export function NotificationsBell() {
   const markRead = async (id: string) => {
     if (!user) return;
     setReadIds((s) => new Set(s).add(id));
-    await supabase.from("notification_reads").insert({ user_id: user.id, notification_id: id });
+    await marcarComoLida(user.id, id);
   };
 
   const markAll = async () => {
     if (!user) return;
-    const toInsert = unread.map((i) => ({ user_id: user.id, notification_id: i.id }));
-    if (toInsert.length === 0) return;
-    setReadIds(new Set([...readIds, ...toInsert.map((x) => x.notification_id)]));
-    await supabase.from("notification_reads").insert(toInsert);
+    const ids = unread.map((i) => i.id);
+    if (ids.length === 0) return;
+    setReadIds(new Set([...readIds, ...ids]));
+    await marcarVariasComoLidas(user.id, ids);
   };
 
   if (!user) return null;

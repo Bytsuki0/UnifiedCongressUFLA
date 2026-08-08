@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { submeterTrabalho } from "@/services/trabalhosService";
 import { toast } from "sonner";
-import { PDF_BUCKET } from "@/lib/pdfStorage";
 import { MAX_PDF_BYTES, useTrabalhos } from "./shared";
 
 const NovaSubmissao = () => {
@@ -42,22 +41,6 @@ const NovaSubmissao = () => {
     }
     setSubmitting(true);
 
-    // 1. Envia o PDF ao bucket privado, na pasta do próprio usuário
-    //    (exigido pela política RLS do Storage). A tabela guarda o
-    //    caminho do objeto; o acesso é feito por URL assinada.
-    const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${user.id}/${Date.now()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage
-      .from(PDF_BUCKET)
-      .upload(path, selectedFile, { contentType: "application/pdf", upsert: false });
-
-    if (uploadError) {
-      toast.error("Erro ao enviar o PDF. Tente novamente.");
-      setSubmitting(false);
-      return;
-    }
-
-    // 2. Insere o trabalho na tabela, com coautores e orientador.
     const coautores = coauthors
       .map(c => ({ nome: c.nome.trim(), email: c.email.trim() }))
       .filter(c => c.nome || c.email);
@@ -66,36 +49,25 @@ const NovaSubmissao = () => {
       ...coautores.filter(c => c.nome).map(c => c.nome),
     ].join(", ");
 
-    const { data: novo, error } = await supabase.from("trabalhos").insert({
-      titulo: form.titulo,
-      resumo: form.resumo,
-      categoria_id: form.categoria,
-      autores,
-      orientador_email: form.orientador.trim() || null,
-      coautores,
-      pdf_url: path,
-      data_submissao: new Date().toISOString().split("T")[0],
-      status: "pendente",
-    }).select("id").single();
-
-    if (error) {
-      toast.error("Erro ao submeter trabalho. Tente novamente.");
-    } else {
+    try {
+      await submeterTrabalho({
+        titulo: form.titulo,
+        resumo: form.resumo,
+        categoriaId: form.categoria,
+        autores,
+        orientadorEmail: form.orientador.trim() || null,
+        coautores,
+        arquivo: selectedFile,
+        ownerId: user.id,
+      });
       toast.success("Trabalho submetido com sucesso!");
-      // Distribuição automática de revisores agora roda no servidor
-      // (RPC SECURITY DEFINER) — o estudante não tem mais acesso às
-      // tabelas de revisores. Best-effort: falha não bloqueia o envio.
-      if (novo?.id) {
-        try {
-          await supabase.rpc("distribuir_revisores", { _trabalho_id: novo.id });
-        } catch {
-          /* distribuição automática silenciosa */
-        }
-      }
       navigate("/estudante/historico");
-      return;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao submeter trabalho. Tente novamente.",
+      );
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (

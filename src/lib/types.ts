@@ -1,16 +1,15 @@
-export type Avaliador = {
-  id: string;
-  nome: string;
-  email: string;
-  instituicao: string;
-  created_at: string;
-};
+import type { Tables } from "@/integrations/supabase/types";
 
-export type Categoria = {
-  id: string;
-  nome: string;
-  created_at: string;
-};
+/**
+ * Tipos de linha derivados do schema gerado (`npm run gen:types`).
+ *
+ * Antes eram redigitados à mão aqui e tinham saído de sincronia com o
+ * banco — `Trabalho` não declarava status/owner_id/coautores/pdf_url e
+ * dava categoria_id como não-nulo, sendo que a coluna aceita NULL.
+ * Derivar do gerado faz o TypeScript acusar a divergência na próxima vez.
+ */
+export type Avaliador = Tables<"avaliadores">;
+export type Categoria = Tables<"categorias">;
 
 export type Criterio = {
   id: string;
@@ -20,15 +19,7 @@ export type Criterio = {
   created_at: string;
 };
 
-export type Trabalho = {
-  id: string;
-  titulo: string;
-  resumo: string;
-  autores: string;
-  categoria_id: string;
-  data_submissao: string;
-  created_at: string;
-};
+export type Trabalho = Tables<"trabalhos">;
 
 export type Professor = {
   id: string;

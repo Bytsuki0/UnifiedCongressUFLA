@@ -4,6 +4,21 @@
 # impede a visita do robô, não a indexação da URL). Como a aplicação é
 # client-side, não há como emitir <meta name="robots"> por rota — o
 # cabeçalho HTTP resolve isso no servidor.
+#
+# Quando mais de uma regra casa com o mesmo caminho, o Pages aplica todas.
+# Por isso a regra /* traz só cabeçalhos de segurança (sem Cache-Control):
+# um Cache-Control aqui colidiria com o de /assets/*.
+
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# O shell da SPA nunca pode ser cacheado: ele carrega /assets/index-<hash>.js.
+# Se o index.html ficar velho no cache, o navegador pede um hash que não
+# existe mais depois do deploy seguinte e a página quebra em branco.
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /estudante/*
   X-Robots-Tag: noindex, nofollow

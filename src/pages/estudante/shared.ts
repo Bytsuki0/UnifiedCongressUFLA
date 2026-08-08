@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { listarTrabalhosDoAutorComCategorias } from "@/services/trabalhosService";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Tipos e helpers compartilhados pelas páginas do Portal do Estudante.
@@ -69,23 +69,18 @@ export function useTrabalhos() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [resTrabalhos, resCategorias] = await Promise.all([
-      ownerId
-        ? supabase
-            .from("trabalhos")
-            .select("*")
-            .eq("owner_id", ownerId)
-            .order("created_at", { ascending: false })
-        : null,
-      supabase.from("categorias").select("*").order("nome"),
-    ]);
-    const rows: Submission[] = (resTrabalhos?.data ?? []).map((r) => ({
-      ...r,
-      coautores: Array.isArray(r.coautores) ? (r.coautores as Coautor[]) : [],
-    }));
-    setTrabalhos(rows);
-    setCategorias(resCategorias.data ?? []);
-    setLoading(false);
+    try {
+      const dados = await listarTrabalhosDoAutorComCategorias(ownerId);
+      setTrabalhos(
+        dados.trabalhos.map((r) => ({
+          ...r,
+          coautores: Array.isArray(r.coautores) ? (r.coautores as Coautor[]) : [],
+        })) as Submission[],
+      );
+      setCategorias(dados.categorias);
+    } finally {
+      setLoading(false);
+    }
   }, [ownerId]);
 
   useEffect(() => {

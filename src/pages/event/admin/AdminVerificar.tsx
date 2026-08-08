@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/event/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { generateCertificatePdf } from "@/lib/certificate-pdf";
+import { anexarPdfAoCertificado, baixarTemplate } from "@/services/certificadosService";
 import { Camera, X, Search, CheckCircle2, XCircle, Users, Award, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -254,11 +255,7 @@ export default function AdminVerificar() {
 
         let templateBytes: Uint8Array | null = null;
         if (eventInfo?.template_url) {
-          const { data: template, error: tplErr } = await supabase.storage
-            .from("certificate-templates")
-            .download(eventInfo.template_url);
-          if (tplErr) throw tplErr;
-          templateBytes = new Uint8Array(await template.arrayBuffer());
+          templateBytes = await baixarTemplate(eventInfo.template_url);
         }
 
         const today = new Date().toLocaleDateString("pt-BR");
@@ -272,16 +269,7 @@ export default function AdminVerificar() {
             verificationCode: cert.verification_code ?? "",
             verifyUrl: `${origin}/congresso/verificar/${cert.verification_code ?? ""}`,
           });
-          const path = `${cert.user_id}/${cert.id}-clickable.pdf`;
-          const { error: uploadErr } = await supabase.storage
-            .from("certificates")
-            .upload(path, pdfBytes, { upsert: true, contentType: "application/pdf" });
-          if (uploadErr) throw uploadErr;
-          const { error: updateErr } = await sb
-            .from("certificates")
-            .update({ arquivo_url: path })
-            .eq("id", cert.id);
-          if (updateErr) throw updateErr;
+          await anexarPdfAoCertificado(cert.id, cert.user_id, pdfBytes);
         }
       }
     } catch (e) {

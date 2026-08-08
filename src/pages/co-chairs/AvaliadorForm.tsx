@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, UserCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  AvaliadorDuplicadoError,
+  listarProfessoresElegiveis,
+  promoverProfessor,
+  type ProfessorElegivel as Professor,
+} from "@/services/avaliadoresService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-
-type Professor = {
-  id: string;
-  nome: string;
-  email: string;
-  departamento: string;
-};
 
 const AvaliadorForm = () => {
   const navigate = useNavigate();
@@ -22,22 +20,13 @@ const AvaliadorForm = () => {
 
   const load = async () => {
     setLoading(true);
-
-    const [profRes, avalRes] = await Promise.all([
-      supabase.from("professores").select("id, nome, email, departamento").order("nome"),
-      supabase.from("avaliadores").select("email"),
-    ]);
-
-    if (profRes.error) {
+    try {
+      setProfessors(await listarProfessoresElegiveis());
+    } catch {
       toast.error("Erro ao carregar professores");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const avalEmails = new Set<string>((avalRes.data ?? []).map((a) => a.email));
-    const eligible = (profRes.data ?? []).filter((p: Professor) => !avalEmails.has(p.email));
-    setProfessors(eligible);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -46,20 +35,17 @@ const AvaliadorForm = () => {
 
   const promover = async (prof: Professor) => {
     setPromoting(prof.id);
-    const { error } = await supabase.from("avaliadores").insert({
-      nome: prof.nome,
-      email: prof.email,
-      instituicao: prof.departamento || "UFLA",
-    });
-
-    if (error) {
-      if (error.code === "23505") toast.error("Este professor já é avaliador");
-      else toast.error("Erro ao promover professor");
-    } else {
+    try {
+      await promoverProfessor(prof);
       toast.success(`${prof.nome} agora é avaliador!`);
       navigate("/co-chairs/avaliadores");
+    } catch (err) {
+      toast.error(
+        err instanceof AvaliadorDuplicadoError ? err.message : "Erro ao promover professor",
+      );
+    } finally {
+      setPromoting(null);
     }
-    setPromoting(null);
   };
 
   return (

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PdfViewer } from "@/components/PdfViewer";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Criterio,
@@ -10,6 +9,7 @@ import {
   ResultadoParecer,
   RESULTADO_OPTIONS,
 } from "@/lib/types";
+import { mapaCategorias } from "@/services/categoriasService";
 import {
   AssociacaoComTrabalho,
   listarCriterios,
@@ -40,13 +40,8 @@ const AnaliseDetalhe = () => {
   const carregar = useCallback(async () => {
     if (!id) return;
     try {
-      const [a, { data: cats }] = await Promise.all([
-        obterAssociacao(id),
-        supabase.from("categorias").select("id, nome"),
-      ]);
-      const map: Record<string, string> = {};
-      (cats ?? []).forEach((c) => { map[c.id] = c.nome; });
-      setCategorias(map);
+      const [a, cats] = await Promise.all([obterAssociacao(id), mapaCategorias()]);
+      setCategorias(cats);
 
       const trab = a?.trabalho;
       if (!trab) {

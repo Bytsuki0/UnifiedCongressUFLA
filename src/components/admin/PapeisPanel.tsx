@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  concederPapel,
+  listarContasComPapeis,
+  revogarPapel,
+  type Conta,
+} from "@/services/papeisService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { UserRole } from "@/contexts/AuthContext";
@@ -14,13 +19,6 @@ const ROLES: { value: UserRole; label: string; hint: string }[] = [
   { value: "externo", label: "Externo", hint: "Somente a área do congresso" },
 ];
 
-type Conta = {
-  id: string;
-  nome: string | null;
-  email: string | null;
-  roles: UserRole[];
-};
-
 /**
  * Gestão de papéis. Vive no Portal Admin (/admin/papeis) porque conceder
  * `avaliador`/`professor` é o que coloca a conta no pool de revisores —
@@ -33,33 +31,15 @@ export function PapeisPanel() {
 
   const { data: contas, isLoading } = useQuery<Conta[]>({
     queryKey: ["admin-papeis"],
-    queryFn: async () => {
-      const [{ data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id, nome, email").order("nome"),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      const porUsuario = new Map<string, UserRole[]>();
-      ((roles ?? []) as { user_id: string; role: UserRole }[]).forEach((r) => {
-        porUsuario.set(r.user_id, [...(porUsuario.get(r.user_id) ?? []), r.role]);
-      });
-      return ((profiles ?? []) as Omit<Conta, "roles">[]).map((p) => ({
-        ...p,
-        roles: porUsuario.get(p.id) ?? [],
-      }));
-    },
+    queryFn: listarContasComPapeis,
   });
 
   // A gravação em user_roles é restrita ao admin por RLS — a interface
   // apenas reflete isso; quem manda é o banco.
   const alternar = useMutation({
     mutationFn: async ({ conta, role, tinha }: { conta: Conta; role: UserRole; tinha: boolean }) => {
-      if (tinha) {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", conta.id).eq("role", role);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("user_roles").insert({ user_id: conta.id, role });
-        if (error) throw error;
-      }
+      if (tinha) await revogarPapel(conta.id, role);
+      else await concederPapel(conta.id, role);
     },
     onSuccess: (_d, v) => {
       toast.success(`${v.tinha ? "Removido" : "Concedido"}: ${v.role} · ${v.conta.email ?? v.conta.id}`);

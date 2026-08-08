@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { listarCategorias } from "@/services/categoriasService";
+import {
+  atualizarTrabalho,
+  criarTrabalhoPelaOrganizacao,
+  obterTrabalho,
+} from "@/services/trabalhosService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,20 +50,19 @@ const TrabalhoForm = () => {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("categorias").select("*").order("nome");
-      setCategorias(data ?? []);
+      try {
+        setCategorias(await listarCategorias());
+      } catch {
+        setCategorias([]);
+      }
     })();
   }, []);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("trabalhos")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error || !data) {
+      const data = await obterTrabalho(id).catch(() => null);
+      if (!data) {
         toast.error("Trabalho não encontrado");
         navigate("/co-chairs/trabalhos");
         return;
@@ -94,16 +98,16 @@ const TrabalhoForm = () => {
       categoria_id: parsed.data.categoria_id,
       data_submissao: parsed.data.data_submissao,
     };
-    const { error } = isEdit
-      ? await supabase.from("trabalhos").update(payload).eq("id", id!)
-      : await supabase.from("trabalhos").insert(payload);
-
-    if (error) toast.error(isEdit ? "Erro ao atualizar" : "Erro ao cadastrar");
-    else {
+    try {
+      if (isEdit) await atualizarTrabalho(id!, payload);
+      else await criarTrabalhoPelaOrganizacao(payload);
       toast.success(isEdit ? "Trabalho atualizado" : "Trabalho cadastrado");
       navigate("/co-chairs/trabalhos");
+    } catch {
+      toast.error(isEdit ? "Erro ao atualizar" : "Erro ao cadastrar");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (

@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  carregarConflitos,
-  indexarConflitos,
-  removerRevisor,
+  carregarPainelConflitos,
+  desfazerAssociacaoEmConflito,
+  type LinhaConflito as Linha,
   type MotivoConflito,
 } from "@/services/revisorService";
 
@@ -12,15 +11,6 @@ const MOTIVO_LABEL: Record<MotivoConflito, string> = {
   autor: "Autor",
   orientador: "Orientador",
   coautor: "Coautor",
-};
-
-type Linha = {
-  trabalhoId: string;
-  titulo: string;
-  email: string;
-  motivo: MotivoConflito;
-  /** Preenchido só quando a pessoa impedida ESTÁ associada como revisora. */
-  associacaoId?: string;
 };
 
 /**
@@ -34,59 +24,11 @@ export function ConflitosPanel() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-conflitos"],
-    queryFn: async () => {
-      const [conflitos, { data: trabalhos }, { data: assocs }] = await Promise.all([
-        carregarConflitos(),
-        supabase.from("trabalhos").select("id, titulo"),
-        supabase.from("trabalho_revisores").select("id, trabalho_id, revisor_email"),
-      ]);
-
-      const titulos = new Map((trabalhos ?? []).map((t) => [t.id, t.titulo]));
-      const porTrabalho = indexarConflitos(conflitos);
-
-      // Associações que hoje violam a regra (dados anteriores ao trigger
-      // ou trabalho editado depois da atribuição).
-      const violacoes: Linha[] = [];
-      (assocs ?? []).forEach((a) => {
-        const motivo = porTrabalho.get(a.trabalho_id)?.get(a.revisor_email.toLowerCase());
-        if (motivo) {
-          violacoes.push({
-            trabalhoId: a.trabalho_id,
-            titulo: titulos.get(a.trabalho_id) ?? "Trabalho removido",
-            email: a.revisor_email,
-            motivo,
-            associacaoId: a.id,
-          });
-        }
-      });
-
-      const bloqueios: Linha[] = conflitos
-        .filter((c) => titulos.has(c.trabalho_id))
-        .map((c) => ({
-          trabalhoId: c.trabalho_id,
-          titulo: titulos.get(c.trabalho_id) as string,
-          email: c.email,
-          motivo: c.motivo,
-        }))
-        .sort((a, b) => a.titulo.localeCompare(b.titulo) || a.email.localeCompare(b.email));
-
-      return { violacoes, bloqueios };
-    },
+    queryFn: carregarPainelConflitos,
   });
 
-  // Remove a associação e o parecer que ela porventura gerou — um
-  // parecer emitido por quem nunca poderia avaliar o trabalho não pode
-  // continuar contando nas Atribuições nem nos Rankings.
   const desfazer = useMutation({
-    mutationFn: async (l: Linha) => {
-      const { error } = await supabase
-        .from("pareceres")
-        .delete()
-        .eq("trabalho_id", l.trabalhoId)
-        .ilike("revisor_email", l.email);
-      if (error) throw error;
-      await removerRevisor(l.associacaoId as string);
-    },
+    mutationFn: desfazerAssociacaoEmConflito,
     onSuccess: () => {
       toast.success("Associação em conflito removida.");
       qc.invalidateQueries({ queryKey: ["admin-conflitos"] });

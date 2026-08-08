@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { excluirAvaliador, listarAvaliadores } from "@/services/avaliadoresService";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,13 +25,13 @@ const Avaliadores = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("avaliadores")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) toast.error("Erro ao carregar co-chairs");
-    else setAvaliadores(data ?? []);
-    setLoading(false);
+    try {
+      setAvaliadores(await listarAvaliadores());
+    } catch {
+      toast.error("Erro ao carregar co-chairs");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -40,11 +40,12 @@ const Avaliadores = () => {
 
   const confirmDelete = async () => {
     if (!toDelete) return;
-    const { error } = await supabase.from("avaliadores").delete().eq("id", toDelete.id);
-    if (error) toast.error("Erro ao excluir");
-    else {
+    try {
+      await excluirAvaliador(toDelete.id);
       toast.success("Co-chair excluído");
       load();
+    } catch {
+      toast.error("Erro ao excluir");
     }
     setToDelete(null);
   };

@@ -7,6 +7,7 @@ import {
   Parecer,
   ParecerItem,
   ResultadoParecer,
+  Trabalho,
   TrabalhoRevisor,
 } from "@/lib/types";
 
@@ -334,4 +335,137 @@ export async function distribuirRevisoresAutomaticamente(
   }
 
   return criados;
+}
+
+/**
+ * Parecer reduzido ao que a tela de Atribuições precisa exibir.
+ * `resultado` é NOT NULL no banco — um parecer sempre nasce com veredito.
+ */
+export type ParecerLite = {
+  trabalho_id: string;
+  revisor_email: string;
+  resultado: ResultadoParecer;
+};
+
+/**
+ * Carga completa da tela de Atribuições: pool, trabalhos, associações,
+ * pareceres e conflitos numa só ida.
+ *
+ * Vão todas em paralelo porque a tela só renderiza com o conjunto
+ * completo — encadeá-las só somaria latência.
+ */
+export async function carregarPainelAtribuicoes(): Promise<{
+  pool: RevisorOption[];
+  trabalhos: Trabalho[];
+  revisores: TrabalhoRevisor[];
+  pareceres: ParecerLite[];
+  conflitos: Conflito[];
+}> {
+  const [pool, tr, rv, pa, conflitos] = await Promise.all([
+    carregarPoolRevisores(),
+    supabase.from("trabalhos").select("*").order("titulo"),
+    supabase.from("trabalho_revisores").select("*").order("created_at"),
+    supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
+    carregarConflitos(),
+  ]);
+  if (tr.error || rv.error || pa.error) throw tr.error ?? rv.error ?? pa.error;
+  return {
+    pool,
+    trabalhos: tr.data ?? [],
+    revisores: (rv.data ?? []) as TrabalhoRevisor[],
+    pareceres: (pa.data ?? []) as ParecerLite[],
+    conflitos,
+  };
+}
+
+/** Linha do painel de conflitos do Admin. */
+export type LinhaConflito = {
+  trabalhoId: string;
+  titulo: string;
+  email: string;
+  motivo: MotivoConflito;
+  /** Preenchido só quando a pessoa impedida ESTÁ associada como revisora. */
+  associacaoId?: string;
+};
+
+/**
+ * Painel de conflitos: separa o que é apenas um bloqueio previsto do que
+ * é uma violação já materializada.
+ *
+ * A regra é aplicada por trigger no banco (`trg_conflito_revisor`), então
+ * uma associação em violação só existe se o trabalho foi editado DEPOIS
+ * de o revisor ter sido associado — por isso essas linhas ganham ação de
+ * desfazer e as outras não.
+ */
+export async function carregarPainelConflitos(): Promise<{
+  violacoes: LinhaConflito[];
+  bloqueios: LinhaConflito[];
+}> {
+  const [conflitos, trabalhos, assocs] = await Promise.all([
+    carregarConflitos(),
+    supabase.from("trabalhos").select("id, titulo"),
+    supabase.from("trabalho_revisores").select("id, trabalho_id, revisor_email"),
+  ]);
+  if (trabalhos.error || assocs.error) throw trabalhos.error ?? assocs.error;
+
+  const titulos = new Map((trabalhos.data ?? []).map((t) => [t.id, t.titulo]));
+  const porTrabalho = indexarConflitos(conflitos);
+
+  const violacoes: LinhaConflito[] = [];
+  for (const a of assocs.data ?? []) {
+    const motivo = porTrabalho.get(a.trabalho_id)?.get(a.revisor_email.toLowerCase());
+    if (motivo) {
+      violacoes.push({
+        trabalhoId: a.trabalho_id,
+        titulo: titulos.get(a.trabalho_id) ?? "Trabalho removido",
+        email: a.revisor_email,
+        motivo,
+        associacaoId: a.id,
+      });
+    }
+  }
+
+  const bloqueios: LinhaConflito[] = conflitos
+    .filter((c) => titulos.has(c.trabalho_id))
+    .map((c) => ({
+      trabalhoId: c.trabalho_id,
+      titulo: titulos.get(c.trabalho_id) as string,
+      email: c.email,
+      motivo: c.motivo,
+    }))
+    .sort((a, b) => a.titulo.localeCompare(b.titulo) || a.email.localeCompare(b.email));
+
+  return { violacoes, bloqueios };
+}
+
+/**
+ * Desfaz uma associação em conflito, apagando antes o parecer que ela
+ * porventura gerou: um parecer emitido por quem nunca poderia avaliar o
+ * trabalho não pode seguir contando nas Atribuições nem nos Rankings.
+ */
+export async function desfazerAssociacaoEmConflito(linha: LinhaConflito): Promise<void> {
+  const { error } = await supabase
+    .from("pareceres")
+    .delete()
+    .eq("trabalho_id", linha.trabalhoId)
+    .ilike("revisor_email", linha.email);
+  if (error) throw error;
+  await removerRevisor(linha.associacaoId as string);
+}
+
+/**
+ * Resultado dos pareceres já emitidos por um revisor, indexado por
+ * trabalho — usado para marcar "já avaliado" na lista de análise.
+ */
+export async function listarResultadosDoRevisor(
+  email: string,
+): Promise<Record<string, ResultadoParecer>> {
+  const { data, error } = await supabase
+    .from("pareceres")
+    .select("trabalho_id, resultado")
+    .eq("revisor_email", email);
+  if (error) throw error;
+  return Object.fromEntries(
+    (data ?? []).map((p) => [p.trabalho_id, p.resultado as ResultadoParecer]),
+  );
 }

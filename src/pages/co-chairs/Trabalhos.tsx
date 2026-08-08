@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { excluirTrabalho, listarTrabalhosComCategorias } from "@/services/trabalhosService";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,14 +27,15 @@ const Trabalhos = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: t, error: e1 }, { data: c, error: e2 }] = await Promise.all([
-      supabase.from("trabalhos").select("*").order("created_at", { ascending: false }),
-      supabase.from("categorias").select("*").order("nome"),
-    ]);
-    if (e1 || e2) toast.error("Erro ao carregar dados");
-    setTrabalhos(t ?? []);
-    setCategorias(c ?? []);
-    setLoading(false);
+    try {
+      const dados = await listarTrabalhosComCategorias();
+      setTrabalhos(dados.trabalhos);
+      setCategorias(dados.categorias);
+    } catch {
+      toast.error("Erro ao carregar dados");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -46,11 +47,12 @@ const Trabalhos = () => {
 
   const confirmDelete = async () => {
     if (!toDelete) return;
-    const { error } = await supabase.from("trabalhos").delete().eq("id", toDelete.id);
-    if (error) toast.error("Erro ao excluir");
-    else {
+    try {
+      await excluirTrabalho(toDelete.id);
       toast.success("Trabalho excluído");
       load();
+    } catch {
+      toast.error("Erro ao excluir");
     }
     setToDelete(null);
   };

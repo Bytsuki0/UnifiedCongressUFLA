@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { obterCategoria, obterTrabalho } from "@/services/trabalhosService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +16,14 @@ const TrabalhoDetalhe = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
-      const { data, error } = await supabase.from("trabalhos").select("*").eq("id", id).maybeSingle();
-      if (error || !data) {
+      const data = await obterTrabalho(id).catch(() => null);
+      if (!data) {
         toast.error("Trabalho não encontrado");
         return;
       }
       setTrabalho(data);
       if (data.categoria_id) {
-        const { data: c } = await supabase.from("categorias").select("*").eq("id", data.categoria_id).maybeSingle();
-        setCategoria(c);
+        setCategoria(await obterCategoria(data.categoria_id).catch(() => null));
       }
     })();
   }, [id]);

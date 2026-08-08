@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Tags, Plus, Trash2, Save, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  carregarCategorias,
+  criarCategoria,
+  excluirCategoria,
+  excluirCriterio,
+  salvarCriterios,
+  type CategoriaComCriterios,
+  type Criterio,
+} from "@/services/categoriasService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,9 +34,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-type Criterio = { id?: string; ordem: number; titulo: string };
-type CategoriaComCriterios = { id: string; nome: string; criterios: Criterio[] };
-
 const emptyCriterios = (): Criterio[] =>
   Array.from({ length: 5 }, (_, i) => ({ ordem: i + 1, titulo: "" }));
 
@@ -47,28 +52,15 @@ const Categorias = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cats, error: e1 }, { data: crits, error: e2 }, { data: tr, error: e3 }] =
-      await Promise.all([
-        supabase.from("categorias").select("id, nome").order("nome"),
-        supabase.from("criterios").select("id, categoria_id, ordem, titulo"),
-        supabase.from("trabalhos").select("id, categoria_id"),
-      ]);
-    if (e1 || e2 || e3) toast.error("Erro ao carregar categorias");
-
-    const byCat: Record<string, Criterio[]> = {};
-    (crits ?? []).forEach((cr) => {
-      (byCat[cr.categoria_id] ??= []).push({ id: cr.id, ordem: cr.ordem, titulo: cr.titulo });
-    });
-    Object.values(byCat).forEach((list) => list.sort((a, b) => a.ordem - b.ordem));
-
-    const cnt: Record<string, number> = {};
-    (tr ?? []).forEach((t) => {
-      if (t.categoria_id) cnt[t.categoria_id] = (cnt[t.categoria_id] ?? 0) + 1;
-    });
-
-    setCategorias((cats ?? []).map((c) => ({ id: c.id, nome: c.nome, criterios: byCat[c.id] ?? [] })));
-    setCounts(cnt);
-    setLoading(false);
+    try {
+      const { categorias: cats, contagens } = await carregarCategorias();
+      setCategorias(cats);
+      setCounts(contagens);
+    } catch {
+      toast.error("Erro ao carregar categorias");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -98,8 +90,9 @@ const Categorias = () => {
     const cat = categorias.find((c) => c.id === catId);
     const cr = cat?.criterios[idx];
     if (cr?.id) {
-      const { error } = await supabase.from("criterios").delete().eq("id", cr.id);
-      if (error) {
+      try {
+        await excluirCriterio(cr.id);
+      } catch {
         toast.error("Erro ao remover critério");
         return;
       }
@@ -117,19 +110,14 @@ const Categorias = () => {
       return;
     }
     setSavingId(cat.id);
-    const results = await Promise.all(
-      cat.criterios.map((cr, i) => {
-        const payload = { ordem: i + 1, titulo: cr.titulo.trim() };
-        return cr.id
-          ? supabase.from("criterios").update(payload).eq("id", cr.id)
-          : supabase.from("criterios").insert({ ...payload, categoria_id: cat.id });
-      }),
-    );
-    setSavingId(null);
-    if (results.some((r) => r.error)) toast.error("Erro ao salvar critérios");
-    else {
+    try {
+      await salvarCriterios(cat.id, cat.criterios);
       toast.success("Critérios salvos");
       load();
+    } catch {
+      toast.error("Erro ao salvar critérios");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -140,38 +128,33 @@ const Categorias = () => {
       return;
     }
     setCreating(true);
-    const { data: cat, error } = await supabase
-      .from("categorias")
-      .insert({ nome: newNome.trim() })
-      .select()
-      .single();
-    if (error || !cat) {
+    try {
+      const { criteriosComErro } = await criarCategoria(newNome, newCriterios);
+      if (criteriosComErro) {
+        toast.error("Categoria criada, mas houve erro ao salvar os critérios.");
+      }
+      toast.success("Categoria criada");
+      setDialogOpen(false);
+      setNewNome("");
+      setNewCriterios(emptyCriterios());
+      load();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao criar categoria (o nome já existe?).",
+      );
+    } finally {
       setCreating(false);
-      toast.error("Erro ao criar categoria (o nome já existe?).");
-      return;
     }
-    const rows = newCriterios
-      .map((c, i) => ({ categoria_id: cat.id, ordem: i + 1, titulo: c.titulo.trim() }))
-      .filter((c) => c.titulo);
-    if (rows.length) {
-      const { error: e2 } = await supabase.from("criterios").insert(rows);
-      if (e2) toast.error("Categoria criada, mas houve erro ao salvar os critérios.");
-    }
-    setCreating(false);
-    toast.success("Categoria criada");
-    setDialogOpen(false);
-    setNewNome("");
-    setNewCriterios(emptyCriterios());
-    load();
   };
 
   const confirmDelete = async () => {
     if (!toDelete) return;
-    const { error } = await supabase.from("categorias").delete().eq("id", toDelete.id);
-    if (error) toast.error("Erro ao excluir categoria");
-    else {
+    try {
+      await excluirCategoria(toDelete.id);
       toast.success("Categoria excluída");
       load();
+    } catch {
+      toast.error("Erro ao excluir categoria");
     }
     setToDelete(null);
   };

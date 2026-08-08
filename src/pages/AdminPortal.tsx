@@ -4,6 +4,10 @@ import { PortaisNav } from "@/components/PortaisNav";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  atualizarStatusDoTrabalho,
+  listarTrabalhosComCategorias,
+} from "@/services/trabalhosService";
 import { toast } from "sonner";
 import { APP_SHORT } from "@/lib/brand";
 
@@ -57,13 +61,15 @@ const AdminPortal = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: t }, { data: c }] = await Promise.all([
-      supabase.from("trabalhos").select("*").order("created_at", { ascending: false }),
-      supabase.from("categorias").select("*").order("nome"),
-    ]);
-    setTrabalhos(t ?? []);
-    setCategorias(c ?? []);
-    setLoading(false);
+    try {
+      const dados = await listarTrabalhosComCategorias();
+      setTrabalhos(dados.trabalhos);
+      setCategorias(dados.categorias);
+    } catch {
+      toast.error("Erro ao carregar dados");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -94,9 +100,13 @@ const AdminPortal = () => {
   );
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("trabalhos").update({ status }).eq("id", id);
-    if (error) toast.error("Erro ao atualizar status");
-    else { toast.success("Status atualizado"); await loadData(); }
+    try {
+      await atualizarStatusDoTrabalho(id, status);
+      toast.success("Status atualizado");
+      await loadData();
+    } catch {
+      toast.error("Erro ao atualizar status");
+    }
   };
 
   const exportCSV = () => {
