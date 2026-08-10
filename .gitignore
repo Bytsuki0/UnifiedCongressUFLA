@@ -54,8 +54,10 @@ supabase/backups/
 .dev.vars*
 !.dev.vars.example
 !.env.example
-#email-verification/*
-#email-verification/.env
-#email-verification-blueprint.md
-#email-verification-notas.md
-#email-verification-prompt.md
+email-verification/*
+email-verification/.env
+email-verification-blueprint.md
+email-verification-futuro.md
+email-verification-notas.md
+email-verification-prompt.md
+nexus-deployment-plan-cloudflare-v2.md
