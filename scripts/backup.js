@@ -46,14 +46,31 @@ const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SOMENTE_BANCO = process.argv.includes("--somente-banco");
 
+/**
+ * Reconstrói o restaurar.sql a partir do snapshot JSON que já está no disco,
+ * sem rede e sem credencial nenhuma.
+ *
+ * Existe porque um defeito no gerador de SQL não é motivo para bater de novo
+ * na produção nem para pedir a service_role outra vez: as linhas já foram
+ * copiadas: em tabelas/*.json. Conserta-se o gerador e regenera-se o arquivo.
+ */
+const idxRegerar = process.argv.indexOf("--regerar-sql");
+const REGERAR = idxRegerar !== -1 ? path.resolve(process.argv[idxRegerar + 1] ?? "") : null;
+
 const idxDir = process.argv.indexOf("--dir");
 const CARIMBO = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 const DESTINO =
-  idxDir !== -1
+  REGERAR ??
+  (idxDir !== -1
     ? path.resolve(process.argv[idxDir + 1])
-    : path.join(RAIZ, "supabase", "backups", CARIMBO);
+    : path.join(RAIZ, "supabase", "backups", CARIMBO));
 
-if (!SUPABASE_URL || !ACCESS_TOKEN) {
+if (REGERAR && !fs.existsSync(path.join(REGERAR, "manifesto.json"))) {
+  console.error(`não achei manifesto.json em ${REGERAR}`);
+  process.exit(2);
+}
+
+if (!REGERAR && (!SUPABASE_URL || !ACCESS_TOKEN)) {
   console.error(
     "Faltam VITE_SUPABASE_URL (.env) e/ou SUPABASE_ACCESS_TOKEN (ambiente).\n" +
       'PowerShell:  $env:SUPABASE_ACCESS_TOKEN = "sbp_..."; npm run backup',
@@ -61,7 +78,7 @@ if (!SUPABASE_URL || !ACCESS_TOKEN) {
   process.exit(2);
 }
 
-if (!SERVICE_ROLE && !SOMENTE_BANCO) {
+if (!SERVICE_ROLE && !SOMENTE_BANCO && !REGERAR) {
   console.error(
     "AVISO: SUPABASE_SERVICE_ROLE_KEY não está no ambiente.\n" +
       "Sem ela os PDFs e certificados NÃO são copiados, e um dump só do\n" +
@@ -102,20 +119,47 @@ function literalSQL(v) {
 fs.mkdirSync(DESTINO, { recursive: true });
 fs.mkdirSync(path.join(DESTINO, "tabelas"), { recursive: true });
 
-console.log(`\nBackup de ${PROJECT_REF}`);
+console.log(`\n${REGERAR ? "Regerando restaurar.sql de" : `Backup de ${PROJECT_REF}`}`);
 console.log(`Destino: ${DESTINO}\n`);
 
 // ---------------------------------------------------------------------
 // 1. Banco
 // ---------------------------------------------------------------------
-console.log("▸ Banco (Management API)");
+console.log(REGERAR ? "▸ Banco (snapshot em disco)" : "▸ Banco (Management API)");
 
-const tabelas = (
-  await consultar(`
-    SELECT tablename FROM pg_tables
-    WHERE schemaname = 'public' ORDER BY tablename;
-  `)
-).map((t) => t.tablename);
+const manifestoAntigo = REGERAR
+  ? JSON.parse(fs.readFileSync(path.join(REGERAR, "manifesto.json"), "utf8"))
+  : null;
+
+const tabelas = REGERAR
+  ? manifestoAntigo.tabelas.map((t) => t.tabela)
+  : (
+      await consultar(`
+        SELECT tablename FROM pg_tables
+        WHERE schemaname = 'public' ORDER BY tablename;
+      `)
+    ).map((t) => t.tablename);
+
+/** Linhas da tabela: da produção, ou do JSON já salvo quando --regerar-sql. */
+const linhasDa = (tabela) =>
+  REGERAR
+    ? JSON.parse(fs.readFileSync(path.join(REGERAR, "tabelas", `${tabela}.json`), "utf8"))
+    : consultar(`SELECT * FROM public.${tabela};`);
+
+/**
+ * Tabelas que saem no snapshot (JSON) mas NÃO viram INSERT no restaurar.sql.
+ *
+ * `_migrations` é criada em tempo de execução pelo migrate.js, não por
+ * nenhum arquivo de migration — logo ela não existe num banco recém-criado.
+ * Como o restaurar.sql roda dentro de UMA transação, o INSERT nela falhava,
+ * abortava a transação e derrubava TODO o restante do restore: o COMMIT
+ * virava ROLLBACK e nada era restaurado.
+ *
+ * Restaurar de verdade é: rodar o migrate.js (que recria e repopula a
+ * _migrations conforme aplica cada arquivo) e só depois o restaurar.sql.
+ * Copiar as linhas dela seria, além de impossível, redundante.
+ */
+const SEM_RESTORE = new Set(["_migrations"]);
 
 const resumo = [];
 let totalLinhas = 0;
@@ -123,25 +167,70 @@ const partesSQL = [
   "-- Restauração lógica gerada por scripts/backup.js",
   "-- Rode DEPOIS de aplicar supabase/migrations/ num banco vazio.",
   "-- O schema NÃO está aqui: vem das migrations.",
+  "--",
+  "-- SQL puro de propósito: sem meta-comando de psql (\\set), para rodar",
+  "-- igual no psql, no editor SQL do Supabase e na Management API.",
+  "-- Consequência: é UMA transação — uma linha ruim aborta o restore",
+  "-- inteiro em vez de restaurar pela metade. É o backup:conferir que",
+  "-- existe para pegar isso antes da emergência.",
+  "--",
+  "-- ATENÇÃO: este arquivo ESVAZIA as tabelas antes de repovoar. Ele é o",
+  "-- estado autoritativo do congresso, não um complemento do que existir.",
   "BEGIN;",
   "SET session_replication_role = replica;  -- adia as FKs até o COMMIT",
   "",
 ];
 
-for (const tabela of tabelas) {
-  const linhas = await consultar(`SELECT * FROM public.${tabela};`);
-  fs.writeFileSync(
-    path.join(DESTINO, "tabelas", `${tabela}.json`),
-    JSON.stringify(linhas, null, 2),
+/**
+ * Esvazia as tabelas antes de repovoar.
+ *
+ * Sem isso o restore era um MERGE, não um restore: as migrations semeiam
+ * `categorias` e `criterios` sem id explícito, então o banco recém-migrado
+ * já vem com linhas de ids diferentes dos de produção. O resultado era
+ * `criterios` com 40 linhas (20 semeadas + 20 restauradas) e, pior,
+ * `categorias` com as 4 linhas SEMEADAS vencendo o ON CONFLICT DO NOTHING
+ * pela UNIQUE(nome) — a contagem batia, mas os ids eram outros e todo
+ * `trabalhos.categoria_id` restaurado apontava para categoria inexistente.
+ *
+ * Um TRUNCATE só, com todas as tabelas juntas, resolve as dependências de
+ * FK de uma vez. Vai dentro da transação: se o restore abortar, nada é
+ * perdido. Nenhuma tabela de public usa sequence, então não há identity
+ * para reiniciar.
+ */
+const paraRestaurar = tabelas.filter((t) => !SEM_RESTORE.has(t));
+if (paraRestaurar.length > 0) {
+  partesSQL.push(
+    "-- Esvazia tudo o que este arquivo repovoa (ver comentário no backup.js).",
+    `TRUNCATE ${paraRestaurar.map((t) => `public.${t}`).join(", ")} CASCADE;`,
+    "",
   );
+}
 
-  if (linhas.length > 0) {
+for (const tabela of tabelas) {
+  const linhas = await linhasDa(tabela);
+  if (!REGERAR) {
+    fs.writeFileSync(
+      path.join(DESTINO, "tabelas", `${tabela}.json`),
+      JSON.stringify(linhas, null, 2),
+    );
+  }
+
+  if (SEM_RESTORE.has(tabela)) {
+    partesSQL.push(
+      `-- ${tabela}: ${linhas.length} linha(s) no snapshot, fora do restore de propósito`,
+      "-- (criada pelo migrate.js em tempo de execução; ver SEM_RESTORE)",
+      "",
+    );
+  } else if (linhas.length > 0) {
     const colunas = Object.keys(linhas[0]);
     partesSQL.push(`-- ${tabela} (${linhas.length} linhas)`);
     for (const linha of linhas) {
       const valores = colunas.map((c) => literalSQL(linha[c])).join(", ");
+      // Sem ON CONFLICT DO NOTHING: a tabela acabou de ser esvaziada, então
+      // conflito aqui significaria snapshot inconsistente — tem de gritar,
+      // não ser engolido em silêncio.
       partesSQL.push(
-        `INSERT INTO public.${tabela} (${colunas.join(", ")}) VALUES (${valores}) ON CONFLICT DO NOTHING;`,
+        `INSERT INTO public.${tabela} (${colunas.join(", ")}) VALUES (${valores});`,
       );
     }
     partesSQL.push("");
@@ -149,7 +238,8 @@ for (const tabela of tabelas) {
 
   totalLinhas += linhas.length;
   resumo.push({ tabela, linhas: linhas.length });
-  console.log(`  ${String(linhas.length).padStart(6)}  ${tabela}`);
+  const marca = SEM_RESTORE.has(tabela) ? "  (fora do restore)" : "";
+  console.log(`  ${String(linhas.length).padStart(6)}  ${tabela}${marca}`);
 }
 
 partesSQL.push("SET session_replication_role = DEFAULT;", "COMMIT;");
@@ -162,7 +252,9 @@ console.log(`  → ${totalLinhas} linhas em ${tabelas.length} tabelas\n`);
 let totalArquivos = 0;
 const bucketsResumo = [];
 
-if (SOMENTE_BANCO) {
+if (REGERAR) {
+  console.log("▸ Storage: intocado (--regerar-sql só reescreve o SQL).\n");
+} else if (SOMENTE_BANCO) {
   console.log("▸ Storage: PULADO (--somente-banco). Este NÃO é um backup completo.\n");
 } else {
   console.log("▸ Storage (service_role)");
@@ -230,13 +322,19 @@ if (SOMENTE_BANCO) {
 // 3. Manifesto — é o que a conferência de restauração compara
 // ---------------------------------------------------------------------
 const manifesto = {
-  projeto: PROJECT_REF,
-  gerado_em: new Date().toISOString(),
-  completo: !SOMENTE_BANCO,
+  projeto: REGERAR ? manifestoAntigo.projeto : PROJECT_REF,
+  gerado_em: REGERAR ? manifestoAntigo.gerado_em : new Date().toISOString(),
+  // --regerar-sql não copia nada: o Storage e o carimbo continuam sendo os
+  // da coleta original, senão o manifesto mentiria sobre a idade do backup.
+  ...(REGERAR ? { restaurar_sql_regerado_em: new Date().toISOString() } : {}),
+  completo: REGERAR ? manifestoAntigo.completo : !SOMENTE_BANCO,
   total_linhas: totalLinhas,
-  total_arquivos: totalArquivos,
+  total_arquivos: REGERAR ? manifestoAntigo.total_arquivos : totalArquivos,
+  // Copiadas no snapshot, mas sem INSERT no restaurar.sql — a conferência
+  // precisa saber disso para não cobrar o que foi omitido de propósito.
+  restore_pulado: [...SEM_RESTORE],
   tabelas: resumo,
-  buckets: bucketsResumo,
+  buckets: REGERAR ? manifestoAntigo.buckets : bucketsResumo,
 };
 fs.writeFileSync(
   path.join(DESTINO, "manifesto.json"),
@@ -244,8 +342,8 @@ fs.writeFileSync(
 );
 
 console.log("─".repeat(60));
-console.log(`Backup em ${DESTINO}`);
-console.log(`  ${totalLinhas} linhas · ${totalArquivos} arquivos`);
+console.log(`${REGERAR ? "restaurar.sql regerado em" : "Backup em"} ${DESTINO}`);
+console.log(`  ${totalLinhas} linhas · ${manifesto.total_arquivos} arquivos`);
 if (SOMENTE_BANCO) {
   console.log("\n  PARCIAL: sem Storage. Não serve como backup do congresso.");
 }

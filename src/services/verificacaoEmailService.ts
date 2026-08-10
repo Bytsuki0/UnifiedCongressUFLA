@@ -1,13 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   estadoDaConfirmacao,
+  estadoDaLiberacao,
   interpretarRespostaEnvio,
   type EstadoConfirmacao,
+  type EstadoLiberacao,
   type RespostaEnvio,
 } from "@/lib/verificacaoEmail";
 
 /**
- * Verificação de e-mail — as três chamadas de servidor da feature.
+ * Verificação de e-mail — as chamadas de servidor da feature.
  *
  * A regra inteira mora no banco (migration 20260806140000): `criar_token_email`
  * só o service_role executa, `confirmar_email` é idempotente e `email_confirmado()`
@@ -70,5 +72,29 @@ export async function enviarEmailDeVerificacao(): Promise<RespostaEnvio> {
     return interpretarRespostaEnvio(200, data);
   } catch {
     return { estado: "falha", erro: "rede", segundos: null };
+  }
+}
+
+/**
+ * Libera um e-mail preso por uma conta que nunca confirmou, apagando-a.
+ *
+ * Chamada SÓ depois de o GoTrue recusar o cadastro com "já registrado" — no
+ * caminho feliz ela nem existe. Manter assim é o que segura a enumeração:
+ * quem quiser sondar endereços tem de chamar a RPC na mão, e lá esperam dois
+ * limites — 5 chamadas / 10 min por IP e 5 REMOÇÕES / hora por e-mail alvo.
+ * O segundo é o que importa: IP se troca, e o ataque com dano real é apagar
+ * a conta pendente da MESMA vítima até ela nunca conseguir confirmar.
+ *
+ * Quem decide se pode apagar é o banco, nunca esta função: aqui não há
+ * checagem de "está confirmado?" que possa divergir da do servidor.
+ */
+export async function liberarEmailNaoConfirmado(email: string): Promise<EstadoLiberacao> {
+  try {
+    const { data, error } = await supabase.rpc("liberar_email_nao_confirmado", {
+      p_email: email,
+    });
+    return estadoDaLiberacao(data, error);
+  } catch {
+    return "rede";
   }
 }

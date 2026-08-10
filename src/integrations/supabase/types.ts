@@ -851,6 +851,10 @@ export type Database = {
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_app_admin: { Args: never; Returns: boolean }
       is_event_staff: { Args: never; Returns: boolean }
+      liberar_email_nao_confirmado: {
+        Args: { p_email: string }
+        Returns: string
+      }
       mark_attendance: {
         Args: { _event_id: string; _event_type: string; _user_id: string }
         Returns: {

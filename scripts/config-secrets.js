@@ -11,6 +11,12 @@
  *
  * ⚠ ESCREVE EM PRODUÇÃO. Só rodar a pedido explícito.
  *
+ * Antes de gravar, a BREVO_API_KEY é CONFERIDA contra a API do Brevo e o
+ * domínio do remetente é procurado entre os domínios autenticados da conta.
+ * Chave recusada aborta sem gravar nada: uma chave morta gravada em silêncio
+ * derruba todo envio do dia da abertura, e `--listar` mostra só o NOME do
+ * secret — nunca prova que o valor presta.
+ *
  * Secrets gravados:
  *   BREVO_API_KEY    — chave da API v3 do Brevo (xkeysib-...)
  *   EMAIL_REMETENTE  — "Nome <endereco@dominio>" ou só o endereço.
@@ -70,6 +76,77 @@ const URL_SECRETS = `https://api.supabase.com/v1/projects/${PROJECT_REF}/secrets
 /** Mostra que o valor existe sem revelá-lo. */
 const mascarar = (valor) => `${valor.slice(0, 3)}…${valor.slice(-2)} (${valor.length} chars)`;
 
+/** Domínio de "Nome <conta@dominio>" ou de "conta@dominio". */
+const dominioDe = (remetente) =>
+  (/<([^>]+)>/.exec(remetente)?.[1] ?? remetente).split("@")[1]?.trim().toLowerCase() ?? "";
+
+/**
+ * Conferir a chave CONTRA O BREVO antes de gravar.
+ *
+ * Sem isto, uma chave revogada entra como secret sem um ruído sequer: a
+ * function passa a responder 502 em todo cadastro, o usuário vê "reenvie na
+ * próxima tela", e ninguém descobre até alguém reclamar que o e-mail não
+ * chega. `--listar` não salva: ele mostra o NOME do secret, nunca o valor.
+ * Aconteceu de verdade — a chave revogada no teste de "provedor fora do ar"
+ * seguiu gravada.
+ */
+async function conferirBrevo(chave, remetente) {
+  console.log("\nConferindo a chave no Brevo antes de gravar…");
+
+  let conta;
+  try {
+    const res = await fetch("https://api.brevo.com/v3/account", { headers: { "api-key": chave } });
+    if (!res.ok) {
+      const corpo = await res.text();
+      abortar(
+        `o Brevo recusou esta BREVO_API_KEY (HTTP ${res.status}: ${corpo.slice(0, 160)}).\n` +
+          "   Nada foi gravado. Gere uma chave nova em Brevo → SMTP & API → API Keys,\n" +
+          '   exporte com  $env:BREVO_API_KEY = "xkeysib-..."  e rode de novo.',
+      );
+    }
+    conta = await res.json();
+  } catch (err) {
+    abortar(`não consegui falar com a API do Brevo para conferir a chave: ${err.message}`);
+  }
+
+  console.log(`  ✓ chave válida — conta ${conta?.email ?? "(sem e-mail no retorno)"}`);
+
+  // Domínio autenticado é o que sustenta o DKIM. Com `_dmarc ... p=reject`
+  // publicado (é o nosso caso), domínio sem autenticação = e-mail aceito
+  // pelo Brevo e DESCARTADO em silêncio pelo destinatário. Some no vazio.
+  const dominio = dominioDe(remetente);
+  try {
+    const res = await fetch("https://api.brevo.com/v3/senders/domains", {
+      headers: { "api-key": chave },
+    });
+    if (res.ok) {
+      const lista = (await res.json())?.domains;
+      const achado = Array.isArray(lista)
+        ? lista.find((d) => String(d?.domain).toLowerCase() === dominio)
+        : null;
+
+      if (!achado) {
+        console.log(
+          `  ⚠  o domínio "${dominio}" do EMAIL_REMETENTE não aparece nesta conta Brevo.\n` +
+            "     Com DMARC p=reject publicado, e-mail sem DKIM desta conta é descartado\n" +
+            "     em silêncio pelo destinatário. Autentique o domínio antes de abrir inscrições.",
+        );
+      } else if (achado.authenticated === false || achado.verified === false) {
+        console.log(
+          `  ⚠  o domínio "${dominio}" existe na conta mas NÃO está autenticado/verificado\n` +
+            "     (authenticated=" + achado.authenticated + ", verified=" + achado.verified + ").\n" +
+            "     Publique os registros DKIM que o Brevo pede — sem eles o DMARC derruba o envio.",
+        );
+      } else {
+        console.log(`  ✓ domínio ${dominio} autenticado nesta conta`);
+      }
+    }
+  } catch {
+    // A conferência do domínio é um extra: a chave já foi validada acima.
+    console.log("  ·  não deu para conferir o domínio do remetente (segue assim mesmo).");
+  }
+}
+
 async function listar() {
   const res = await fetch(URL_SECRETS, { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } });
   if (!res.ok) abortar(`não foi possível listar os secrets (HTTP ${res.status}).`);
@@ -122,6 +199,8 @@ async function main() {
   if (!valores.BREVO_API_KEY.startsWith("xkeysib-")) {
     console.log('\n⚠  BREVO_API_KEY não começa com "xkeysib-" — confira se é a chave da API v3.');
   }
+
+  await conferirBrevo(valores.BREVO_API_KEY, valores.EMAIL_REMETENTE);
 
   console.log("\nGravando:");
   for (const [nome, valor] of Object.entries(valores)) {

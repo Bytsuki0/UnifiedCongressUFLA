@@ -27,6 +27,7 @@ import {
   confirmarEmailComToken,
   emailEstaConfirmado,
   enviarEmailDeVerificacao,
+  liberarEmailNaoConfirmado,
 } from "@/services/verificacaoEmailService";
 
 /** Como o supabase-js entrega uma resposta HTTP de erro. */
@@ -155,5 +156,40 @@ describe("emailEstaConfirmado", () => {
   it("devolve null quando a RPC falha", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "boom" } });
     expect(await emailEstaConfirmado()).toBeNull();
+  });
+});
+
+describe("liberarEmailNaoConfirmado", () => {
+  beforeEach(() => {
+    mocks.rpc.mockReset();
+  });
+
+  it("manda o e-mail para a RPC e repassa o desfecho", async () => {
+    mocks.rpc.mockResolvedValue({ data: "liberado", error: null });
+
+    expect(await liberarEmailNaoConfirmado("alguem@ufla.br")).toBe("liberado");
+    expect(mocks.rpc).toHaveBeenCalledWith("liberar_email_nao_confirmado", {
+      p_email: "alguem@ufla.br",
+    });
+  });
+
+  it("repassa a recusa de conta já confirmada", async () => {
+    mocks.rpc.mockResolvedValue({ data: "confirmado", error: null });
+
+    expect(await liberarEmailNaoConfirmado("dono@ufla.br")).toBe("confirmado");
+  });
+
+  // Quem decide é o banco. Se a rede cair, o cadastro pede para repetir —
+  // nunca conclui que o e-mail está livre nem que está ocupado.
+  it("erro da RPC vira 'rede'", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "timeout" } });
+
+    expect(await liberarEmailNaoConfirmado("alguem@ufla.br")).toBe("rede");
+  });
+
+  it("exceção de fetch vira 'rede'", async () => {
+    mocks.rpc.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    expect(await liberarEmailNaoConfirmado("alguem@ufla.br")).toBe("rede");
   });
 });

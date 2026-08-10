@@ -1,11 +1,13 @@
 /**
  * Verificação de e-mail — lógica pura (sem rede, sem React, sem Supabase).
  *
- * Duas traduções vivem aqui, e as duas existem para separar "deu ruim de
- * verdade" de "deu ruim na rede":
+ * Três traduções vivem aqui, e as duas primeiras existem para separar "deu
+ * ruim de verdade" de "deu ruim na rede":
  *
  *   1. resultado da RPC `confirmar_email` → estado da tela /confirmar-email;
- *   2. resposta da Edge Function `enviar-email` → resultado do reenvio.
+ *   2. resposta da Edge Function `enviar-email` → resultado do reenvio;
+ *   3. resultado da RPC `liberar_email_nao_confirmado` → o que o /cadastro faz
+ *      quando o e-mail está preso por uma conta que nunca confirmou.
  *
  * Por que puras: falha de rede NUNCA pode ser apresentada como "link
  * inválido" (o usuário jogaria fora um link bom), e o `segundos` do 429
@@ -169,3 +171,78 @@ export function mensagemDoErroEnvio(erro: CodigoEnvio, segundos: number | null):
   }
   return TEXTO_ERRO_ENVIO[erro];
 }
+
+// ------------------------------------------------------------
+// 3. Liberação de e-mail preso (RPC `liberar_email_nao_confirmado`)
+// ------------------------------------------------------------
+
+/**
+ * Um e-mail só fica ocupado de verdade quando alguém prova a posse da caixa
+ * clicando no link. Antes disso a conta não pertence a ninguém, e o cadastro
+ * seguinte com o mesmo endereço a substitui — senão qualquer pessoa tranca o
+ * e-mail alheio para sempre digitando-o no /cadastro e nunca confirmando.
+ * A regra inteira é da migration 20260808220000; aqui só a tradução.
+ */
+export const RESULTADOS_LIBERACAO = [
+  "liberado",
+  "confirmado",
+  "inexistente",
+  "tem_dados",
+  "muitas_tentativas",
+  "invalido",
+] as const;
+
+export type ResultadoLiberacao = (typeof RESULTADOS_LIBERACAO)[number];
+
+/** Os da RPC + "rede": só ele significa "tente de novo", não "desista". */
+export type EstadoLiberacao = ResultadoLiberacao | "rede";
+
+/**
+ * O GoTrue disse que este e-mail já tem conta?
+ *
+ * É o gatilho da liberação, então precisa ser específico: um erro de senha
+ * fraca ou de e-mail malformado NÃO pode acabar apagando conta nenhuma. Por
+ * isso casa o código estruturado quando ele existe e, só então, a mensagem.
+ */
+export function ehEmailJaCadastrado(erro: unknown): boolean {
+  if (!erro || typeof erro !== "object") return false;
+
+  const { code, message } = erro as { code?: unknown; message?: unknown };
+  if (code === "user_already_exists" || code === "email_exists") return true;
+
+  const texto = typeof message === "string" ? message.toLowerCase() : "";
+  return texto.includes("already registered") || texto.includes("already exists");
+}
+
+function ehResultadoLiberacao(valor: unknown): valor is ResultadoLiberacao {
+  return (
+    typeof valor === "string" &&
+    (RESULTADOS_LIBERACAO as readonly string[]).includes(valor)
+  );
+}
+
+/**
+ * Traduz (valor, erro) da RPC em estado. Mesma regra do `estadoDaConfirmacao`:
+ * qualquer erro vira "rede", nunca um desfecho de negócio — não apagamos nem
+ * recusamos conta com base num timeout.
+ */
+export function estadoDaLiberacao(valor: unknown, erro?: unknown): EstadoLiberacao {
+  if (erro) return "rede";
+  if (ehResultadoLiberacao(valor)) return valor;
+  return "rede";
+}
+
+/**
+ * Texto ao usuário. "liberado" não entra: nesse caso o cadastro simplesmente
+ * segue e a pessoa não precisa saber que havia uma conta pendente ali.
+ */
+export const TEXTO_LIBERACAO: Record<Exclude<EstadoLiberacao, "liberado">, string> = {
+  confirmado: "Este e-mail já tem uma conta confirmada. Entre com sua senha.",
+  tem_dados: "Este e-mail já tem uma conta com trabalhos enviados. Entre em vez de criar outra.",
+  muitas_tentativas: "Muitas tentativas a partir desta conexão. Aguarde alguns minutos e tente de novo.",
+  invalido: "Informe um e-mail válido para continuar.",
+  // O GoTrue disse "já cadastrado" e o banco diz que não existe conta: só
+  // acontece em corrida com outro cadastro. Repetir resolve.
+  inexistente: "Não foi possível concluir o cadastro agora. Tente novamente.",
+  rede: "Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo.",
+};

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   COOLDOWN_PADRAO_SEGUNDOS,
+  ehEmailJaCadastrado,
   estadoDaConfirmacao,
+  estadoDaLiberacao,
   interpretarRespostaEnvio,
   mensagemDoErroEnvio,
+  RESULTADOS_LIBERACAO,
+  TEXTO_LIBERACAO,
 } from "@/lib/verificacaoEmail";
 
 describe("estadoDaConfirmacao", () => {
@@ -133,5 +137,66 @@ describe("mensagemDoErroEnvio", () => {
     for (const codigo of codigos) {
       expect(mensagemDoErroEnvio(codigo, 60)).toMatch(/\S/);
     }
+  });
+});
+
+/**
+ * Liberação do e-mail preso por conta não confirmada.
+ *
+ * O risco desta parte é assimétrico: um falso NEGATIVO só faz o cadastro
+ * falhar como falhava antes, mas um falso POSITIVO manda apagar conta.
+ * Por isso o gatilho é testado pelos dois lados.
+ */
+describe("ehEmailJaCadastrado", () => {
+  it.each([
+    ["código estruturado do GoTrue", { code: "user_already_exists", message: "User already registered" }],
+    ["código alternativo", { code: "email_exists", message: "qualquer coisa" }],
+    ["só a mensagem", { message: "User already registered" }],
+    ["mensagem em outra caixa", { message: "USER ALREADY EXISTS" }],
+  ])("reconhece %s", (_caso, erro) => {
+    expect(ehEmailJaCadastrado(erro)).toBe(true);
+  });
+
+  // Estes são os que apagariam conta à toa se o gatilho fosse frouxo.
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["string solta", "User already registered"],
+    ["senha fraca", { code: "weak_password", message: "Password should be at least 8 characters" }],
+    ["e-mail inválido", { code: "validation_failed", message: "Unable to validate email address" }],
+    ["falha de rede", new Error("Failed to fetch")],
+  ])("NÃO dispara para %s", (_caso, erro) => {
+    expect(ehEmailJaCadastrado(erro)).toBe(false);
+  });
+});
+
+describe("estadoDaLiberacao", () => {
+  it.each(RESULTADOS_LIBERACAO.map((r) => [r]))("repassa o desfecho %s da RPC", (valor) => {
+    expect(estadoDaLiberacao(valor, null)).toBe(valor);
+  });
+
+  // Mesma regra da confirmação: erro de transporte não é desfecho de
+  // negócio. "rede" faz a tela pedir para repetir; qualquer outro valor
+  // faria o cadastro desistir por causa de um timeout.
+  it.each([
+    ["erro da RPC", [null, { message: "timeout" }]],
+    ["valor desconhecido", ["talvez", null]],
+    ["null", [null, null]],
+    ["objeto", [{ liberado: true }, null]],
+  ])("cai em rede: %s", (_caso, [valor, erro]) => {
+    expect(estadoDaLiberacao(valor, erro)).toBe("rede");
+  });
+
+  it("tem texto para todo estado menos 'liberado'", () => {
+    for (const estado of [...RESULTADOS_LIBERACAO, "rede"] as const) {
+      if (estado === "liberado") continue;
+      expect(TEXTO_LIBERACAO[estado]).toMatch(/\S/);
+    }
+  });
+
+  // "liberado" é silencioso de propósito: o cadastro segue e a pessoa não
+  // precisa saber que havia uma conta pendente com o e-mail dela.
+  it("não tem texto para 'liberado'", () => {
+    expect((TEXTO_LIBERACAO as Record<string, string>).liberado).toBeUndefined();
   });
 });

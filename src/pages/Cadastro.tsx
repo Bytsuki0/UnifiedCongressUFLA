@@ -10,7 +10,11 @@ import {
   PERIODOS,
   classifyEmail,
 } from "@/lib/cadastro";
-import { enviarEmailDeVerificacao } from "@/services/verificacaoEmailService";
+import {
+  enviarEmailDeVerificacao,
+  liberarEmailNaoConfirmado,
+} from "@/services/verificacaoEmailService";
+import { ehEmailJaCadastrado, TEXTO_LIBERACAO } from "@/lib/verificacaoEmail";
 
 const Cadastro = () => {
   const navigate = useNavigate();
@@ -64,25 +68,44 @@ const Cadastro = () => {
     }
 
     setLoading(true);
+    const email = form.email.trim().toLowerCase();
     // O perfil (estudantes/professores), o papel e a validação do domínio
     // acontecem no servidor, no trigger handle_new_user — estes metadados
     // são apenas a entrada dele.
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email.trim().toLowerCase(),
-      password: form.senha,
-      options: {
-        data: {
-          nome: form.nome.trim(),
-          ...(perfil === "estudante" && {
-            matricula: form.matricula.trim(),
-            periodo: form.periodo,
-            curso: form.curso,
-          }),
-          ...(perfil === "professor" && { departamento: form.departamento }),
+    const cadastrar = () =>
+      supabase.auth.signUp({
+        email,
+        password: form.senha,
+        options: {
+          data: {
+            nome: form.nome.trim(),
+            ...(perfil === "estudante" && {
+              matricula: form.matricula.trim(),
+              periodo: form.periodo,
+              curso: form.curso,
+            }),
+            ...(perfil === "professor" && { departamento: form.departamento }),
+          },
+          emailRedirectTo: `${window.location.origin}/login`,
         },
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
-    });
+      });
+
+    let { data, error } = await cadastrar();
+
+    // "Já registrado" pode ser uma conta que NUNCA confirmou o e-mail — e
+    // essa não pertence a ninguém: sem prova de posse da caixa, qualquer um
+    // trancaria o endereço alheio para sempre. A RPC apaga a pendente (e
+    // recusa a confirmada), então tentamos de novo UMA vez.
+    if (error && ehEmailJaCadastrado(error)) {
+      const liberacao = await liberarEmailNaoConfirmado(email);
+      if (liberacao === "liberado") {
+        ({ data, error } = await cadastrar());
+      } else {
+        toast.error(TEXTO_LIBERACAO[liberacao]);
+        setLoading(false);
+        return;
+      }
+    }
 
     if (error) {
       toast.error(error.message || "Erro ao criar conta. Tente novamente.");
