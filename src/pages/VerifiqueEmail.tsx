@@ -34,7 +34,7 @@ const VerifiqueEmail = () => {
   );
   const [aviso, setAviso] = useState<string | null>(
     (location.state as EstadoDaNavegacao)?.enviado
-      ? "Enviamos o link de confirmação. Confira a caixa de entrada — e o spam."
+      ? "Enviamos o link de confirmação. Confira a caixa de entrada, e o spam."
       : null,
   );
 
@@ -72,7 +72,7 @@ const VerifiqueEmail = () => {
 
     if (resposta.estado === "enviado") {
       setRestante(COOLDOWN_PADRAO_SEGUNDOS);
-      setAviso("E-mail enviado. Confira a caixa de entrada — e o spam.");
+      setAviso("E-mail enviado. Confira a caixa de entrada, e o spam.");
       toast.success("E-mail de confirmação enviado.");
       return;
     }
@@ -151,7 +151,7 @@ const VerifiqueEmail = () => {
 
           <div className="precad-hint" style={{ marginBottom: 24 }}>
             Não achou? Procure na caixa de <strong>spam</strong> ou em
-            "promoções" — o link vale por 24 horas.
+            "promoções", o link vale por 24 horas.
           </div>
 
           {aviso && (
@@ -187,7 +187,7 @@ const VerifiqueEmail = () => {
             onClick={jaConfirmei}
             style={{ marginTop: 12 }}
           >
-            JÁ CONFIRMEI — ATUALIZAR
+            JÁ CONFIRMEI, ATUALIZAR
           </button>
 
           <p className="cadastro-footer">

@@ -24,7 +24,8 @@
 # Áreas autenticadas: bloqueio real de indexação.
 <IfModule mod_headers.c>
   SetEnvIf Request_URI "^/(estudante|revisor|admin|co-chairs)(/|$)" PRIVADO=1
-  SetEnvIf Request_URI "^/congresso/(admin|dashboard|inscricao|minicursos|certificados|perfil)(/|$)" PRIVADO=1
+  # /congresso inteiro: área congelada, hoje só para admin.
+  SetEnvIf Request_URI "^/congresso(/|$)" PRIVADO=1
   # Verificação de e-mail: /confirmar-email é pública, mas leva token na URL.
   SetEnvIf Request_URI "^/(confirmar-email|verifique-email)(/|$)" PRIVADO=1
   Header set X-Robots-Tag "noindex, nofollow" env=PRIVADO

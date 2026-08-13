@@ -144,7 +144,7 @@ const Avaliacao = () => {
             <div className="review-panel-body">
               <div className="review-section-overline">PARECER TÉCNICO</div>
               <div className="review-section-title">
-                Avaliação — Rodada {String(activeSub?.rodadas?.length || 1).padStart(2, "0")}
+                Avaliação, Rodada {String(activeSub?.rodadas?.length || 1).padStart(2, "0")}
               </div>
 
               <div className="form-group">

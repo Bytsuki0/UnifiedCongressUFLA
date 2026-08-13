@@ -2,50 +2,56 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { obterMeuTrabalho } from "@/services/trabalhosService";
+import { editarSubmissao, obterMeuTrabalho } from "@/services/trabalhosService";
 import { openPdf } from "@/lib/pdfStorage";
-import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import {
-  carregarPareceresDoTrabalho,
-  enviarCorrecao,
-  type ParecerAnonimo,
-} from "@/services/correcaoService";
-import { AGUARDANDO_CORRECAO, MAX_PDF_BYTES, type Coautor, type Submission } from "./shared";
+  MAX_PDF_BYTES,
+  PENDENTE,
+  formatarData,
+  usePrazo,
+  type Coautor,
+  type Submission,
+} from "./shared";
 
 /**
- * Rodada de correção: aberta quando os pareceres consolidam em
- * "aprovado com correções" (2 votos nesse sentido, ou os 3 votos
- * diferentes entre si). O autor troca o PDF e ajusta título e resumo;
- * orientador, coautores e categoria ficam travados — foram eles que
- * definiram os impedimentos e os critérios já aplicados.
+ * Edição da submissão antes de a avaliação começar.
+ *
+ * Irmã da tela de correção, com o gatilho trocado: aquela abre com
+ * "aprovado com correções" e ignora o prazo; esta abre com 'pendente' e
+ * só dentro da janela de submissão.
+ *
+ * Mesmo conjunto de campos das duas — título, resumo e PDF. Autoria e
+ * categoria ficam travadas mesmo com o prazo aberto, e não por descuido:
+ * a distribuição de revisores roda no INSTANTE da submissão, a partir do
+ * orientador e dos coautores (é assim que o conflito de interesse é
+ * barrado) e os critérios do parecer saem da categoria. Trocar isso
+ * depois invalidaria em silêncio a checagem de conflito.
+ *
+ * Quem recusa de fato é a RPC `editar_submissao`. Esta tela só evita que
+ * a pessoa preencha um formulário que o banco vai rejeitar.
  */
-const Correcao = () => {
+const EditarSubmissao = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { prazo, carregando: carregandoPrazo, aberto } = usePrazo();
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
-  const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
   const [titulo, setTitulo] = useState("");
   const [resumo, setResumo] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
-  const [enviando, setEnviando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!id || !user) return;
     setLoading(true);
-    // Só o autor abre esta tela. A RLS deixa a organização ler qualquer
-    // trabalho, então o recorte por dono é feito aqui — e o banco recusa
-    // a correção de terceiros de qualquer forma (RPC enviar_correcao).
     const data = await obterMeuTrabalho(id, user.id).catch(() => null);
-
     if (!data) {
       toast.error("Trabalho não encontrado.");
       navigate("/estudante/historico");
       return;
     }
-
     const sub = {
       ...data,
       coautores: Array.isArray(data.coautores) ? (data.coautores as Coautor[]) : [],
@@ -53,19 +59,10 @@ const Correcao = () => {
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
     setResumo(sub.resumo ?? "");
-
-    try {
-      setPareceres(await carregarPareceresDoTrabalho(id));
-    } catch {
-      // Sem pareceres visíveis: a correção continua possível.
-      setPareceres([]);
-    }
     setLoading(false);
   }, [id, user, navigate]);
 
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar]);
 
   const verPdf = async () => {
     if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
@@ -89,54 +86,86 @@ const Correcao = () => {
       }
     }
 
-    setEnviando(true);
+    setSalvando(true);
     try {
-      await enviarCorrecao({
+      await editarSubmissao({
         trabalhoId: trabalho.id,
         ownerId: user.id,
         titulo: titulo.trim(),
         resumo: resumo.trim(),
         arquivo,
       });
-      toast.success("Versão corrigida enviada. Seu trabalho está aprovado.");
+      toast.success("Alterações salvas.");
       navigate("/estudante/historico");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao enviar a correção.");
-      setEnviando(false);
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar as alterações.");
+      setSalvando(false);
     }
   }
 
-  if (loading) {
+  if (loading || carregandoPrazo) {
     return (
       <div className="section active">
         <div className="content-area">
-          <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>
-            Carregando...
-          </div>
+          <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>Carregando...</div>
         </div>
       </div>
     );
   }
 
-  // O banco recusa a correção fora deste status; a interface avisa antes.
-  if (trabalho && trabalho.status !== AGUARDANDO_CORRECAO) {
+  const voltar = (
+    <button className="back-link" onClick={() => navigate("/estudante/historico")}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar
+    </button>
+  );
+
+  // Já entrou em avaliação: nada a editar por aqui. Trabalho aprovado com
+  // correções tem tela própria, que continua valendo depois do prazo.
+  if (trabalho && trabalho.status !== PENDENTE) {
     return (
       <div className="section active">
         <div className="content-area">
-          <button className="back-link" onClick={() => navigate("/estudante/historico")}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            Voltar
-          </button>
+          {voltar}
           <div className="empty-state">
             <div className="empty-state-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
-            <h3 className="empty-state-title">Nada a corrigir</h3>
+            <h3 className="empty-state-title">Este trabalho não pode mais ser editado</h3>
             <p className="empty-state-description">
-              Este trabalho não está aguardando correções. Correções só ficam disponíveis
-              quando os pareceres resultam em “aprovado com correções”.
+              A avaliação já começou. Se os pareceres pedirem ajustes, a tela de correção abre
+              automaticamente, e ela continua disponível mesmo depois do prazo.
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate(`/estudante/trabalho/${trabalho.id}`)}>
+              VER SITUAÇÃO
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Prazo encerrado. `aberto === null` (não sei) não bloqueia: quem
+  // recusa de verdade é o banco, e uma falha de rede não pode trancar
+  // quem ainda está dentro do prazo.
+  if (aberto === false) {
+    return (
+      <div className="section active">
+        <div className="content-area">
+          {voltar}
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <h3 className="empty-state-title">Prazo encerrado</h3>
+            <p className="empty-state-description">
+              As submissões foram encerradas em {formatarData(prazo?.encerramento ?? null)} e o
+              trabalho não pode mais ser alterado. Trabalhos aprovados com correções continuam
+              editáveis pela tela de correção.
             </p>
           </div>
         </div>
@@ -149,36 +178,23 @@ const Correcao = () => {
   return (
     <div className="section active">
       <div className="content-area">
-        <button className="back-link" onClick={() => navigate("/estudante/historico")}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Voltar
-        </button>
+        {voltar}
 
         <div className="page-header">
-          <div className="page-overline">Aprovado com correções</div>
-          <h1 className="page-title">Enviar versão corrigida</h1>
+          <div className="page-overline">Submissão pendente</div>
+          <h1 className="page-title">Editar submissão</h1>
           <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
-            Ajuste o texto conforme os pareceres e reenvie o PDF. O arquivo novo substitui o anterior.
+            Ajuste o texto ou troque o arquivo enquanto a avaliação não começa.
+            {prazo?.encerramento
+              ? ` As submissões se encerram em ${formatarData(prazo.encerramento)}.`
+              : ""}
           </p>
         </div>
-
-        {pareceres.length > 0 && (
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">01</div>
-              <div>
-                <div className="step-title">Notas e comentários dos avaliadores</div>
-                <div className="step-subtitle">Avaliação às cegas, a identificação dos avaliadores é omitida</div>
-              </div>
-            </div>
-            <PareceresRecebidos pareceres={pareceres} />
-          </div>
-        )}
 
         <form onSubmit={handleSubmit}>
           <div className="step-card">
             <div className="step-card-header">
-              <div className="step-number">{pareceres.length > 0 ? "02" : "01"}</div>
+              <div className="step-number">01</div>
               <div>
                 <div className="step-title">Informações do Trabalho</div>
                 <div className="step-subtitle">Somente título e resumo podem ser alterados</div>
@@ -186,10 +202,10 @@ const Correcao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="correcao-titulo">Título do Trabalho *</label>
+              <label className="form-label" htmlFor="editar-titulo">Título do Trabalho *</label>
               <input
                 type="text"
-                id="correcao-titulo"
+                id="editar-titulo"
                 className="form-input"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
@@ -198,9 +214,9 @@ const Correcao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="correcao-resumo">Resumo *</label>
+              <label className="form-label" htmlFor="editar-resumo">Resumo *</label>
               <textarea
-                id="correcao-resumo"
+                id="editar-resumo"
                 className="form-textarea"
                 rows={6}
                 value={resumo}
@@ -212,10 +228,10 @@ const Correcao = () => {
 
           <div className="step-card">
             <div className="step-card-header">
-              <div className="step-number">{pareceres.length > 0 ? "03" : "02"}</div>
+              <div className="step-number">02</div>
               <div>
-                <div className="step-title">Autoria</div>
-                <div className="step-subtitle">Bloqueada nesta etapa, orientador e coautores não mudam após a avaliação</div>
+                <div className="step-title">Autoria e Categoria</div>
+                <div className="step-subtitle">Travadas, definiram os revisores sorteados e os critérios da avaliação</div>
               </div>
             </div>
 
@@ -246,9 +262,9 @@ const Correcao = () => {
 
           <div className="step-card">
             <div className="step-card-header">
-              <div className="step-number">{pareceres.length > 0 ? "04" : "03"}</div>
+              <div className="step-number">03</div>
               <div>
-                <div className="step-title">Arquivo Corrigido</div>
+                <div className="step-title">Arquivo</div>
                 <div className="step-subtitle">Opcional · Limite 10MB · o PDF novo substitui e apaga o anterior</div>
               </div>
             </div>
@@ -285,7 +301,7 @@ const Correcao = () => {
                 </div>
               ) : (
                 <>
-                  <div className="drop-title">Arraste o PDF corrigido aqui</div>
+                  <div className="drop-title">Arraste o PDF novo aqui</div>
                   <div className="drop-subtitle">Sem arquivo novo, o PDF atual é mantido</div>
                   <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
                     Selecionar Arquivo
@@ -300,8 +316,8 @@ const Correcao = () => {
             <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/historico")}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary" disabled={enviando}>
-              {enviando ? "Enviando..." : "Enviar Correção"}
+            <button type="submit" className="btn btn-primary" disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar Alterações"}
             </button>
           </div>
         </form>
@@ -310,4 +326,4 @@ const Correcao = () => {
   );
 };
 
-export default Correcao;
+export default EditarSubmissao;

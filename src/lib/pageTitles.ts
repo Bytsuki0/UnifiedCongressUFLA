@@ -24,6 +24,8 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/estudante/nova-submissao", "Nova submissão"],
   ["/estudante/historico", "Histórico de trabalhos"],
   ["/estudante/correcao/:id", "Enviar correção"],
+  ["/estudante/editar/:id", "Editar submissão"],
+  ["/estudante/trabalho/:id", "Resultado da avaliação"],
   ["/estudante/templates", "Templates"],
 
   // Painel do Revisor
@@ -36,6 +38,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
 
   // Portal Admin
   ["/admin/papeis", "Papéis de acesso"],
+  ["/admin/usuarios", "Usuários"],
   ["/admin/conflitos", "Conflitos de interesse"],
   ["/admin/configuracoes", "Configurações"],
   ["/admin/notificacoes", "Notificações"],
@@ -54,7 +57,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/rankings", "Rankings"],
   ["/co-chairs", "Painel de co-chairs"],
 
-  // Congresso
+  // Congresso — área congelada, hoje visível só para o admin.
   ["/congresso/informacoes", "Informações do congresso"],
   ["/congresso/programacao", "Programação"],
   ["/congresso/verificar/:codigo", "Verificação de certificado"],
@@ -64,7 +67,8 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/congresso/minicursos", "Minicursos"],
   ["/congresso/certificados", "Certificados"],
   ["/congresso/perfil", "Meu perfil"],
-  ["/congresso/admin/usuarios", "Usuários"],
+  // /congresso/admin/{papeis,usuarios} não entram: as duas migraram para o
+  // Portal Admin e as URLs antigas só redirecionam.
   ["/congresso/admin/inscricoes", "Inscrições"],
   ["/congresso/admin/minicursos", "Gestão de minicursos"],
   ["/congresso/admin/programacao", "Gestão da programação"],

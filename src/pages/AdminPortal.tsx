@@ -3,11 +3,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
+import { UsuariosPanel } from "@/components/admin/UsuariosPanel";
 import { supabase } from "@/integrations/supabase/client";
 import {
   atualizarStatusDoTrabalho,
+  excluirTrabalho,
+  excluirTrabalhos,
   listarTrabalhosComCategorias,
 } from "@/services/trabalhosService";
+import {
+  carregarConfiguracoes,
+  salvarConfiguracoes,
+  type Configuracoes,
+} from "@/services/configuracoesService";
 import { toast } from "sonner";
 import { APP_SHORT } from "@/lib/brand";
 
@@ -24,8 +32,9 @@ type Trabalho = {
 type Categoria = { id: string; nome: string };
 
 // Cada seção tem URL própria (/admin/<secao>) para poder ser linkada
-// de fora — foi assim que a antiga /congresso/admin/papeis migrou.
-const SECOES = ["auditoria", "conflitos", "papeis", "configuracoes", "notificacoes"] as const;
+// de fora — foi assim que as antigas /congresso/admin/papeis e
+// /congresso/admin/usuarios migraram (as duas continuam redirecionando).
+const SECOES = ["auditoria", "conflitos", "papeis", "usuarios", "configuracoes", "notificacoes"] as const;
 type Secao = (typeof SECOES)[number];
 const secaoValida = (s?: string): Secao =>
   SECOES.includes(s as Secao) ? (s as Secao) : "auditoria";
@@ -39,22 +48,32 @@ const AdminPortal = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [alertHours, setAlertHours] = useState(48);
-  const [config, setConfig] = useState({
-    abertura: "2026-01-04",
-    encerramento: "2026-05-31",
-    minChars: 1000,
-    maxCoauthors: 5,
-    edital: "Prezados participantes, o Congresso de Iniciação Científica 2026 da UFLA receberá submissões nas modalidades PIBIC, BIC Jr, Ensino e Extensão.",
-    linkTemplateWord: "https://example.com/template.docx",
-    linkTemplateLaTeX: "https://example.com/template.zip",
-  });
+
+  // Exclusão de submissões (limpeza de fim de edição). A seleção guarda
+  // ids soltos, mas tudo que age sobre ela é recortado pela lista
+  // FILTRADA — selecionar, buscar outra coisa e apagar não pode levar
+  // junto o que saiu da tela.
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [excluindo, setExcluindo] = useState(false);
+
+  // Configurações: o que está no banco (linha única de `configuracoes`).
+  // Antes isto era estado local com valores inventados e o SALVAR só
+  // emitia um toast — as datas de prazo agora são regra de servidor.
+  const [config, setConfig] = useState<Configuracoes | null>(null);
+  const [salvandoConfig, setSalvandoConfig] = useState(false);
+  const setCampo = <K extends keyof Configuracoes>(campo: K, valor: Configuracoes[K]) =>
+    setConfig((c) => (c ? { ...c, [campo]: valor } : c));
 
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/login"); return; }
       await loadData();
+      try {
+        setConfig(await carregarConfiguracoes());
+      } catch {
+        toast.error("Não foi possível carregar as configurações.");
+      }
     };
     init();
   }, [navigate]);
@@ -99,6 +118,11 @@ const AdminPortal = () => {
     !search || t.titulo.toLowerCase().includes(search.toLowerCase()) || t.autores.toLowerCase().includes(search.toLowerCase())
   );
 
+  // O que a exclusão em lote enxerga: a interseção da seleção com o que
+  // está na tela. É também o que o contador do botão mostra.
+  const selecionadosVisiveis = filtered.filter(t => selecionados.has(t.id));
+  const todosVisiveisMarcados = filtered.length > 0 && selecionadosVisiveis.length === filtered.length;
+
   const updateStatus = async (id: string, status: string) => {
     try {
       await atualizarStatusDoTrabalho(id, status);
@@ -106,6 +130,63 @@ const AdminPortal = () => {
       await loadData();
     } catch {
       toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const alternarSelecao = (id: string) =>
+    setSelecionados(atual => {
+      const proximo = new Set(atual);
+      if (!proximo.delete(id)) proximo.add(id);
+      return proximo;
+    });
+
+  const excluirUm = async (t: Trabalho) => {
+    if (!confirm(
+      `Excluir "${t.titulo}"?\n\n` +
+      "Saem junto os pareceres, as avaliações, a atribuição dos revisores e o PDF. " +
+      "A ação não pode ser desfeita."
+    )) return;
+
+    setExcluindo(true);
+    try {
+      await excluirTrabalho(t.id);
+      setSelecionados(atual => {
+        const proximo = new Set(atual);
+        proximo.delete(t.id);
+        return proximo;
+      });
+      toast.success("Trabalho excluído");
+      await loadData();
+    } catch {
+      toast.error("Não foi possível excluir o trabalho.");
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  const excluirSelecionados = async () => {
+    const alvos = selecionadosVisiveis.map(t => t.id);
+    if (alvos.length === 0) return;
+    if (!confirm(
+      `Excluir ${alvos.length} trabalho(s)?\n\n` +
+      "Saem junto os pareceres, as avaliações, a atribuição dos revisores e os PDFs. " +
+      "A ação não pode ser desfeita."
+    )) return;
+
+    setExcluindo(true);
+    try {
+      const apagados = await excluirTrabalhos(alvos);
+      if (apagados < alvos.length) {
+        toast.warning(`${apagados} de ${alvos.length} trabalhos excluídos, o restante foi recusado pelo banco.`);
+      } else {
+        toast.success(`${apagados} trabalho(s) excluído(s)`);
+      }
+      setSelecionados(new Set());
+      await loadData();
+    } catch {
+      toast.error("Não foi possível excluir os trabalhos.");
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -119,7 +200,25 @@ const AdminPortal = () => {
     URL.revokeObjectURL(url);
   };
 
-  const saveConfig = () => toast.success("Configurações salvas com sucesso!");
+  const saveConfig = async () => {
+    if (!config) return;
+    // O CHECK do banco recusa janela invertida; avisar antes evita a
+    // mensagem crua do Postgres.
+    if (config.submissoes_abertura && config.submissoes_encerramento
+        && config.submissoes_abertura > config.submissoes_encerramento) {
+      toast.error("O encerramento não pode ser anterior à abertura.");
+      return;
+    }
+    setSalvandoConfig(true);
+    try {
+      await salvarConfiguracoes(config);
+      toast.success("Configurações salvas. O prazo passa a valer imediatamente.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar.");
+    } finally {
+      setSalvandoConfig(false);
+    }
+  };
 
   const stats = {
     total: trabalhos.length,
@@ -150,6 +249,7 @@ const AdminPortal = () => {
             { id: "auditoria", label: "Auditoria", icon: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></> },
             { id: "conflitos", label: "Conflitos", icon: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> },
             { id: "papeis", label: "Papéis", icon: <><path d="M2 18v3h3l8.5-8.5a3.5 3.5 0 10-3-3L2 18z"/><circle cx="16.5" cy="7.5" r="1.5"/></> },
+            { id: "usuarios", label: "Usuários", icon: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></> },
             { id: "configuracoes", label: "Configurações", icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></> },
             { id: "notificacoes", label: "Notificações", icon: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></> },
           ] as { id: Secao; label: string; icon: React.ReactNode }[]).map(item => (
@@ -222,6 +322,15 @@ const AdminPortal = () => {
                 </svg>
                 <input type="text" className="search-input" placeholder="Buscar por título, autor..." value={search} onChange={e => setSearch(e.target.value)} />
               </div>
+              {selecionadosVisiveis.length > 0 && (
+                <button className="btn btn-danger btn-sm" onClick={excluirSelecionados} disabled={excluindo}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                  </svg>
+                  {excluindo ? "EXCLUINDO..." : `EXCLUIR SELECIONADOS (${selecionadosVisiveis.length})`}
+                </button>
+              )}
               <button className="btn btn-outline btn-sm" onClick={exportCSV}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -246,6 +355,21 @@ const AdminPortal = () => {
                 <table className="table" style={{ width: "100%" }}>
                   <thead>
                     <tr>
+                      <th style={{ width: 36 }}>
+                        <input
+                          type="checkbox"
+                          aria-label="Selecionar todos os trabalhos listados"
+                          checked={todosVisiveisMarcados}
+                          onChange={e => {
+                            const marcar = e.target.checked;
+                            setSelecionados(atual => {
+                              const proximo = new Set(atual);
+                              filtered.forEach(t => marcar ? proximo.add(t.id) : proximo.delete(t.id));
+                              return proximo;
+                            });
+                          }}
+                        />
+                      </th>
                       <th>ID</th>
                       <th>TRABALHO E AUTOR</th>
                       <th>CATEGORIA</th>
@@ -257,6 +381,14 @@ const AdminPortal = () => {
                   <tbody>
                     {filtered.map(t => (
                       <tr key={t.id}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`Selecionar "${t.titulo}"`}
+                            checked={selecionados.has(t.id)}
+                            onChange={() => alternarSelecao(t.id)}
+                          />
+                        </td>
                         <td style={{ fontFamily: "monospace", fontSize: "var(--fs-caption)", color: "var(--color-text-muted)" }}>{t.id.slice(0, 8)}…</td>
                         <td>
                           <div style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</div>
@@ -281,6 +413,17 @@ const AdminPortal = () => {
                             {t.status !== "reprovado" && (
                               <button className="btn btn-danger btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "reprovado")}>Reprovar</button>
                             )}
+                            {/* Exclusão definitiva — leva pareceres,
+                                avaliações, revisores e o PDF junto. É a
+                                limpeza de fim de edição. */}
+                            <button
+                              className="btn btn-sm"
+                              style={{ padding: "4px 8px", fontSize: 11, background: "transparent", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }}
+                              disabled={excluindo}
+                              onClick={() => excluirUm(t)}
+                            >
+                              Excluir
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -311,6 +454,16 @@ const AdminPortal = () => {
             {activeSection === "papeis" && <PapeisPanel />}
           </div>
 
+          {/* USUÁRIOS */}
+          <div className={`section${activeSection === "usuarios" ? " active" : ""}`}>
+            <div className="page-header">
+              <div className="page-overline">CONTAS CADASTRADAS</div>
+              <h1 className="page-title">Usuários da plataforma.</h1>
+              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Estudantes, professores, avaliadores e participantes externos. Contas de administrador não são listadas.</p>
+            </div>
+            {activeSection === "usuarios" && <UsuariosPanel />}
+          </div>
+
           {/* CONFIGURAÇÕES */}
           <div className={`section${activeSection === "configuracoes" ? " active" : ""}`}>
             <div className="page-header">
@@ -319,6 +472,9 @@ const AdminPortal = () => {
               <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Defina prazos, regras de submissão e alertas automáticos.</p>
             </div>
 
+            {!config ? (
+              <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>Carregando configurações...</div>
+            ) : (
             <div className="config-cards">
               <div className="config-card">
                 <div className="config-card-header">
@@ -327,14 +483,41 @@ const AdminPortal = () => {
                   </svg>
                   <span className="config-title">Prazos da Edição</span>
                 </div>
+
+                <div className="alert alert-warning alert-admin" style={{ marginBottom: "var(--space-4)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <div>
+                    <strong>ESTE PRAZO É APLICADO DE VERDADE.</strong> Fora da janela, o banco recusa
+                    novas submissões e a edição de trabalhos ainda pendentes. As duas pontas são
+                    inclusivas, um encerramento em 31/05 aceita envio durante todo o dia 31, no
+                    horário de Brasília. <strong>Campo vazio = sem prazo</strong>, e trabalhos
+                    <strong> aprovados com correções continuam editáveis</strong> mesmo depois do
+                    encerramento.
+                  </div>
+                </div>
+
                 <div className="config-row">
                   <div className="form-group">
-                    <label className="form-label">Abertura de Submissões</label>
-                    <input type="date" className="form-input" value={config.abertura} onChange={e => setConfig(c => ({ ...c, abertura: e.target.value }))} />
+                    <label className="form-label" htmlFor="cfg-abertura">Abertura de Submissões</label>
+                    <input
+                      type="date"
+                      id="cfg-abertura"
+                      className="form-input"
+                      value={config.submissoes_abertura ?? ""}
+                      onChange={e => setCampo("submissoes_abertura", e.target.value || null)}
+                    />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Encerramento</label>
-                    <input type="date" className="form-input" value={config.encerramento} onChange={e => setConfig(c => ({ ...c, encerramento: e.target.value }))} />
+                    <label className="form-label" htmlFor="cfg-encerramento">Encerramento</label>
+                    <input
+                      type="date"
+                      id="cfg-encerramento"
+                      className="form-input"
+                      value={config.submissoes_encerramento ?? ""}
+                      onChange={e => setCampo("submissoes_encerramento", e.target.value || null)}
+                    />
                   </div>
                 </div>
               </div>
@@ -347,9 +530,9 @@ const AdminPortal = () => {
                   <span className="config-title">Alertas para Revisores</span>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Antecedência de Alerta (Horas)</label>
-                  <input type="number" className="form-input" value={alertHours} min={1} style={{ maxWidth: 200 }} onChange={e => setAlertHours(Number(e.target.value))} />
-                  <div className="config-display">EQUIVALE A {alertHours}h ≈ {(alertHours / 24).toFixed(1)} dias</div>
+                  <label className="form-label" htmlFor="cfg-alerta">Antecedência de Alerta (Horas)</label>
+                  <input type="number" id="cfg-alerta" className="form-input" value={config.alerta_horas} min={1} style={{ maxWidth: 200 }} onChange={e => setCampo("alerta_horas", Number(e.target.value))} />
+                  <div className="config-display">EQUIVALE A {config.alerta_horas}h ≈ {(config.alerta_horas / 24).toFixed(1)} dias</div>
                 </div>
                 <div className="config-toggle-row">
                   <div className="config-toggle-info">
@@ -374,19 +557,22 @@ const AdminPortal = () => {
                   </svg>
                   <span className="config-title">Regras de Submissão</span>
                 </div>
+                {/* ⚠ Diferente do prazo acima, estes três são apenas
+                    GRAVADOS: ainda não há regra de servidor aplicando
+                    nenhum deles. Usar um exige escrever a trava em SQL. */}
                 <div className="config-row">
                   <div className="form-group">
-                    <label className="form-label">Tamanho Mínimo do Parecer (Caracteres)</label>
-                    <input type="number" className="form-input" value={config.minChars} min={100} onChange={e => setConfig(c => ({ ...c, minChars: Number(e.target.value) }))} />
+                    <label className="form-label" htmlFor="cfg-min-parecer">Tamanho Mínimo do Parecer (Caracteres)</label>
+                    <input type="number" id="cfg-min-parecer" className="form-input" value={config.parecer_min_caracteres} min={100} onChange={e => setCampo("parecer_min_caracteres", Number(e.target.value))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Máximo de Coautores</label>
-                    <input type="number" className="form-input" value={config.maxCoauthors} min={1} onChange={e => setConfig(c => ({ ...c, maxCoauthors: Number(e.target.value) }))} />
+                    <label className="form-label" htmlFor="cfg-max-coautores">Máximo de Coautores</label>
+                    <input type="number" id="cfg-max-coautores" className="form-input" value={config.max_coautores} min={1} onChange={e => setCampo("max_coautores", Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Mensagem do Edital</label>
-                  <textarea className="form-textarea" value={config.edital} onChange={e => setConfig(c => ({ ...c, edital: e.target.value }))} rows={4} />
+                  <label className="form-label" htmlFor="cfg-edital">Mensagem do Edital</label>
+                  <textarea id="cfg-edital" className="form-textarea" value={config.edital} onChange={e => setCampo("edital", e.target.value)} rows={4} />
                 </div>
               </div>
 
@@ -399,21 +585,22 @@ const AdminPortal = () => {
                 </div>
                 <div className="config-row">
                   <div className="form-group">
-                    <label className="form-label">Link Template Word (DOCX)</label>
-                    <input type="url" className="form-input" value={config.linkTemplateWord} onChange={e => setConfig(c => ({ ...c, linkTemplateWord: e.target.value }))} />
+                    <label className="form-label" htmlFor="cfg-word">Link Template Word (DOCX)</label>
+                    <input type="url" id="cfg-word" className="form-input" value={config.link_template_word} onChange={e => setCampo("link_template_word", e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Link Template LaTeX</label>
-                    <input type="url" className="form-input" value={config.linkTemplateLaTeX} onChange={e => setConfig(c => ({ ...c, linkTemplateLaTeX: e.target.value }))} />
+                    <label className="form-label" htmlFor="cfg-latex">Link Template LaTeX</label>
+                    <input type="url" id="cfg-latex" className="form-input" value={config.link_template_latex} onChange={e => setCampo("link_template_latex", e.target.value)} />
                   </div>
                 </div>
               </div>
             </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
-              <button className="btn btn-primary" onClick={saveConfig}>
+              <button className="btn btn-primary" onClick={saveConfig} disabled={!config || salvandoConfig}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                SALVAR CONFIGURAÇÕES
+                {salvandoConfig ? "SALVANDO..." : "SALVAR CONFIGURAÇÕES"}
               </button>
             </div>
           </div>
@@ -437,7 +624,7 @@ const AdminPortal = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="notification-title">Nova submissão recebida</div>
-                    <div className="notification-desc">{t.titulo} — por {t.autores}</div>
+                    <div className="notification-desc">{t.titulo}, por {t.autores}</div>
                     <div className="notification-time">{new Date(t.created_at).toLocaleString("pt-BR")}</div>
                   </div>
                   <span className={`badge ${t.status === "aprovado" ? "badge-green" : t.status === "reprovado" ? "badge-red" : "badge-blue"}`}>

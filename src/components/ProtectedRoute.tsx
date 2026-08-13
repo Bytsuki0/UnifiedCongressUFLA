@@ -26,10 +26,13 @@ export const ProtectedRoute = ({ allowedRoles, exigeEmailConfirmado = true }: Pr
 
   useEffect(() => {
     if (loading) return;
-    if (!role) { navigate("/login"); return; }
-    if (faltaConfirmar) { navigate("/verifique-email"); return; }
+    // `replace` nos três: são desvios, não navegação do usuário. Empilhados,
+    // o "voltar" do navegador devolveria para a rota barrada, que desvia de
+    // novo — o botão vira um laço.
+    if (!role) { navigate("/login", { replace: true }); return; }
+    if (faltaConfirmar) { navigate("/verifique-email", { replace: true }); return; }
     if (!allowedRoles.includes(role)) {
-      navigate(portalDoPapel(role));
+      navigate(portalDoPapel(role), { replace: true });
     }
   }, [role, faltaConfirmar, loading, navigate, allowedRoles]);
 

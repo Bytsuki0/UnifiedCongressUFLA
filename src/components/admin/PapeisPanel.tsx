@@ -16,7 +16,7 @@ const ROLES: { value: UserRole; label: string; hint: string }[] = [
   { value: "avaliador", label: "Avaliador", hint: "Co-chair: gestão do congresso e rankings" },
   { value: "professor", label: "Professor", hint: "Painel de revisão de trabalhos" },
   { value: "estudante", label: "Estudante", hint: "Portal de submissões" },
-  { value: "externo", label: "Externo", hint: "Somente a área do congresso" },
+  { value: "externo", label: "Externo", hint: "Participante de fora da UFLA: mesma alçada de autor do estudante" },
 ];
 
 /**
@@ -70,7 +70,7 @@ export function PapeisPanel() {
           <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
         <div>
-          <strong>ALTERAÇÕES VALEM IMEDIATAMENTE:</strong> o papel é lido do banco a cada carregamento de sessão —
+          <strong>ALTERAÇÕES VALEM IMEDIATAMENTE:</strong> o papel é lido do banco a cada carregamento de sessão,
           a pessoa afetada só precisa recarregar a página. <strong>Avaliador</strong> e <strong>Professor</strong>{" "}
           colocam a conta no pool de revisores (Atribuições e distribuição automática). Um usuário pode acumular
           papéis; vale sempre o de maior privilégio.

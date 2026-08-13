@@ -60,13 +60,17 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
 };
 
 function getPortaisItems(role: UserRole): string[] {
-  // Fixed, canonical order per role. The current page is NOT removed — it stays
-  // in place (marked active) so the portal buttons never shift position.
+  // Ordem fixa e canônica por papel. A página atual NÃO é removida — fica no
+  // lugar (marcada como ativa) para que os botões nunca troquem de posição.
+  //
+  // "congresso" só aparece para o admin: a área do evento está congelada e
+  // fora do escopo, e o link é o único caminho de interface que sobrou até
+  // lá. `externo` repete a lista do estudante — mesma alçada de autor.
   const byRole: Record<UserRole, string[]> = {
-    externo: ["congresso"],
-    estudante: ["estudante", "congresso"],
-    professor: ["estudante", "revisor", "congresso"],
-    avaliador: ["dashboard", "estudante", "revisor", "congresso"],
+    externo: ["estudante"],
+    estudante: ["estudante"],
+    professor: ["estudante", "revisor"],
+    avaliador: ["dashboard", "estudante", "revisor"],
     admin: ["dashboard", "estudante", "revisor", "admin", "congresso"],
   };
   return byRole[role] || [];

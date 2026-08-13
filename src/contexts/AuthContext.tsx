@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { emailEstaConfirmado } from "@/services/verificacaoEmailService";
@@ -58,8 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [emailConfirmado, setEmailConfirmado] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const applySession = async (session: Session | null) => {
+  /** Conta cujo papel já está resolvido (ou em resolução neste instante). */
+  const contaEmMemoria = useRef<string | null>(null);
+  /** Ordena resoluções concorrentes: só a última pode escrever o estado. */
+  const geracao = useRef(0);
+
+  const applySession = useCallback(async (session: Session | null) => {
+    const minhaGeracao = ++geracao.current;
+
     if (!session) {
+      contaEmMemoria.current = null;
       setUser(null);
       setRole(null);
       setEmailConfirmado(null);
@@ -69,13 +77,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = session.user.email!;
     const nome = session.user.user_metadata?.nome || email.split("@")[0];
     setUser({ id: session.user.id, email, nome });
+
+    // Conta diferente da que está em memória (login recém-feito, troca de
+    // usuário): o papel ainda NÃO vale. Voltar a `loading` é o que segura o
+    // <ProtectedRoute> — sem isto ele lê `role === null` como "não
+    // autenticado" e devolve para /login justamente quem acabou de entrar.
+    // Em TOKEN_REFRESHED a conta é a mesma e nada disso acontece, senão a
+    // tela piscaria "Verificando acesso..." a cada renovação de token.
+    if (contaEmMemoria.current !== session.user.id) {
+      contaEmMemoria.current = session.user.id;
+      setRole(null);
+      setEmailConfirmado(null);
+      setLoading(true);
+    }
+
     // As duas RPCs são independentes: em paralelo, para não somar as
     // latências antes de liberar a primeira tela.
     const [r, confirmado] = await Promise.all([resolveMyRole(), emailEstaConfirmado()]);
+    // Chegou atrasada, já há resolução mais nova em voo: descartar. Escrever
+    // aqui reporia o papel da sessão ANTERIOR por cima da atual.
+    if (minhaGeracao !== geracao.current) return;
     setRole(r);
     setEmailConfirmado(confirmado);
     setLoading(false);
-  };
+  }, []);
 
   /**
    * Relê a confirmação sem recarregar a página. Necessário porque quem
@@ -95,11 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      applySession(session);
+      // ⚠ O supabase-js chama este callback COM O LOCK do auth segurado.
+      // Chamar supabase.rpc() aqui dentro trava até o lock ser liberado — e é
+      // exatamente essa espera que abria a janela em que `role` ficava nulo
+      // depois do login. O setTimeout joga o trabalho para a volta seguinte
+      // do event loop, já sem o lock.
+      setTimeout(() => { applySession(session); }, 0);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [applySession]);
 
   return (
     <AuthContext.Provider value={{ user, role, emailConfirmado, loading, revalidarEmailConfirmado }}>

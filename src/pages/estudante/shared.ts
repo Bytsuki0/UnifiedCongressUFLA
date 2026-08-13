@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { listarTrabalhosDoAutorComCategorias } from "@/services/trabalhosService";
+import { carregarPrazoSubmissoes, type PrazoSubmissoes } from "@/services/configuracoesService";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Tipos e helpers compartilhados pelas páginas do Portal do Estudante.
@@ -49,6 +50,46 @@ export const statusLabel: Record<string, string> = {
 
 /** Status em que o autor deve reenviar o trabalho corrigido. */
 export const AGUARDANDO_CORRECAO = "aprovado_correcoes";
+
+/** Status em que o trabalho ainda não entrou em avaliação. */
+export const PENDENTE = "pendente";
+
+/**
+ * Status em que a decisão já está fechada — é quando os pareceres ficam
+ * visíveis para o autor. Bate com a regra do servidor
+ * (`pareceres_do_meu_trabalho` só revela depois da decisão consolidada);
+ * aqui serve só para decidir se vale a pena oferecer o botão.
+ */
+export const STATUS_COM_PARECER = ["aprovado", AGUARDANDO_CORRECAO, "reprovado"];
+
+/** dd/mm/aaaa a partir do 'aaaa-mm-dd' que o Postgres devolve. */
+export const formatarData = (iso: string | null): string =>
+  iso ? iso.split("-").reverse().join("/") : "—";
+
+/**
+ * Prazo de submissão vigente, do servidor.
+ *
+ * `aberto` NUNCA é recalculado aqui a partir das datas: o relógio do
+ * navegador não decide prazo, e um computador adiantado reabriria a
+ * janela na tela. Enquanto carrega, `aberto` fica `null` = "não sei" —
+ * as telas tratam isso como "ainda não bloquear", porque quem recusa de
+ * verdade é o banco (trigger `protect_trabalhos_fields` e a RPC
+ * `editar_submissao`). Esta camada é conveniência, não segurança.
+ */
+export function usePrazo() {
+  const [prazo, setPrazo] = useState<PrazoSubmissoes | null>(null);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    carregarPrazoSubmissoes()
+      .then((p) => { if (vivo) setPrazo(p); })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
+  }, []);
+
+  return { prazo, carregando, aberto: prazo?.aberto ?? null };
+}
 
 /**
  * Carrega as submissões DO USUÁRIO LOGADO + as categorias.

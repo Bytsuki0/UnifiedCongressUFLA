@@ -43,13 +43,15 @@ const Login = () => {
     // Mandar direto para a sala de espera evita a tela vazia sem explicação.
     if (confirmado === false) {
       toast.info("Falta confirmar seu e-mail para liberar a conta.");
-      navigate("/verifique-email");
+      navigate("/verifique-email", { replace: true });
       setLoading(false);
       return;
     }
 
+    // `replace`: depois de entrar, o "voltar" do navegador não pode devolver
+    // à tela de login de uma sessão que já existe.
     toast.success(saudacaoDoPapel(profile));
-    navigate(portalDoPapel(profile));
+    navigate(portalDoPapel(profile), { replace: true });
 
     setLoading(false);
   };
@@ -103,7 +105,7 @@ const Login = () => {
             <p className="section-overline">ACESSO À PLATAFORMA</p>
             <h2 className="section-title">Bem-vindo de volta.</h2>
             <p className="section-description">
-              Entre com suas credenciais institucionais. O sistema identificará automaticamente o seu perfil — estudante, professor ou administrador.
+              Entre com suas credenciais institucionais. O sistema identificará automaticamente o seu perfil, estudante, professor ou administrador.
             </p>
 
             <form onSubmit={handleSubmit} noValidate>

@@ -37,7 +37,7 @@ const Dashboard = () => {
             </svg>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
               <span>
-                <strong>Correções pendentes.</strong> {aguardandoCorrecao.length === 1 ? "Um trabalho foi aprovado" : `${aguardandoCorrecao.length} trabalhos foram aprovados`} com necessidade de correções — reenvie o PDF corrigido para concluir a aprovação.
+                <strong>Correções pendentes.</strong> {aguardandoCorrecao.length === 1 ? "Um trabalho foi aprovado" : `${aguardandoCorrecao.length} trabalhos foram aprovados`} com necessidade de correções, reenvie o PDF corrigido para concluir a aprovação.
               </span>
               <button
                 className="btn btn-primary btn-sm"

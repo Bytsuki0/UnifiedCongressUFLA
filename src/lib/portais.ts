@@ -10,7 +10,14 @@
  */
 import type { UserRole } from "@/contexts/AuthContext";
 
-/** Rota inicial do papel. `externo` só participa da área do congresso. */
+/**
+ * Rota inicial do papel.
+ *
+ * `externo` cai no Portal do Estudante junto com `estudante`: ficou decidido
+ * que quem é de fora da universidade também submete trabalho, então o papel
+ * passou a ter a mesma alçada de autor. Não há caso `externo` aqui de
+ * propósito — ele cai no `default`, como o estudante.
+ */
 export function portalDoPapel(papel: UserRole): string {
   switch (papel) {
     case "admin":
@@ -19,8 +26,6 @@ export function portalDoPapel(papel: UserRole): string {
       return "/co-chairs";
     case "professor":
       return "/revisor";
-    case "externo":
-      return "/congresso/dashboard";
     default:
       return "/estudante";
   }
@@ -35,8 +40,6 @@ export function saudacaoDoPapel(papel: UserRole): string {
       return "Bem-vindo ao Dashboard!";
     case "professor":
       return "Bem-vindo ao Portal Revisor!";
-    case "externo":
-      return "Bem-vindo ao Congresso!";
     default:
       return "Bem-vindo ao Portal Estudante!";
   }

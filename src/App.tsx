@@ -7,11 +7,11 @@
  *   /            → páginas públicas (landing, login, cadastro)
  *   /estudante   → submissão de trabalhos (autor); qualquer papel autenticado
  *   /revisor     → análise/avaliação de trabalhos (professor, avaliador, admin)
- *   /admin       → Portal Admin: gestão de papéis e conflitos (só admin)
+ *   /admin       → Portal Admin: papéis, conflitos, usuários (só admin)
  *   /dashboard…  → gestão de co-chairs: trabalhos, categorias, atribuições,
  *                  rankings (avaliador, admin)
- *   /congresso   → área do evento: inscrição, minicursos, certificados,
- *                  programação e o admin do evento
+ *   /congresso   → área do evento — CONGELADA, fora do escopo do projeto.
+ *                  Só o admin enxerga; ninguém é redirecionado para lá.
  *
  * O controle de acesso é feito por <ProtectedRoute allowedRoles={[...]} />,
  * que envolve grupos de rotas. Isso é apenas a barreira de UI — a barreira
@@ -47,6 +47,8 @@ import EstudanteDashboard from "./pages/estudante/Dashboard";
 import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
 import EstudanteHistorico from "./pages/estudante/Historico";
 import EstudanteCorrecao from "./pages/estudante/Correcao";
+import EstudanteEditar from "./pages/estudante/EditarSubmissao";
+import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
 
 // Painel do Revisor — uma página por função, sob /revisor
@@ -71,7 +73,8 @@ import Categorias from "./pages/co-chairs/Categorias";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import Rankings from "./pages/co-chairs/Rankings";
 
-// Páginas de gestão do evento (congresso) — todas sob /congresso.
+// Páginas do evento (congresso) — todas sob /congresso, hoje só para admin.
+// Mantidas importadas de propósito: a área está congelada, não removida.
 import EventInformacoes from "./pages/event/Informacoes";
 import EventProgramacao from "./pages/event/Programacao";
 import EventVerificar from "./pages/event/Verificar";
@@ -82,7 +85,6 @@ import EventMinicursos from "./pages/event/Minicursos";
 import EventCertificados from "./pages/event/Certificados";
 import EventPerfil from "./pages/event/Perfil";
 import AdminIndex from "./pages/event/admin/AdminIndex";
-import AdminUsuarios from "./pages/event/admin/AdminUsuarios";
 import AdminInscricoes from "./pages/event/admin/AdminInscricoes";
 import AdminMinicursos from "./pages/event/admin/AdminMinicursos";
 import AdminProgramacao from "./pages/event/admin/AdminProgramacao";
@@ -94,7 +96,6 @@ import AdminNotificacoes from "./pages/event/admin/AdminNotificacoes";
 // componente para não ser recriado a cada render.
 const queryClient = new QueryClient();
 
-// Contas externas participam apenas da área do congresso (/congresso).
 const ALL_ROLES = ["estudante", "professor", "avaliador", "admin", "externo"] as const;
 
 // As telas de co-chairs moravam na raiz ("/dashboard", "/trabalhos", ...).
@@ -148,16 +149,27 @@ const App = () => (
               <Route path="/verifique-email" element={<VerifiqueEmail />} />
             </Route>
 
-            {/* Estudante: liberado para todos os papéis autenticados —
-                um professor/avaliador também pode submeter trabalho. */}
-            <Route element={<ProtectedRoute allowedRoles={["estudante", "professor", "avaliador", "admin"]} />}>
+            {/* Estudante: liberado para TODOS os papéis autenticados — um
+                professor/avaliador também pode submeter trabalho, e o
+                `externo` entrou aqui quando se decidiu que quem é de fora da
+                universidade também publica. Nada disso precisou de migration:
+                o RLS de `trabalhos` e do bucket `Pdfs` é por DONO
+                (`owner_id = auth.uid()`), nunca por papel. */}
+            <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} />}>
               <Route path="/estudante" element={<EstudanteLayout />}>
                 <Route index element={<Navigate to="/estudante/dashboard" replace />} />
                 <Route path="dashboard" element={<EstudanteDashboard />} />
                 <Route path="nova-submissao" element={<EstudanteNovaSubmissao />} />
                 <Route path="historico" element={<EstudanteHistorico />} />
+                {/* Notas e comentários recebidos, em qualquer desfecho —
+                    aprovado, com correções ou reprovado. */}
+                <Route path="trabalho/:id" element={<EstudanteDetalhe />} />
+                {/* Edição do próprio trabalho: só enquanto 'pendente' e
+                    dentro do prazo de submissão (RPC editar_submissao). */}
+                <Route path="editar/:id" element={<EstudanteEditar />} />
                 {/* Rodada de correção — só abre quando os pareceres
-                    consolidam em "aprovado com correções". */}
+                    consolidam em "aprovado com correções". É a ÚNICA
+                    escrita do autor que sobrevive ao fim do prazo. */}
                 <Route path="correcao/:id" element={<EstudanteCorrecao />} />
                 <Route path="templates" element={<EstudanteTemplates />} />
               </Route>
@@ -206,27 +218,25 @@ const App = () => (
               <Route key={p} path={p} element={<RedirecionaCoChairs />} />
             ))}
 
-            {/* ===== Congresso — páginas públicas =====
-                /verificar existe para conferir a autenticidade de um
-                certificado sem precisar de login. */}
-            <Route path="/congresso/informacoes" element={<EventInformacoes />} />
-            <Route path="/congresso/programacao" element={<EventProgramacao />} />
-            <Route path="/congresso/verificar" element={<EventVerificar />} />
-            <Route path="/congresso/verificar/:codigo" element={<EventVerificarCodigo />} />
-
-            {/* Congresso — páginas logadas: aqui "externo" também entra. */}
-            <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} />}>
+            {/* ===== Congresso — CONGELADO =====
+                A área do evento saiu do escopo do projeto e não será
+                desenvolvida até segunda ordem. O código fica no repositório
+                porque ainda há telas que podem migrar para outros portais —
+                mas /congresso inteiro passou a ser visível SÓ para o admin,
+                inclusive o que antes era público (/informacoes, /programacao,
+                /verificar). Ninguém mais é mandado para cá: `portalDoPapel`
+                já não devolve /congresso para papel nenhum. */}
+            <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+              <Route path="/congresso/informacoes" element={<EventInformacoes />} />
+              <Route path="/congresso/programacao" element={<EventProgramacao />} />
+              <Route path="/congresso/verificar" element={<EventVerificar />} />
+              <Route path="/congresso/verificar/:codigo" element={<EventVerificarCodigo />} />
               <Route path="/congresso/dashboard" element={<EventDashboard />} />
               <Route path="/congresso/inscricao" element={<EventInscricao />} />
               <Route path="/congresso/minicursos" element={<EventMinicursos />} />
               <Route path="/congresso/certificados" element={<EventCertificados />} />
               <Route path="/congresso/perfil" element={<EventPerfil />} />
-            </Route>
-
-            {/* Congresso — painel administrativo do evento. */}
-            <Route element={<ProtectedRoute allowedRoles={["avaliador", "admin"]} />}>
               <Route path="/congresso/admin" element={<AdminIndex />} />
-              <Route path="/congresso/admin/usuarios" element={<AdminUsuarios />} />
               <Route path="/congresso/admin/inscricoes" element={<AdminInscricoes />} />
               <Route path="/congresso/admin/minicursos" element={<AdminMinicursos />} />
               <Route path="/congresso/admin/programacao" element={<AdminProgramacao />} />
@@ -235,9 +245,12 @@ const App = () => (
               <Route path="/congresso/admin/notificacoes" element={<AdminNotificacoes />} />
             </Route>
 
-            {/* A gestão de papéis mudou para o Portal Admin — conceder
-                avaliador/professor é o que monta o pool de revisores. */}
+            {/* Duas telas do congresso saíram de lá para o Portal Admin, que
+                é onde a gestão de contas ficou concentrada: papéis (conceder
+                avaliador/professor é o que monta o pool de revisores) e a
+                lista de usuários. */}
             <Route path="/congresso/admin/papeis" element={<Navigate to="/admin/papeis" replace />} />
+            <Route path="/congresso/admin/usuarios" element={<Navigate to="/admin/usuarios" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

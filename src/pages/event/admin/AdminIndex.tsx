@@ -21,7 +21,8 @@ export default function AdminIndex() {
   });
 
   const cards = [
-    { to: e("/admin/usuarios"), label: "Usuários", icon: Users, value: stats.data?.users },
+    // A tela de usuários mudou para o Portal Admin — link absoluto, sem e().
+    { to: "/admin/usuarios", label: "Usuários", icon: Users, value: stats.data?.users },
     { to: e("/admin/inscricoes"), label: "Inscrições", icon: Ticket, value: stats.data?.regs },
     { to: e("/admin/minicursos"), label: "Minicursos", icon: GraduationCap, value: stats.data?.minis },
     { to: e("/admin/programacao"), label: "Programação", icon: Calendar, value: stats.data?.sched },

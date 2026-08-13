@@ -1,11 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { openPdf } from "@/lib/pdfStorage";
-import { AGUARDANDO_CORRECAO, statusBadge, statusLabel, useTrabalhos } from "./shared";
+import {
+  AGUARDANDO_CORRECAO,
+  PENDENTE,
+  STATUS_COM_PARECER,
+  formatarData,
+  statusBadge,
+  statusLabel,
+  usePrazo,
+  useTrabalhos,
+} from "./shared";
 
 const Historico = () => {
   const navigate = useNavigate();
   const { trabalhos, loading, catNome } = useTrabalhos();
+  const { prazo, aberto } = usePrazo();
   const aguardandoCorrecao = trabalhos.filter((t) => t.status === AGUARDANDO_CORRECAO);
 
   // O bucket de PDFs é privado: o acesso é feito por URL assinada,
@@ -24,6 +34,19 @@ const Historico = () => {
           <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Acompanhe todas as submissões realizadas e seus respectivos pareceres.</p>
         </div>
 
+        {aberto === false && (
+          <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <div>
+              <strong>Prazo de submissão encerrado{prazo?.encerramento ? ` em ${formatarData(prazo.encerramento)}` : ""}.</strong>{" "}
+              Não é mais possível enviar nem editar trabalhos, exceto os aprovados com correções,
+              que continuam podendo ser corrigidos.
+            </div>
+          </div>
+        )}
+
         {aguardandoCorrecao.length > 0 && (
           <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
@@ -31,7 +54,7 @@ const Historico = () => {
             </svg>
             <div>
               <strong>{aguardandoCorrecao.length === 1 ? "1 trabalho aprovado com correções." : `${aguardandoCorrecao.length} trabalhos aprovados com correções.`}</strong>{" "}
-              Reenvie o PDF corrigido para concluir a aprovação — use o botão “Corrigir” na tabela abaixo.
+              Reenvie o PDF corrigido para concluir a aprovação, use o botão “Corrigir” na tabela abaixo.
             </div>
           </div>
         )}
@@ -62,7 +85,14 @@ const Historico = () => {
                 </tr>
               </thead>
               <tbody>
-                {trabalhos.map(t => (
+                {trabalhos.map(t => {
+                  const podeVerParecer = STATUS_COM_PARECER.includes(t.status);
+                  // `aberto === null` é "não sei" (falha de rede) e não
+                  // esconde o botão — quem recusa é a RPC editar_submissao.
+                  const podeEditar = t.status === PENDENTE && aberto !== false;
+                  const podeCorrigir = t.status === AGUARDANDO_CORRECAO;
+                  const semAcao = !podeVerParecer && !podeEditar && !podeCorrigir;
+                  return (
                   <tr key={t.id}>
                     <td style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</td>
                     <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.autores}</td>
@@ -71,20 +101,43 @@ const Historico = () => {
                     <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
                     <td>{t.pdf_url ? <button type="button" onClick={() => verPdf(t.pdf_url!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
                     <td>
-                      {t.status === AGUARDANDO_CORRECAO ? (
-                        <button
-                          className="btn btn-primary btn-sm"
-                          style={{ padding: "4px 10px", fontSize: 11 }}
-                          onClick={() => navigate(`/estudante/correcao/${t.id}`)}
-                        >
-                          Corrigir
-                        </button>
-                      ) : (
-                        "—"
-                      )}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {/* Notas e comentários: para TODO desfecho, não só
+                            para quem tem correção a fazer. Quem foi
+                            reprovado é quem mais precisa ler o porquê. */}
+                        {podeVerParecer && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => navigate(`/estudante/trabalho/${t.id}`)}
+                          >
+                            Ver pareceres
+                          </button>
+                        )}
+                        {podeEditar && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => navigate(`/estudante/editar/${t.id}`)}
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {podeCorrigir && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => navigate(`/estudante/correcao/${t.id}`)}
+                          >
+                            Corrigir
+                          </button>
+                        )}
+                        {semAcao && "—"}
+                      </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

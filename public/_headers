@@ -34,17 +34,9 @@
   X-Robots-Tag: noindex, nofollow
 /co-chairs/*
   X-Robots-Tag: noindex, nofollow
-/congresso/admin/*
-  X-Robots-Tag: noindex, nofollow
-/congresso/dashboard
-  X-Robots-Tag: noindex, nofollow
-/congresso/inscricao
-  X-Robots-Tag: noindex, nofollow
-/congresso/minicursos
-  X-Robots-Tag: noindex, nofollow
-/congresso/certificados
-  X-Robots-Tag: noindex, nofollow
-/congresso/perfil
+# /congresso inteiro: área congelada, hoje só para admin — não há mais
+# página pública sob esse prefixo.
+/congresso/*
   X-Robots-Tag: noindex, nofollow
 
 # Verificação de e-mail: a primeira é pública mas leva token na URL, a

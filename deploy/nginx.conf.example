@@ -32,7 +32,9 @@ server {
         add_header X-Robots-Tag "noindex, nofollow" always;
         try_files $uri /index.html;
     }
-    location ~ ^/congresso/(admin|dashboard|inscricao|minicursos|certificados|perfil)(/|$) {
+    # /congresso inteiro: área congelada, hoje só para admin — não há mais
+    # página pública sob esse prefixo.
+    location ~ ^/congresso(/|$) {
         add_header X-Robots-Tag "noindex, nofollow" always;
         try_files $uri /index.html;
     }

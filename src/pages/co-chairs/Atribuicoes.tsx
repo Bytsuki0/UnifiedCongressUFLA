@@ -232,7 +232,7 @@ const Atribuicoes = () => {
         <CardHeader>
           <CardTitle>Associar revisor</CardTitle>
           <CardDescription>
-            Selecione um trabalho e um revisor — a lista traz toda conta com papel de avaliador ou professor
+            Selecione um trabalho e um revisor, a lista traz toda conta com papel de avaliador ou professor
             (concedido em Papéis, no Portal Admin), tratadas da mesma forma. O revisor verá o trabalho no portal
             do revisor pelo e-mail associado. Quem consta como autor, orientador ou coautor do trabalho aparece
             impedido.
@@ -250,7 +250,7 @@ const Atribuicoes = () => {
                   const n = revisoresPorTrabalho.get(t.id)?.length ?? 0;
                   return (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.titulo} — {n}/{MAX_REVISORES_POR_TRABALHO}
+                      {t.titulo}, {n}/{MAX_REVISORES_POR_TRABALHO}
                     </SelectItem>
                   );
                 })}
@@ -258,7 +258,7 @@ const Atribuicoes = () => {
             </Select>
             {trabalhoId && (
               <p className={`mt-1 text-xs ${revLimiteAtingido ? "text-destructive" : "text-muted-foreground"}`}>
-                {revCount}/{MAX_REVISORES_POR_TRABALHO} revisores{revLimiteAtingido && " — limite atingido"}
+                {revCount}/{MAX_REVISORES_POR_TRABALHO} revisores{revLimiteAtingido && ", limite atingido"}
               </p>
             )}
           </div>
@@ -271,7 +271,7 @@ const Atribuicoes = () => {
               <SelectContent>
                 {revisorOptions.length === 0 ? (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    Nenhum revisor no pool — conceda o papel de professor ou avaliador em Papéis
+                    Nenhum revisor no pool, conceda o papel de professor ou avaliador em Papéis
                   </div>
                 ) : (
                   revisorOptions.map((o) => {
@@ -279,7 +279,7 @@ const Atribuicoes = () => {
                     const motivo = trabalhoId ? motivoConflito(trabalhoId, o.email) : undefined;
                     return (
                       <SelectItem key={o.email} value={o.email} disabled={!!motivo}>
-                        {o.nome} · {TIPO_LABEL[o.tipo]} — {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                        {o.nome} · {TIPO_LABEL[o.tipo]}, {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
                         {motivo && ` · impedido (${motivo})`}
                       </SelectItem>
                     );
@@ -368,7 +368,7 @@ const Atribuicoes = () => {
         <TabsContent value="por-revisor" className="space-y-4">
           {revisorOptions.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              Nenhum revisor no pool — conceda o papel de professor ou avaliador em Papéis (Portal Admin).
+              Nenhum revisor no pool, conceda o papel de professor ou avaliador em Papéis (Portal Admin).
             </p>
           )}
           {revisorOptions.map((o) => {

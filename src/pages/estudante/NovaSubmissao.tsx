@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { submeterTrabalho } from "@/services/trabalhosService";
 import { toast } from "sonner";
-import { MAX_PDF_BYTES, useTrabalhos } from "./shared";
+import { MAX_PDF_BYTES, formatarData, usePrazo, useTrabalhos } from "./shared";
 
 const NovaSubmissao = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { categorias } = useTrabalhos();
+  const { prazo, carregando: carregandoPrazo, aberto } = usePrazo();
 
   const [form, setForm] = useState({
     titulo: "", resumo: "", categoria: "", orientador: "",
@@ -70,18 +71,72 @@ const NovaSubmissao = () => {
     }
   };
 
+  const voltar = (
+    <button className="back-link" onClick={() => navigate("/estudante/dashboard")}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar
+    </button>
+  );
+
+  if (carregandoPrazo) {
+    return (
+      <div className="section active">
+        <div className="content-area">
+          <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>Carregando...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fora da janela de submissão. `aberto === null` ("não sei", falha de
+  // rede) NÃO bloqueia: quem recusa de verdade é o trigger no banco, e
+  // esconder o formulário por causa de um erro de transporte tiraria a
+  // submissão de quem ainda está dentro do prazo.
+  if (aberto === false) {
+    const aindaVaiAbrir = !!prazo?.abertura && !!prazo?.hoje && prazo.hoje < prazo.abertura;
+    return (
+      <div className="section active">
+        <div className="content-area">
+          {voltar}
+          <div className="page-header">
+            <div className="page-overline">Nova Submissão</div>
+            <h1 className="page-title">Submeter trabalho científico</h1>
+          </div>
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <h3 className="empty-state-title">
+              {aindaVaiAbrir ? "As submissões ainda não abriram" : "Prazo de submissão encerrado"}
+            </h3>
+            <p className="empty-state-description">
+              {aindaVaiAbrir
+                ? `O envio de trabalhos abre em ${formatarData(prazo?.abertura ?? null)}.`
+                : `O prazo terminou em ${formatarData(prazo?.encerramento ?? null)}. Novos trabalhos não podem mais ser enviados, e os que já estão aprovados com correções continuam podendo ser corrigidos.`}
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate("/estudante/historico")}>
+              VER MEUS TRABALHOS
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="section active">
       <div className="content-area">
-        <button className="back-link" onClick={() => navigate("/estudante/dashboard")}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          Voltar
-        </button>
+        {voltar}
 
         <div className="page-header">
           <div className="page-overline">Nova Submissão</div>
           <h1 className="page-title">Submeter trabalho científico</h1>
-          <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Preencha todos os campos obrigatórios para enviar seu trabalho.</p>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
+            Preencha todos os campos obrigatórios para enviar seu trabalho.
+            {prazo?.encerramento ? ` O prazo se encerra em ${formatarData(prazo.encerramento)}.` : ""}
+          </p>
         </div>
 
         <form onSubmit={handleSubmitWork}>
@@ -90,7 +145,7 @@ const NovaSubmissao = () => {
               <div className="step-number">01</div>
               <div>
                 <div className="step-title">Extração Automática</div>
-                <div className="step-subtitle">Opcional — Importe um arquivo .tex para preencher automaticamente</div>
+                <div className="step-subtitle">Opcional, importe um arquivo .tex para preencher automaticamente</div>
               </div>
             </div>
             <div className="import-row">

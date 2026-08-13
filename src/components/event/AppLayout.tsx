@@ -34,7 +34,10 @@ const participantItems: Item[] = [
 
 const adminItems: Item[] = [
   { to: e("/admin"), label: "Painel do Congresso", icon: Shield, end: true },
-  { to: e("/admin/usuarios"), label: "Usuários", icon: Users },
+  // "Usuários" saiu daqui para o Portal Admin (/admin/usuarios) quando a área
+  // do congresso foi congelada — link absoluto de propósito, sem o e() que
+  // prefixa /congresso.
+  { to: "/admin/usuarios", label: "Usuários", icon: Users },
   { to: e("/admin/inscricoes"), label: "Inscrições", icon: Ticket },
   { to: e("/admin/minicursos"), label: "Minicursos", icon: GraduationCap },
   { to: e("/admin/programacao"), label: "Programação", icon: Calendar },

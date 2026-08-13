@@ -30,11 +30,8 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
-      "source": "/congresso/admin/:path*",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
-    },
-    {
-      "source": "/congresso/(dashboard|inscricao|minicursos|certificados|perfil)",
+      "comment": "/congresso inteiro: area congelada, hoje so para admin. Nao ha mais pagina publica sob esse prefixo.",
+      "source": "/congresso/:path*",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {

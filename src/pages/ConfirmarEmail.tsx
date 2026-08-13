@@ -146,7 +146,7 @@ const ConfirmarEmail = () => {
               <p className="card-overline">TUDO CERTO</p>
               <h1 className="card-title">Este e-mail já estava confirmado.</h1>
               <p className="card-description">
-                Nada a fazer aqui — sua conta já está liberada. Isso acontece quando
+                Nada a fazer aqui, sua conta já está liberada. Isso acontece quando
                 o link é aberto duas vezes ou quando você recebeu mais de um e-mail.
               </p>
               <Link to={destinoDoPortal} className="btn btn-primary btn-block btn-lg">
@@ -161,7 +161,7 @@ const ConfirmarEmail = () => {
               <h1 className="card-title">Este link não vale mais.</h1>
               <p className="card-description">
                 Os links de confirmação valem por 24 horas. Entre na sua conta e peça
-                um novo e-mail — leva um clique.
+                um novo e-mail, leva um clique.
               </p>
               <Link to={user ? "/verifique-email" : "/login"} className="btn btn-primary btn-block btn-lg">
                 {user ? "PEDIR OUTRO E-MAIL" : "ENTRAR E REENVIAR"}
@@ -174,7 +174,7 @@ const ConfirmarEmail = () => {
               <p className="card-overline">LINK INVÁLIDO</p>
               <h1 className="card-title">Não reconhecemos este link.</h1>
               <p className="card-description">
-                Confira se o endereço foi copiado inteiro do e-mail — alguns
+                Confira se o endereço foi copiado inteiro do e-mail, alguns
                 aplicativos quebram links longos em duas linhas. Se sua conta já
                 existe, entre e peça um novo e-mail de confirmação.
               </p>
@@ -192,7 +192,7 @@ const ConfirmarEmail = () => {
               <p className="card-overline">SEM RESPOSTA</p>
               <h1 className="card-title">Não conseguimos falar com o servidor.</h1>
               <p className="card-description">
-                Seu link continua válido — isto foi a conexão, não o link. Verifique
+                Seu link continua válido, isto foi a conexão, não o link. Verifique
                 a internet e tente de novo.
               </p>
               <button type="button" className="btn btn-primary btn-block btn-lg" onClick={confirmar}>

@@ -89,6 +89,7 @@ const TABELAS = {
   categorias: "negada",
   certificates: "negada",
   congress_registrations: "negada",
+  configuracoes: "negada",
   criterios: "negada",
   estudantes: "negada",
   minicourse_registrations: "negada",
@@ -118,6 +119,22 @@ const RPCS_NEGADAS = [
   ["decisao_consolidada", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
   ["aplicar_decisao", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
   ["distribuir_revisores", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
+  // Prazo de submissão (migration 20260813120000). Os nomes de argumento
+  // aqui são os REAIS da assinatura: com nome errado o PostgREST devolve
+  // PGRST202 ("função não encontrada") e a sonda registraria "negada" sem
+  // ter chegado a testar permissão nenhuma.
+  ["submissoes_abertas", {}],
+  ["prazo_submissoes", {}],
+  ["data_local", {}],
+  [
+    "editar_submissao",
+    {
+      _trabalho_id: "00000000-0000-0000-0000-000000000000",
+      _titulo: "sonda",
+      _resumo: "sonda",
+      _pdf_url: null,
+    },
+  ],
 ];
 
 /**

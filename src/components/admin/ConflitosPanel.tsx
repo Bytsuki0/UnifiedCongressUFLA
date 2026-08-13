@@ -53,7 +53,7 @@ export function ConflitosPanel() {
         </svg>
         <div>
           <strong>REGRA VIGENTE:</strong> quem submeteu o trabalho, o orientador informado e cada coautor com
-          e-mail ficam impedidos de revisá-lo. O bloqueio é aplicado no banco de dados — vale para a associação
+          e-mail ficam impedidos de revisá-lo. O bloqueio é aplicado no banco de dados, vale para a associação
           manual, para a distribuição automática e para qualquer chamada direta à API.
         </div>
       </div>

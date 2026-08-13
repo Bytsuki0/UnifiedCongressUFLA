@@ -230,6 +230,48 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes: {
+        Row: {
+          alerta_horas: number
+          atualizado_em: string
+          atualizado_por: string | null
+          edital: string
+          id: boolean
+          link_template_latex: string
+          link_template_word: string
+          max_coautores: number
+          parecer_min_caracteres: number
+          submissoes_abertura: string | null
+          submissoes_encerramento: string | null
+        }
+        Insert: {
+          alerta_horas?: number
+          atualizado_em?: string
+          atualizado_por?: string | null
+          edital?: string
+          id?: boolean
+          link_template_latex?: string
+          link_template_word?: string
+          max_coautores?: number
+          parecer_min_caracteres?: number
+          submissoes_abertura?: string | null
+          submissoes_encerramento?: string | null
+        }
+        Update: {
+          alerta_horas?: number
+          atualizado_em?: string
+          atualizado_por?: string | null
+          edital?: string
+          id?: boolean
+          link_template_latex?: string
+          link_template_word?: string
+          max_coautores?: number
+          parecer_min_caracteres?: number
+          submissoes_abertura?: string | null
+          submissoes_encerramento?: string | null
+        }
+        Relationships: []
+      }
       congress_registrations: {
         Row: {
           created_at: string
@@ -834,8 +876,18 @@ export type Database = {
         Args: { p_proposito?: string; p_user_id: string }
         Returns: string
       }
+      data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
+      editar_submissao: {
+        Args: {
+          _pdf_url?: string
+          _resumo: string
+          _titulo: string
+          _trabalho_id: string
+        }
+        Returns: string
+      }
       email_confirmado: { Args: never; Returns: boolean }
       enviar_correcao: {
         Args: {
@@ -889,6 +941,16 @@ export type Database = {
           tipo: string
         }[]
       }
+      prazo_submissoes: {
+        Args: never
+        Returns: {
+          aberto: boolean
+          abertura: string
+          encerramento: string
+          hoje: string
+        }[]
+      }
+      submissoes_abertas: { Args: never; Returns: boolean }
       verify_and_mark_certificate: {
         Args: { _code: string }
         Returns: {

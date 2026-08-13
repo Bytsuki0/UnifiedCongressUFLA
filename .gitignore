@@ -23,19 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 .env
-# Build de deploy (Cloudflare Pages) — mesmas regras do .env: só VITE_*,
-# nunca service_role. O .env.example é o que fica versionado.
+
 .env.production
 vite_project
-# Claude Code: só o settings.json do projeto (allowlist compartilhada) é versionado;
-# settings.local.json e o resto de .claude/ ficam locais.
+
 .claude/*
 !.claude/settings.json
-# Instruções locais do Claude — não versionar (pedido do time)
+
 CLAUDE.md
-# Documentação interna de segurança — não versionar
-SECURITY_ANALYSIS.md
-SECURITY_SETUP.md
+
 .config
 ./vite_project
 vite_project/*
@@ -43,7 +39,6 @@ vite_project/*
 docs/*
 .docs
 docs
-ReadLater.md
 
 # Backups: contêm TODOS os dados do congresso — perfis, e-mails, trabalhos
 # submetidos e os PDFs. Nunca versionar. Guardar fora desta máquina.
@@ -54,10 +49,3 @@ supabase/backups/
 .dev.vars*
 !.dev.vars.example
 !.env.example
-email-verification/*
-email-verification/.env
-email-verification-blueprint.md
-email-verification-futuro.md
-email-verification-notas.md
-email-verification-prompt.md
-nexus-deployment-plan-cloudflare-v2.md
