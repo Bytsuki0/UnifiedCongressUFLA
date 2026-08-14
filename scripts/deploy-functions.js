@@ -62,8 +62,23 @@ if (!ACCESS_TOKEN && !SIMULACAO) {
 
 const PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0];
 
-/** Secrets que a function `enviar-email` exige em runtime (só conferência). */
+/** Secrets que as functions de e-mail exigem em runtime (só conferência). */
 const SECRETS_ESPERADOS = ["BREVO_API_KEY", "EMAIL_REMETENTE", "SITE_URL"];
+
+/** Functions que dependem dos SECRETS_ESPERADOS (dispara a conferência). */
+const FUNCTIONS_COM_SECRETS = ["enviar-email", "redefinir-senha"];
+
+/**
+ * `verify_jwt` por function; ausente = true.
+ *
+ * `redefinir-senha` fica SEM a verificação do gateway de propósito: o
+ * fluxo "esqueci minha senha" é anônimo por definição, e a chave
+ * `sb_publishable_` que o frontend envia como Authorization NÃO é um
+ * JWT — o gateway a recusaria. A proteção mora em outro lugar: CORS
+ * com allowlist na function e limites em SQL (5 pedidos/hora por IP,
+ * 1 pedido/2 h por conta — migration 20260814120000).
+ */
+const VERIFY_JWT_POR_SLUG = { "redefinir-senha": false };
 
 /** Caminho relativo à raiz do repo, sempre com barras normais. */
 const caminhoApi = (absoluto) => path.relative(RAIZ, absoluto).split(path.sep).join("/");
@@ -113,10 +128,11 @@ async function publicar(slug) {
   const arquivos = listarArquivos(dir);
   const metadata = {
     name: slug,
-    // A plataforma exige JWT válido antes de chegar à function. É apenas a
-    // primeira camada: qualquer JWT do projeto passa aqui (a anon key TAMBÉM
-    // é um JWT), então a function ainda resolve o usuário com getUser().
-    verify_jwt: true,
+    // Com `true`, a plataforma exige JWT válido antes de chegar à function.
+    // É apenas a primeira camada: qualquer JWT do projeto passa aqui, então
+    // a function ainda resolve o usuário com getUser(). Quem precisa aceitar
+    // chamada anônima declara `false` em VERIFY_JWT_POR_SLUG (com o porquê).
+    verify_jwt: VERIFY_JWT_POR_SLUG[slug] ?? true,
     entrypoint_path: caminhoApi(entrypoint),
     import_map_path: "",
     static_patterns: [],
@@ -187,7 +203,7 @@ async function main() {
 
   // Conferência dos secrets: a function sobe mesmo sem eles, mas devolve
   // "config_ausente" na primeira chamada. Melhor descobrir agora.
-  if (alvos.includes("enviar-email")) {
+  if (alvos.some((slug) => FUNCTIONS_COM_SECRETS.includes(slug))) {
     const nomes = await nomesDosSecrets();
     if (nomes === null) {
       console.log("\n⚠  Não foi possível listar os secrets do projeto (sem permissão?).");

@@ -35,7 +35,7 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
-      "source": "/(confirmar-email|verifique-email)",
+      "source": "/(confirmar-email|verifique-email|esqueci-senha|redefinir-senha)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]

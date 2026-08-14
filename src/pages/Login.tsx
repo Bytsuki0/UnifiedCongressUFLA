@@ -129,7 +129,7 @@ const Login = () => {
                     type={showPass ? "text" : "password"}
                     id="loginSenha"
                     className="form-input"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Sua senha"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     required
@@ -162,6 +162,9 @@ const Login = () => {
             </form>
 
             <p style={{ textAlign: "center", marginTop: 24, fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
+              <Link to="/esqueci-senha" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Esqueceu sua senha?</Link>
+            </p>
+            <p style={{ textAlign: "center", marginTop: 8, fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
               Não tem conta? <Link to="/cadastro" style={{ color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Cadastre-se</Link>
             </p>
           </section>

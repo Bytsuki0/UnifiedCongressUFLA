@@ -37,6 +37,8 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
 import VerifiqueEmail from "./pages/VerifiqueEmail";
+import EsqueciSenha from "./pages/EsqueciSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import AdminPortal from "./pages/AdminPortal";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -140,6 +142,12 @@ const App = () => (
                 celular, sem sessão — a rota é pública e a RPC que ela chama
                 é executável por `anon`. */}
             <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+
+            {/* Esqueci minha senha: fluxo anônimo por definição. O pedido e o
+                link do e-mail abrem sem sessão — a autoridade é o token de
+                uso único (Edge Function `redefinir-senha`). */}
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
             {/* Sala de espera de quem ainda não confirmou. Autenticada (o
                 reenvio é sempre "para mim mesmo"), e a ÚNICA rota protegida
