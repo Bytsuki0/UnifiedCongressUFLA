@@ -70,10 +70,14 @@ ORDER BY table_name, privilege_type;
 
 -- ---------------------------------------------------------------------
 -- 5. Funções SECURITY DEFINER executáveis por `anon`.
---    DEVE retornar apenas as duas liberadas por desenho:
+--    DEVE retornar apenas as liberadas por desenho:
 --      · confirmar_email(text)      — o link de verificação abre sem sessão
 --      · verify_certificate(text)   — validação pública de certificado
 --      · minicourse_occupancy()     — vagas na página pública
+--      · links_downloads()          — links de download da landing e do
+--                                     /login, que não têm sessão; devolve
+--                                     só as colunas de link, nunca a linha
+--                                     de `configuracoes` inteira
 --
 --    Uma função SECURITY DEFINER roda com os privilégios do dono e ignora
 --    o RLS. Uma função nova nesta lista é um bypass completo do RLS aberto

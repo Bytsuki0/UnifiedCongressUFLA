@@ -237,7 +237,13 @@ export type Database = {
           atualizado_por: string | null
           edital: string
           id: boolean
+          link_codigo_etica: string
+          link_diretrizes_avaliacao: string
+          link_edital_congresso: string
+          link_manual_revisor: string
+          link_normas_formatacao: string
           link_template_latex: string
+          link_template_slides: string
           link_template_word: string
           max_coautores: number
           parecer_min_caracteres: number
@@ -250,7 +256,13 @@ export type Database = {
           atualizado_por?: string | null
           edital?: string
           id?: boolean
+          link_codigo_etica?: string
+          link_diretrizes_avaliacao?: string
+          link_edital_congresso?: string
+          link_manual_revisor?: string
+          link_normas_formatacao?: string
           link_template_latex?: string
+          link_template_slides?: string
           link_template_word?: string
           max_coautores?: number
           parecer_min_caracteres?: number
@@ -263,7 +275,13 @@ export type Database = {
           atualizado_por?: string | null
           edital?: string
           id?: boolean
+          link_codigo_etica?: string
+          link_diretrizes_avaliacao?: string
+          link_edital_congresso?: string
+          link_manual_revisor?: string
+          link_normas_formatacao?: string
           link_template_latex?: string
+          link_template_slides?: string
           link_template_word?: string
           max_coautores?: number
           parecer_min_caracteres?: number
@@ -872,9 +890,25 @@ export type Database = {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
       }
+      consumir_token_redefinicao: {
+        Args: { p_token: string }
+        Returns: {
+          status: string
+          user_id: string
+        }[]
+      }
       criar_token_email: {
         Args: { p_proposito?: string; p_user_id: string }
         Returns: string
+      }
+      criar_token_redefinicao: {
+        Args: { p_email: string; p_ip?: string }
+        Returns: {
+          motivo: string
+          nome: string
+          segundos: number
+          token: string
+        }[]
       }
       data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
@@ -906,6 +940,19 @@ export type Database = {
       liberar_email_nao_confirmado: {
         Args: { p_email: string }
         Returns: string
+      }
+      links_downloads: {
+        Args: never
+        Returns: {
+          link_codigo_etica: string
+          link_diretrizes_avaliacao: string
+          link_edital_congresso: string
+          link_manual_revisor: string
+          link_normas_formatacao: string
+          link_template_latex: string
+          link_template_slides: string
+          link_template_word: string
+        }[]
       }
       mark_attendance: {
         Args: { _event_id: string; _event_type: string; _user_id: string }

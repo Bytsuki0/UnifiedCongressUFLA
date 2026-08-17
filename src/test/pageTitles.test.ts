@@ -22,6 +22,7 @@ describe("títulos de página", () => {
     ["/co-chairs/avaliadores/novo", "Novo avaliador"],
     ["/revisor/analise", "Trabalhos para análise"],
     ["/revisor/analise/abc-123", "Analisar trabalho"],
+    ["/revisor/arquivo", "Arquivo"],
     ["/congresso/verificar", "Verificar certificado"],
     ["/congresso/verificar/ABC123", "Verificação de certificado"],
     ["/admin", "Auditoria"],

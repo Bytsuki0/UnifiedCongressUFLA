@@ -59,7 +59,6 @@ import RevisorAnalise from "./pages/revisor/Analise";
 import RevisorAnaliseDetalhe from "./pages/revisor/AnaliseDetalhe";
 import RevisorAtribuicoes from "./pages/revisor/Atribuicoes";
 import RevisorAvaliacao from "./pages/revisor/Avaliacao";
-import RevisorFormularios from "./pages/revisor/Formularios";
 import RevisorArquivo from "./pages/revisor/Arquivo";
 
 // Co-chairs ("Gestão de Co-Chairs") — agrupadas em co-chairs/.
@@ -191,7 +190,10 @@ const App = () => (
                 <Route path="analise/:id" element={<RevisorAnaliseDetalhe />} />
                 <Route path="atribuicoes" element={<RevisorAtribuicoes />} />
                 <Route path="avaliacao/:id" element={<RevisorAvaliacao />} />
-                <Route path="formularios" element={<RevisorFormularios />} />
+                {/* "Formulários" saiu do painel: mostrava rubricas de
+                    exemplo que não eram arquivo nem formulário de verdade.
+                    A URL vira redirect, como as antigas de co-chairs. */}
+                <Route path="formularios" element={<Navigate to="/revisor/arquivo" replace />} />
                 <Route path="arquivo" element={<RevisorArquivo />} />
               </Route>
             </Route>

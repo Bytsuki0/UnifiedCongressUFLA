@@ -3,12 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveMyRole } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { APP_MARK, APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_MARK, APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/brand";
 import { portalDoPapel, saudacaoDoPapel } from "@/lib/portais";
 import { emailEstaConfirmado } from "@/services/verificacaoEmailService";
+import { BotaoBaixar } from "@/components/BotaoBaixar";
+import { useLinksDownloads } from "@/hooks/use-links-downloads";
+import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
 
 const Login = () => {
   const navigate = useNavigate();
+  const links = useLinksDownloads();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,18 +63,27 @@ const Login = () => {
   return (
     <div className="login-wrapper">
       <aside className="login-left">
-        <div className="login-left-logo">
-          <span className="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
+        <div>
+          <Link to="/" className="login-left-logo" title="Voltar ao início">
+            <span className="logo-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </span>
+            <span className="logo-info">
+              <span className="logo-name">{APP_MARK}</span>
+              <span className="logo-sub">{APP_TAGLINE}</span>
+            </span>
+          </Link>
+
+          <Link to="/" className="login-left-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>
             </svg>
-          </span>
-          <span className="logo-info">
-            <span className="logo-name">{APP_MARK}</span>
-            <span className="logo-sub">{APP_TAGLINE}</span>
-          </span>
+            VOLTAR AO INÍCIO
+          </Link>
         </div>
 
         <div className="login-left-content">
@@ -96,6 +109,8 @@ const Login = () => {
 
         <footer className="login-left-footer">
           © 2026 {APP_NAME} · Todos os direitos reservados.
+          <br />
+          Suporte: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "inherit", textDecoration: "underline" }}>{SUPPORT_EMAIL}</a>
         </footer>
       </aside>
 
@@ -177,13 +192,8 @@ const Login = () => {
             </p>
 
             <div className="downloads-grid">
-              {[
-                { name: "Template Artigo Completo", meta: ".DOCX · 245 KB", file: "template_artigo_word.docx" },
-                { name: "Template Resumo Expandido", meta: ".DOCX · 198 KB", file: "template_resumo_expandido_word.docx" },
-                { name: "Normas de Formatação", meta: ".PDF · 312 KB", file: "normas_formatacao_nexus.pdf" },
-                { name: "Template Apresentação", meta: ".PPTX · 1.2 MB", file: "template_slides_powerpoint.pptx" },
-              ].map((d) => (
-                <div className="download-card" key={d.file}>
+              {DOWNLOADS_ESTUDANTE.map((d) => (
+                <div className="download-card" key={d.chave}>
                   <div className="download-card-top">
                     <div className="download-card-icon">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
@@ -191,12 +201,12 @@ const Login = () => {
                         <polyline points="14 2 14 8 20 8"/>
                       </svg>
                     </div>
-                    <span className="download-card-meta">{d.meta}</span>
+                    <span className="download-card-meta">{d.ext}</span>
                   </div>
-                  <p className="download-card-name">{d.name}</p>
-                  <button className="btn btn-primary btn-sm btn-block" onClick={() => alert(`Download de ${d.file} (simulação)`)}>
+                  <p className="download-card-name">{d.nome}</p>
+                  <BotaoBaixar url={links[d.chave]} className="btn btn-primary btn-sm btn-block">
                     BAIXAR
-                  </button>
+                  </BotaoBaixar>
                 </div>
               ))}
             </div>

@@ -581,16 +581,62 @@ const AdminPortal = () => {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
                   </svg>
-                  <span className="config-title">Links de Templates</span>
+                  <span className="config-title">Links de Downloads (Google Drive)</span>
+                </div>
+                {/* Estes links alimentam TODOS os botões BAIXAR do site.
+                    Campo vazio deixa o botão correspondente desabilitado —
+                    é o estado normal enquanto o arquivo não foi publicado. */}
+                <p style={{ fontSize: "var(--fs-caption)", color: "var(--color-text-secondary)", marginBottom: 16 }}>
+                  Cole o link de compartilhamento do Drive. Os quatro primeiros aparecem na página
+                  inicial, na tela de login e em Templates; os demais, no arquivo do revisor.
+                  Lembre-se de deixar o arquivo acessível a quem tem o link.
+                </p>
+
+                <div style={{ fontWeight: "var(--fw-bold)", fontSize: "var(--fs-caption)", letterSpacing: "var(--ls-label)", color: "var(--color-text-secondary)", marginBottom: 8 }}>
+                  PORTAL DO ESTUDANTE E PÁGINAS PÚBLICAS
                 </div>
                 <div className="config-row">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-word">Link Template Word (DOCX)</label>
+                    <label className="form-label" htmlFor="cfg-word">Modelo de artigo · Word (DOCX)</label>
                     <input type="url" id="cfg-word" className="form-input" value={config.link_template_word} onChange={e => setCampo("link_template_word", e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-latex">Link Template LaTeX</label>
+                    <label className="form-label" htmlFor="cfg-latex">Modelo de artigo · LaTeX (TEX)</label>
                     <input type="url" id="cfg-latex" className="form-input" value={config.link_template_latex} onChange={e => setCampo("link_template_latex", e.target.value)} />
+                  </div>
+                </div>
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-slides">Modelo dos slides (PPTX)</label>
+                    <input type="url" id="cfg-slides" className="form-input" value={config.link_template_slides} onChange={e => setCampo("link_template_slides", e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-normas">Normas de formatação (PDF)</label>
+                    <input type="url" id="cfg-normas" className="form-input" value={config.link_normas_formatacao} onChange={e => setCampo("link_normas_formatacao", e.target.value)} />
+                  </div>
+                </div>
+
+                <div style={{ fontWeight: "var(--fw-bold)", fontSize: "var(--fs-caption)", letterSpacing: "var(--ls-label)", color: "var(--color-text-secondary)", margin: "16px 0 8px" }}>
+                  PAINEL DO REVISOR
+                </div>
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-edital-link">Edital do Congresso (PDF)</label>
+                    <input type="url" id="cfg-edital-link" className="form-input" value={config.link_edital_congresso} onChange={e => setCampo("link_edital_congresso", e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-manual">Manual do Revisor (PDF)</label>
+                    <input type="url" id="cfg-manual" className="form-input" value={config.link_manual_revisor} onChange={e => setCampo("link_manual_revisor", e.target.value)} />
+                  </div>
+                </div>
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-diretrizes">Diretrizes de Avaliação (PDF)</label>
+                    <input type="url" id="cfg-diretrizes" className="form-input" value={config.link_diretrizes_avaliacao} onChange={e => setCampo("link_diretrizes_avaliacao", e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-etica">Código de Ética (PDF)</label>
+                    <input type="url" id="cfg-etica" className="form-input" value={config.link_codigo_etica} onChange={e => setCampo("link_codigo_etica", e.target.value)} />
                   </div>
                 </div>
               </div>

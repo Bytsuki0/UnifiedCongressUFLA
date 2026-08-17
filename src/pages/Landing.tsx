@@ -1,8 +1,17 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { APP_MARK, APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_MARK, APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/brand";
+import { BotaoBaixar } from "@/components/BotaoBaixar";
+import { useLinksDownloads } from "@/hooks/use-links-downloads";
+import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
+
+/** Cores dos ícones, na ordem dos cards. */
+const CORES_TEMPLATE = ["blue-800", "blue-700", "blue-600", "blue-500"];
 
 const Landing = () => {
+  const links = useLinksDownloads();
+
+
   useEffect(() => {
     const header = document.getElementById("landing-header");
     const handleScroll = () => {
@@ -124,14 +133,9 @@ const Landing = () => {
           </div>
 
           <div className="templates-grid">
-            {[
-              { icon: "blue-800", ext: ".DOCX", size: "245 KB", name: "Artigo · Word", file: "template_artigo_word.docx" },
-              { icon: "blue-700", ext: ".TEX", size: "128 KB", name: "Artigo · LaTeX", file: "template_artigo_latex.tex" },
-              { icon: "blue-600", ext: ".PPTX", size: "1.8 MB", name: "Slides · PowerPoint", file: "template_slides_powerpoint.pptx" },
-              { icon: "blue-500", ext: ".KEY", size: "2.1 MB", name: "Slides · Keynote", file: "template_slides_keynote.key" },
-            ].map((t, i) => (
-              <div className={`template-card reveal reveal-delay-${i + 1}`} key={t.file}>
-                <div className={`template-icon ${t.icon}`}>
+            {DOWNLOADS_ESTUDANTE.map((t, i) => (
+              <div className={`template-card reveal reveal-delay-${i + 1}`} key={t.chave}>
+                <div className={`template-icon ${CORES_TEMPLATE[i]}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
                     <polyline points="14 2 14 8 20 8"/>
@@ -139,10 +143,9 @@ const Landing = () => {
                 </div>
                 <div className="template-type" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                   <span className="template-ext">{t.ext}</span>
-                  <span className="template-size">{t.size}</span>
                 </div>
-                <div className="template-name">{t.name}</div>
-                <button className="btn btn-primary btn-sm" onClick={() => alert(`Download de ${t.file} (simulação)`)}>BAIXAR</button>
+                <div className="template-name">{t.nome}</div>
+                <BotaoBaixar url={links[t.chave]} className="btn btn-primary btn-sm">BAIXAR</BotaoBaixar>
               </div>
             ))}
           </div>
@@ -168,7 +171,7 @@ const Landing = () => {
 
       <footer className="landing-footer">
         <div>© 2026 {APP_NAME} · Universidade Federal de Lavras</div>
-        <div>Suporte: <a href="mailto:nexus@ufla.br">nexus@ufla.br</a></div>
+        <div>Suporte: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></div>
       </footer>
     </div>
   );

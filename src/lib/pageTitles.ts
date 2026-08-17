@@ -35,7 +35,6 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/revisor/analise", "Trabalhos para análise"],
   ["/revisor/atribuicoes", "Minhas atribuições"],
   ["/revisor/avaliacao/:id", "Avaliação"],
-  ["/revisor/formularios", "Formulários"],
   ["/revisor/arquivo", "Arquivo"],
 
   // Portal Admin

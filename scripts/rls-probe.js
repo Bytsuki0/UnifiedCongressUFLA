@@ -150,6 +150,27 @@ const RPCS_INOCUAS = [
   ["get_my_roles", {}, (v) => Array.isArray(v) && v.length === 0],
 ];
 
+/**
+ * As únicas colunas que `links_downloads()` tem direito de devolver.
+ *
+ * A função é aberta a `anon` de propósito (a landing e o /login mostram
+ * botões de download sem sessão) e é a única janela pública para dentro
+ * de `configuracoes` — tabela que continua negada. O risco dela não é
+ * executar, é DEVOLVER DEMAIS: um `SELECT *` ou uma coluna nova entrando
+ * na lista publicaria prazo, edital e afins para o mundo. Por isso o
+ * teste é sobre o formato do retorno, não sobre a permissão.
+ */
+const COLUNAS_LINKS_DOWNLOADS = [
+  "link_template_word",
+  "link_template_latex",
+  "link_template_slides",
+  "link_normas_formatacao",
+  "link_edital_congresso",
+  "link_manual_revisor",
+  "link_diretrizes_avaliacao",
+  "link_codigo_etica",
+];
+
 // ---------------------------------------------------------------------
 // Fase 1 — leitura anônima de cada tabela
 // ---------------------------------------------------------------------
@@ -158,10 +179,14 @@ console.log(`Chave:   ${KEY.slice(0, 12)}… (publishable/anon)\n`);
 if (AUTOTESTE) {
   TABELAS.minicourses = "negada";
   TABELAS.schedule = "negada";
+  // Mesma ideia do lado das RPCs: links_downloads() é executável por anon
+  // por desenho, então exigi-la negada obriga a sonda a acusá-la.
+  RPCS_NEGADAS.push(["links_downloads", {}]);
   console.log(
-    "\x1b[33mAUTOTESTE\x1b[0m: minicourses e schedule foram marcadas como " +
-      "'negada'.\n  São legivelmente públicas, então a sonda TEM de acusar " +
-      "vazamento nas duas.\n  Se esta execução passar, a sonda está cega.\n",
+    "\x1b[33mAUTOTESTE\x1b[0m: minicourses, schedule e links_downloads() " +
+      "foram marcadas como 'negada'.\n  São legivelmente públicas, então a " +
+      "sonda TEM de acusar vazamento nas três.\n  Se esta execução passar, " +
+      "a sonda está cega.\n",
   );
 }
 
@@ -207,6 +232,24 @@ for (const [nome, args, aceitavel] of RPCS_INOCUAS) {
   if (error) ok(`${nome}(): negada (${error.code || error.message})`);
   else if (aceitavel(data)) ok(`${nome}(): ${JSON.stringify(data)} — sem sessão, sem papel`);
   else falhou(`${nome}(): retornou ${JSON.stringify(data).slice(0, 120)} para anon`);
+}
+
+// links_downloads(): pública por desenho. O teste não é se executa — é se
+// devolve SÓ os links. Ver COLUNAS_LINKS_DOWNLOADS.
+{
+  const { data, error } = await anon.rpc("links_downloads");
+  if (error) {
+    falhou(
+      `links_downloads(): deveria executar como anon e não executou ` +
+        `(${error.code || error.message})`
+    );
+  } else {
+    const extras = Object.keys(data?.[0] ?? {}).filter(
+      (k) => !COLUNAS_LINKS_DOWNLOADS.includes(k)
+    );
+    if (extras.length) falhou(`links_downloads(): expõe além dos links → ${extras.join(", ")}`);
+    else ok("links_downloads(): executável por anon, devolve só os links");
+  }
 }
 
 // has_role(uuid, text) aceita um user_id ARBITRÁRIO e é executável por anon.

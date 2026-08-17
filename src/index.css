@@ -402,6 +402,17 @@
   font-size: var(--fs-caption);
 }
 
+/* Botão desabilitado — usado pelos downloads sem link cadastrado.
+   `pointer-events: none` mata o hover das variantes (que levantam e
+   sombreiam o botão) sem precisar repetir `:disabled` em cada uma. */
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-lg {
   padding: 16px 32px;
   font-size: var(--fs-body);
@@ -680,6 +691,14 @@
 .sidebar-footer .nav-item:hover {
   background: var(--gray-100);
   color: var(--color-text);
+}
+
+/* Contato do suporte no rodapé do menu. O endereço é mais largo que o
+   menu, então cai para a fonte de legenda e quebra dentro da caixa. */
+.sidebar-footer .nav-item.sidebar-suporte {
+  font-size: var(--fs-caption);
+  word-break: break-all;
+  text-decoration: none;
 }
 
 /* Menu lateral escuro — variante usada no Portal Admin. */
@@ -1503,6 +1522,27 @@
 .login-left-logo .logo-icon svg { width: 20px; height: 20px; }
 .login-left-logo .logo-name { font-size: var(--fs-sm); font-weight: var(--fw-black); letter-spacing: var(--ls-label); display: block; }
 .login-left-logo .logo-sub { font-size: var(--fs-caption); color: rgba(255,255,255,0.6); display: block; }
+
+/* A marca virou link de volta para a home (o /login não tinha nenhuma
+   saída para `/`). Herda a cor para não ganhar o azul de link do reset. */
+a.login-left-logo { color: inherit; text-decoration: none; }
+a.login-left-logo:hover .logo-name { color: var(--white); }
+
+.login-left-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.login-left-back:hover { color: var(--white); }
+.login-left-back svg { width: 14px; height: 14px; }
 
 .login-left-content {
   margin-top: auto;
