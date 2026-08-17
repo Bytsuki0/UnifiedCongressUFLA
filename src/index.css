@@ -693,14 +693,6 @@
   color: var(--color-text);
 }
 
-/* Contato do suporte no rodapé do menu. O endereço é mais largo que o
-   menu, então cai para a fonte de legenda e quebra dentro da caixa. */
-.sidebar-footer .nav-item.sidebar-suporte {
-  font-size: var(--fs-caption);
-  word-break: break-all;
-  text-decoration: none;
-}
-
 /* Menu lateral escuro — variante usada no Portal Admin. */
 .sidebar.sidebar-dark {
   background: var(--qc-black);
@@ -827,6 +819,84 @@
 
 .user-avatar.purple { background: var(--color-secondary); }
 .user-avatar.admin { background: var(--navy-800); }
+
+/* Contato do suporte na barra superior, à direita do usuário. Abre a
+   janela com o endereço — por isso é <button>, e não link. */
+.top-bar .link-suporte {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px 6px 6px;
+  margin-left: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.top-bar .link-suporte:hover {
+  border-color: var(--color-primary);
+  background: var(--gray-50);
+  color: var(--color-primary);
+}
+
+.top-bar .link-suporte-icone {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--gray-100);
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.top-bar .link-suporte:hover .link-suporte-icone {
+  background: var(--color-primary);
+  color: var(--white);
+}
+
+/* Em tela estreita a barra já disputa espaço com nome e e-mail: fica só
+   o "?", que abre a mesma janela. */
+@media (max-width: 768px) {
+  .top-bar .link-suporte-label { display: none; }
+  .top-bar .link-suporte { padding: 6px; }
+}
+
+/* Janela do suporte. O endereço fica selecionável (user-select) para
+   quem preferir copiar à mão a usar o botão. */
+.suporte-endereco {
+  display: block;
+  padding: var(--space-4);
+  margin: var(--space-2) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  font-family: monospace;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  text-align: center;
+  word-break: break-all;
+  user-select: all;
+}
+
+.suporte-acoes {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.suporte-acoes > * { flex: 1; }
 
 .content-area {
   padding: var(--space-8);

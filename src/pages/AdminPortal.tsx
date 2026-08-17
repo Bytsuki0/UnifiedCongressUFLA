@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
+import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { UsuariosPanel } from "@/components/admin/UsuariosPanel";
@@ -286,6 +287,7 @@ const AdminPortal = () => {
               <div className="user-meta">Coord. Comissão · UFLA</div>
             </div>
             <div className="user-avatar admin">AD</div>
+            <BotaoSuporte />
           </div>
         </header>
 

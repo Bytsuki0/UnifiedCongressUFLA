@@ -1,10 +1,10 @@
-1- no pagina inicial se falta as normas de submissão 
+1- no pagina inicial se falta as normas de submissão x
 2- adicionar carrossel nos arquivos de download 
-3- trocar .key pelo canva
-4- email de suporte 
-5- email de adm novo quando chegar
-6- senha necessaria 8 
-7- esqueci minha senha
+3- trocar .key pelo canva x
+4- email de suporte x
+5- email de adm novo quando chegar 
+6- senha necessaria 8 x
+7- esqueci minha senha x 
 8- co chairs que dâo nota final baseado na nota dos professores revisores, eles tem acesso não blind e podem ver todas as notas e categorias
 9- pode haver a possibilidade de resubmissões, categoria resubmeter.
 10- nada automatico

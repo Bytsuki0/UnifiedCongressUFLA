@@ -3,7 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { supabase } from "@/integrations/supabase/client";
 import { initials } from "@/pages/revisor/shared";
-import { APP_SHORT, SUPPORT_EMAIL } from "@/lib/brand";
+import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { APP_SHORT } from "@/lib/brand";
 
 const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/revisor/analise", label: "Análise de Trabalhos", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></> },
@@ -51,12 +52,6 @@ const Layout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <a className="nav-item sidebar-suporte" href={`mailto:${SUPPORT_EMAIL}`}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>
-            </svg>
-            {SUPPORT_EMAIL}
-          </a>
           <button className="nav-item" onClick={handleLogout} style={{ width: "100%" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -76,6 +71,7 @@ const Layout = () => {
               <div className="user-meta">{user?.email}</div>
             </div>
             <div className="user-avatar" style={{ background: "var(--color-primary)" }}>{initials(user?.nome)}</div>
+            <BotaoSuporte />
           </div>
         </header>
 

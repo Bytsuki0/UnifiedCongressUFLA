@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
+import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { APP_SHORT } from "@/lib/brand";
 
 const Layout = () => {
@@ -121,6 +122,7 @@ const Layout = () => {
               <div className="user-meta">{user?.email || "Sistema de Submissões"}</div>
             </div>
             <div className="user-avatar">{initials(user?.nome)}</div>
+            <BotaoSuporte />
           </div>
         </header>
 
