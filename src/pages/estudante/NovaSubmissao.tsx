@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { submeterTrabalho } from "@/services/trabalhosService";
+import { parsePalavrasChave, TIPO_RESUMO_OPTIONS, type TipoResumo } from "@/lib/submissao";
+import { idDoVideo } from "@/lib/youtube";
 import { toast } from "sonner";
 import { MAX_PDF_BYTES, formatarData, usePrazo, useTrabalhos } from "./shared";
 
@@ -12,16 +14,28 @@ const NovaSubmissao = () => {
   const { prazo, carregando: carregandoPrazo, aberto } = usePrazo();
 
   const [form, setForm] = useState({
-    titulo: "", resumo: "", categoria: "", orientador: "",
+    titulo: "", categoria: "", orientador: "",
+    // Digitadas como texto separado por vírgula; viram lista só no envio.
+    palavrasChave: "", videoUrl: "", tipoResumo: "simples" as TipoResumo,
   });
   const [coauthors, setCoauthors] = useState([{ nome: "", email: "" }]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const palavrasChave = parsePalavrasChave(form.palavrasChave);
+
   const handleSubmitWork = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.titulo || !form.resumo || !form.categoria) {
+    if (!form.titulo || !form.categoria) {
       toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    if (palavrasChave.length === 0) {
+      toast.error("Informe ao menos uma palavra-chave.");
+      return;
+    }
+    if (!idDoVideo(form.videoUrl)) {
+      toast.error("Informe um link válido de vídeo do YouTube.");
       return;
     }
     if (!selectedFile) {
@@ -53,7 +67,9 @@ const NovaSubmissao = () => {
     try {
       await submeterTrabalho({
         titulo: form.titulo,
-        resumo: form.resumo,
+        palavrasChave,
+        videoUrl: form.videoUrl.trim(),
+        tipoResumo: form.tipoResumo,
         categoriaId: form.categoria,
         autores,
         orientadorEmail: form.orientador.trim() || null,
@@ -143,29 +159,6 @@ const NovaSubmissao = () => {
           <div className="step-card">
             <div className="step-card-header">
               <div className="step-number">01</div>
-              <div>
-                <div className="step-title">Extração Automática</div>
-                <div className="step-subtitle">Opcional, importe um arquivo .tex para preencher automaticamente</div>
-              </div>
-            </div>
-            <div className="import-row">
-              <div className="import-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-              </div>
-              <div className="import-info">
-                <div className="import-label">Importar .TEX</div>
-                <div className="import-desc">Extraia título, resumo e autores do seu arquivo LaTeX</div>
-              </div>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => alert("Funcionalidade de importação .TEX em desenvolvimento")}>Selecionar</button>
-            </div>
-          </div>
-
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">02</div>
               <div><div className="step-title">Informações do Trabalho</div></div>
             </div>
 
@@ -175,9 +168,38 @@ const NovaSubmissao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="resumo">Resumo *</label>
-              <textarea id="resumo" className="form-textarea" placeholder="Resumo de até 230 palavras..." rows={5} value={form.resumo} onChange={e => setForm(f => ({ ...f, resumo: e.target.value }))} />
-              <div className="char-counter">{form.resumo.split(/\s+/).filter(Boolean).length} / 230 palavras</div>
+              <label className="form-label">Tipo de Resumo *</label>
+              <div className="profile-select-group">
+                {TIPO_RESUMO_OPTIONS.map(o => (
+                  <label className="profile-select-btn" key={o.value}>
+                    <input
+                      type="radio"
+                      name="tipoResumo"
+                      value={o.value}
+                      checked={form.tipoResumo === o.value}
+                      onChange={() => setForm(f => ({ ...f, tipoResumo: o.value }))}
+                    />
+                    <span className="profile-select-text">{o.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="palavras-chave">Palavras-chave *</label>
+              <input type="text" id="palavras-chave" className="form-input" placeholder="aprendizado de máquina, visão computacional, agricultura" value={form.palavrasChave} onChange={e => setForm(f => ({ ...f, palavrasChave: e.target.value }))} />
+              <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
+              {palavrasChave.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {palavrasChave.map(p => <span className="badge badge-gray" key={p}>{p}</span>)}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="video-url">Vídeo de Apresentação (YouTube) *</label>
+              <input type="url" id="video-url" className="form-input" placeholder="https://www.youtube.com/watch?v=..." value={form.videoUrl} onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))} />
+              <div className="form-hint">Cole o endereço do vídeo. Os avaliadores o assistem dentro do sistema.</div>
             </div>
 
             <div className="form-group">
@@ -191,7 +213,7 @@ const NovaSubmissao = () => {
 
           <div className="step-card">
             <div className="step-card-header">
-              <div className="step-number">03</div>
+              <div className="step-number">02</div>
               <div><div className="step-title">Autoria</div></div>
             </div>
 
@@ -224,7 +246,7 @@ const NovaSubmissao = () => {
 
           <div className="step-card">
             <div className="step-card-header">
-              <div className="step-number">04</div>
+              <div className="step-number">03</div>
               <div>
                 <div className="step-title">Arquivo Final</div>
                 <div className="step-subtitle">Anexe o PDF do trabalho · Limite 10MB</div>

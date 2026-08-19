@@ -10,12 +10,20 @@ import {
   enviarCorrecao,
   type ParecerAnonimo,
 } from "@/services/correcaoService";
+import {
+  formatarPalavrasChave,
+  parsePalavrasChave,
+  TIPO_RESUMO_OPTIONS,
+  type TipoResumo,
+} from "@/lib/submissao";
+import { idDoVideo } from "@/lib/youtube";
 import { AGUARDANDO_CORRECAO, MAX_PDF_BYTES, type Coautor, type Submission } from "./shared";
 
 /**
  * Rodada de correção: aberta quando os pareceres consolidam em
  * "aprovado com correções" (2 votos nesse sentido, ou os 3 votos
- * diferentes entre si). O autor troca o PDF e ajusta título e resumo;
+ * diferentes entre si). O autor troca o PDF e ajusta título, tipo de
+ * resumo, palavras-chave e vídeo;
  * orientador, coautores e categoria ficam travados — foram eles que
  * definiram os impedimentos e os critérios já aplicados.
  */
@@ -27,7 +35,9 @@ const Correcao = () => {
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
   const [titulo, setTitulo] = useState("");
-  const [resumo, setResumo] = useState("");
+  const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [tipoResumo, setTipoResumo] = useState<TipoResumo>("simples");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -52,7 +62,9 @@ const Correcao = () => {
     } as Submission;
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
-    setResumo(sub.resumo ?? "");
+    setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
+    setVideoUrl(sub.video_url ?? "");
+    setTipoResumo(sub.tipo_resumo === "estendido" ? "estendido" : "simples");
 
     try {
       setPareceres(await carregarPareceresDoTrabalho(id));
@@ -74,8 +86,17 @@ const Correcao = () => {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!trabalho || !user) return;
-    if (!titulo.trim() || !resumo.trim()) {
-      toast.error("Título e resumo são obrigatórios.");
+    if (!titulo.trim()) {
+      toast.error("O título é obrigatório.");
+      return;
+    }
+    const palavrasChave = parsePalavrasChave(palavrasChaveTexto);
+    if (palavrasChave.length === 0) {
+      toast.error("Informe ao menos uma palavra-chave.");
+      return;
+    }
+    if (!idDoVideo(videoUrl)) {
+      toast.error("Informe um link válido de vídeo do YouTube.");
       return;
     }
     if (arquivo) {
@@ -95,7 +116,9 @@ const Correcao = () => {
         trabalhoId: trabalho.id,
         ownerId: user.id,
         titulo: titulo.trim(),
-        resumo: resumo.trim(),
+        palavrasChave,
+        videoUrl: videoUrl.trim(),
+        tipoResumo,
         arquivo,
       });
       toast.success("Versão corrigida enviada. Seu trabalho está aprovado.");
@@ -181,7 +204,7 @@ const Correcao = () => {
               <div className="step-number">{pareceres.length > 0 ? "02" : "01"}</div>
               <div>
                 <div className="step-title">Informações do Trabalho</div>
-                <div className="step-subtitle">Somente título e resumo podem ser alterados</div>
+                <div className="step-subtitle">Título, tipo de resumo, palavras-chave e vídeo podem ser alterados</div>
               </div>
             </div>
 
@@ -198,15 +221,45 @@ const Correcao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="correcao-resumo">Resumo *</label>
-              <textarea
-                id="correcao-resumo"
-                className="form-textarea"
-                rows={6}
-                value={resumo}
-                onChange={(e) => setResumo(e.target.value)}
+              <label className="form-label">Tipo de Resumo *</label>
+              <div className="profile-select-group">
+                {TIPO_RESUMO_OPTIONS.map((o) => (
+                  <label className="profile-select-btn" key={o.value}>
+                    <input
+                      type="radio"
+                      name="correcao-tipo-resumo"
+                      value={o.value}
+                      checked={tipoResumo === o.value}
+                      onChange={() => setTipoResumo(o.value)}
+                    />
+                    <span className="profile-select-text">{o.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="correcao-palavras-chave">Palavras-chave *</label>
+              <input
+                type="text"
+                id="correcao-palavras-chave"
+                className="form-input"
+                value={palavrasChaveTexto}
+                onChange={(e) => setPalavrasChaveTexto(e.target.value)}
               />
-              <div className="char-counter">{resumo.split(/\s+/).filter(Boolean).length} / 230 palavras</div>
+              <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="correcao-video">Vídeo de Apresentação (YouTube) *</label>
+              <input
+                type="url"
+                id="correcao-video"
+                className="form-input"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+              />
             </div>
           </div>
 

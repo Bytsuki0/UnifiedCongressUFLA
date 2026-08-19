@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PDF_BUCKET } from "@/lib/config";
+import type { TipoResumo } from "@/lib/submissao";
 import type { Trabalho, Categoria } from "@/lib/types";
 
 /**
@@ -18,7 +19,11 @@ export type Coautor = { nome?: string; email?: string };
 
 export type NovoTrabalho = {
   titulo: string;
-  resumo: string;
+  /** Termos livres, na ordem em que o autor os digitou. */
+  palavrasChave: string[];
+  /** Link do vídeo de apresentação no YouTube. */
+  videoUrl: string;
+  tipoResumo: TipoResumo;
   categoriaId: string;
   autores: string;
   orientadorEmail: string | null;
@@ -243,7 +248,9 @@ export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
     .from("trabalhos")
     .insert({
       titulo: input.titulo,
-      resumo: input.resumo,
+      palavras_chave: input.palavrasChave,
+      video_url: input.videoUrl,
+      tipo_resumo: input.tipoResumo,
       categoria_id: input.categoriaId,
       autores: input.autores,
       orientador_email: input.orientadorEmail,
@@ -270,7 +277,9 @@ export type EditarSubmissaoInput = {
   trabalhoId: string;
   ownerId: string;
   titulo: string;
-  resumo: string;
+  palavrasChave: string[];
+  videoUrl: string;
+  tipoResumo: TipoResumo;
   /** Novo PDF. Quando ausente, o arquivo atual é mantido. */
   arquivo?: File | null;
 };
@@ -305,7 +314,9 @@ export async function editarSubmissao(input: EditarSubmissaoInput): Promise<void
   const { data, error } = await supabase.rpc("editar_submissao", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
-    _resumo: input.resumo,
+    _palavras_chave: input.palavrasChave,
+    _video_url: input.videoUrl,
+    _tipo_resumo: input.tipoResumo,
     _pdf_url: caminhoNovo ?? undefined,
   });
   if (error) throw new Error(error.message ?? "Não foi possível salvar as alterações.");

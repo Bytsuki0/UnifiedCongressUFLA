@@ -6,6 +6,7 @@ import { obterMeuTrabalho } from "@/services/trabalhosService";
 import { carregarPareceresDoTrabalho, type ParecerAnonimo } from "@/services/correcaoService";
 import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import { openPdf } from "@/lib/pdfStorage";
+import { rotuloTipoResumo } from "@/lib/submissao";
 import {
   AGUARDANDO_CORRECAO,
   PENDENTE,
@@ -115,6 +116,7 @@ const DetalheTrabalho = () => {
     texto: "Acompanhe aqui o andamento do seu trabalho.",
   };
   const coautores = (trabalho.coautores ?? []).filter((c) => c.nome || c.email);
+  const palavrasChave = trabalho.palavras_chave ?? [];
 
   return (
     <div className="section active">
@@ -160,6 +162,35 @@ const DetalheTrabalho = () => {
               <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
                 {coautores.map((c) => [c.nome, c.email].filter(Boolean).join(" · ")).join(" | ")}
               </div>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="form-label">Tipo de resumo</label>
+            <div style={{ fontSize: "var(--fs-sm)" }}>{rotuloTipoResumo(trabalho.tipo_resumo)}</div>
+          </div>
+
+          {palavrasChave.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">Palavras-chave</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {palavrasChave.map((p) => <span className="badge badge-gray" key={p}>{p}</span>)}
+              </div>
+            </div>
+          )}
+
+          {trabalho.video_url && (
+            <div className="import-row">
+              <div className="import-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+              </div>
+              <div className="import-info">
+                <div className="import-label">Vídeo de apresentação</div>
+                <div className="import-desc">O link que os avaliadores assistem</div>
+              </div>
+              <a className="btn btn-outline btn-sm" href={trabalho.video_url} target="_blank" rel="noopener noreferrer">Ver vídeo</a>
             </div>
           )}
 

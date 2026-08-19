@@ -81,9 +81,7 @@ const Analise = () => {
                 <tr>
                   <th>TÍTULO</th>
                   <th>CATEGORIA</th>
-                  <th>AUTORES</th>
                   <th>STATUS</th>
-                  <th>DATA</th>
                   <th>PDF</th>
                   <th>SEU PARECER</th>
                   <th>AÇÃO</th>
@@ -97,9 +95,7 @@ const Analise = () => {
                     <tr key={a.id}>
                       <td style={{ fontWeight: "var(--fw-semibold)" }}>{t?.titulo ?? "Trabalho removido"}</td>
                       <td>{t?.categoria_id ? (categorias[t.categoria_id] ?? "—") : "—"}</td>
-                      <td style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t?.autores ?? "—"}</td>
                       <td>{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
-                      <td>{t ? new Date(t.data_submissao).toLocaleDateString("pt-BR") : "—"}</td>
                       <td>{t?.pdf_url ? <button type="button" onClick={async () => { if (!(await openPdf(t.pdf_url))) toast.error("Não foi possível abrir o PDF."); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
                       <td>{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
                       <td>

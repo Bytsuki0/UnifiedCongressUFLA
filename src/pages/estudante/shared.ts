@@ -11,7 +11,15 @@ export type Submission = {
   id: string;
   owner_id?: string | null;
   titulo: string;
+  /**
+   * Texto do resumo. Opcional desde 20260819120000: o formulário não o
+   * pede mais (o resumo vive no PDF), mas as submissões antigas ainda
+   * têm o conteúdo gravado.
+   */
   resumo?: string | null;
+  palavras_chave?: string[] | null;
+  video_url?: string | null;
+  tipo_resumo?: string | null;
   autores: string;
   categoria_id: string | null;
   status: string;

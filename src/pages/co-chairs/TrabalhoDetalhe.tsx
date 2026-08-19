@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { rotuloTipoResumo } from "@/lib/submissao";
 import type { Trabalho, Categoria } from "@/lib/types";
 
 const TrabalhoDetalhe = () => {
@@ -63,9 +64,35 @@ const TrabalhoDetalhe = () => {
             <p>{trabalho.autores}</p>
           </div>
           <div>
-            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Resumo</h3>
-            <p className="whitespace-pre-wrap leading-relaxed">{trabalho.resumo}</p>
+            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Tipo de resumo</h3>
+            <p>{rotuloTipoResumo(trabalho.tipo_resumo)}</p>
           </div>
+          {(trabalho.palavras_chave ?? []).length > 0 && (
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Palavras-chave</h3>
+              <div className="flex flex-wrap gap-2">
+                {trabalho.palavras_chave.map((p) => (
+                  <Badge key={p} variant="outline">{p}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {trabalho.video_url && (
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Vídeo de apresentação</h3>
+              <a className="break-all text-primary underline" href={trabalho.video_url} target="_blank" rel="noopener noreferrer">
+                {trabalho.video_url}
+              </a>
+            </div>
+          )}
+          {/* Opcional desde 20260819120000: o formulário do estudante não
+              pede mais o texto do resumo, mas as submissões anteriores o têm. */}
+          {trabalho.resumo && (
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Resumo</h3>
+              <p className="whitespace-pre-wrap leading-relaxed">{trabalho.resumo}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PDF_BUCKET } from "@/lib/pdfStorage";
+import type { TipoResumo } from "@/lib/submissao";
 import type { ParecerItem, ResultadoParecer } from "@/lib/types";
 
 /**
@@ -30,14 +31,16 @@ export type EnviarCorrecaoInput = {
   trabalhoId: string;
   ownerId: string;
   titulo: string;
-  resumo: string;
+  palavrasChave: string[];
+  videoUrl: string;
+  tipoResumo: TipoResumo;
   /** Novo PDF. Quando ausente, o arquivo atual é mantido. */
   arquivo?: File | null;
 };
 
 /**
- * Envia a versão corrigida: sobe o PDF novo (se houver), grava
- * título/resumo/PDF pela RPC e só então apaga o arquivo antigo.
+ * Envia a versão corrigida: sobe o PDF novo (se houver), grava os campos
+ * editáveis e o PDF pela RPC e só então apaga o arquivo antigo.
  *
  * A ordem importa: se a gravação falhar, o PDF antigo continua sendo o
  * que a tabela aponta. O que sobra no Storage é o upload novo, órfão —
@@ -64,7 +67,9 @@ export async function enviarCorrecao(input: EnviarCorrecaoInput): Promise<void> 
   const { data, error } = await supabase.rpc("enviar_correcao", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
-    _resumo: input.resumo,
+    _palavras_chave: input.palavrasChave,
+    _video_url: input.videoUrl,
+    _tipo_resumo: input.tipoResumo,
     _pdf_url: caminhoNovo,
   });
   if (error) throw new Error(error.message ?? "Não foi possível enviar a correção.");

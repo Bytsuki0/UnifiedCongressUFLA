@@ -71,19 +71,38 @@ export function indexarConflitos(conflitos: Conflito[]): Map<string, Map<string,
  * com os pareceres estruturados (nota/comentário por critério).
  */
 
-// Trabalho como vem embarcado na associação (campos usados na análise).
+/**
+ * Trabalho como o REVISOR o enxerga — avaliação às cegas.
+ *
+ * A lista de campos é deliberadamente curta: `autores`, `coautores`,
+ * `orientador_email`, `data_submissao` e `resumo` ficam de fora porque
+ * identificam (ou ajudam a identificar) quem submeteu. Eles continuam
+ * na tabela e continuam visíveis para a organização e para os
+ * co-chairs, que decidem a partir deles — só não descem para a tela de
+ * quem dá o parecer.
+ *
+ * Este tipo é a metade do cuidado; a outra é `COLUNAS_VISIVEIS` abaixo.
+ * Esconder no JSX não bastaria: a linha inteira chegaria ao navegador do
+ * revisor e bastaria abrir o DevTools para ler o nome do autor.
+ */
 export type TrabalhoAssociado = {
   id: string;
   titulo: string;
-  resumo: string;
-  autores: string;
   categoria_id: string | null;
   status: string;
-  data_submissao: string;
-  orientador_email: string | null;
-  coautores: unknown;
   pdf_url: string | null;
+  video_url: string | null;
+  palavras_chave: string[] | null;
+  tipo_resumo: string | null;
 };
+
+/**
+ * As colunas de `trabalhos` que o PostgREST tem permissão de embarcar na
+ * resposta. Precisa espelhar `TrabalhoAssociado` — acrescentar um campo
+ * aqui sem pensar reabre o buraco da avaliação às cegas.
+ */
+const COLUNAS_VISIVEIS =
+  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, tipo_resumo";
 
 export type AssociacaoComTrabalho = TrabalhoRevisor & {
   trabalho: TrabalhoAssociado | null;
@@ -95,7 +114,7 @@ export async function listarTrabalhosAssociados(
 ): Promise<AssociacaoComTrabalho[]> {
   const { data, error } = await supabase
     .from("trabalho_revisores")
-    .select("*, trabalho:trabalhos(*)")
+    .select(`*, trabalho:trabalhos(${COLUNAS_VISIVEIS})`)
     .eq("revisor_email", email)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -108,7 +127,7 @@ export async function obterAssociacao(
 ): Promise<AssociacaoComTrabalho | null> {
   const { data, error } = await supabase
     .from("trabalho_revisores")
-    .select("*, trabalho:trabalhos(*)")
+    .select(`*, trabalho:trabalhos(${COLUNAS_VISIVEIS})`)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;

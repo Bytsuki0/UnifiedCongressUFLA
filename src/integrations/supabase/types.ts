@@ -764,10 +764,13 @@ export type Database = {
           id: string
           orientador_email: string | null
           owner_id: string | null
+          palavras_chave: string[]
           pdf_url: string | null
-          resumo: string
+          resumo: string | null
           status: string
+          tipo_resumo: string
           titulo: string
+          video_url: string | null
         }
         Insert: {
           autores: string
@@ -779,10 +782,13 @@ export type Database = {
           id?: string
           orientador_email?: string | null
           owner_id?: string | null
+          palavras_chave?: string[]
           pdf_url?: string | null
-          resumo: string
+          resumo?: string | null
           status?: string
+          tipo_resumo?: string
           titulo: string
+          video_url?: string | null
         }
         Update: {
           autores?: string
@@ -794,10 +800,13 @@ export type Database = {
           id?: string
           orientador_email?: string | null
           owner_id?: string | null
+          palavras_chave?: string[]
           pdf_url?: string | null
-          resumo?: string
+          resumo?: string | null
           status?: string
+          tipo_resumo?: string
           titulo?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -915,20 +924,24 @@ export type Database = {
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
       editar_submissao: {
         Args: {
+          _palavras_chave: string[]
           _pdf_url?: string
-          _resumo: string
+          _tipo_resumo: string
           _titulo: string
           _trabalho_id: string
+          _video_url: string
         }
         Returns: string
       }
       email_confirmado: { Args: never; Returns: boolean }
       enviar_correcao: {
         Args: {
+          _palavras_chave: string[]
           _pdf_url?: string
-          _resumo: string
+          _tipo_resumo: string
           _titulo: string
           _trabalho_id: string
+          _video_url: string
         }
         Returns: string
       }

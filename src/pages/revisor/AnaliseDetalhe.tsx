@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PdfViewer } from "@/components/PdfViewer";
+import { VideoViewer } from "@/components/VideoViewer";
+import { rotuloTipoResumo } from "@/lib/submissao";
 import { toast } from "sonner";
 import {
   Criterio,
@@ -36,6 +38,9 @@ const AnaliseDetalhe = () => {
   const [comentarioGeral, setComentarioGeral] = useState("");
   const [jaAvaliado, setJaAvaliado] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Qual dos dois anexos ocupa o painel de leitura. Começa no PDF: é ele
+  // que o parecer avalia; o vídeo é complemento.
+  const [visor, setVisor] = useState<"pdf" | "video">("pdf");
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -142,6 +147,9 @@ const AnaliseDetalhe = () => {
     }
   }
 
+  const videoUrl = assoc?.trabalho?.video_url ?? null;
+  const palavrasChave = assoc?.trabalho?.palavras_chave ?? [];
+
   return (
     <div className="section active">
       <div className="avaliacao-subheader">
@@ -154,7 +162,24 @@ const AnaliseDetalhe = () => {
             ? `${assoc.trabalho.categoria_id ? (categorias[assoc.trabalho.categoria_id] ?? "—") : "—"} · ${TRABALHO_STATUS_LABEL[assoc.trabalho.status] ?? assoc.trabalho.status}`
             : "—"}
         </span>
-        {pdfUrl && (
+
+        {/* Alternador do painel de leitura. Só aparece quando há vídeo:
+            sem ele o seletor teria uma opção morta. Mesmas classes do
+            radio de tipo de resumo no formulário de submissão. */}
+        {videoUrl && (
+          <div className="profile-select-group" style={{ marginBottom: 0, maxWidth: 260 }}>
+            <label className="profile-select-btn">
+              <input type="radio" name="visor" value="pdf" checked={visor === "pdf"} onChange={() => setVisor("pdf")} />
+              <span className="profile-select-text">PDF</span>
+            </label>
+            <label className="profile-select-btn">
+              <input type="radio" name="visor" value="video" checked={visor === "video"} onChange={() => setVisor("video")} />
+              <span className="profile-select-text">Vídeo</span>
+            </label>
+          </div>
+        )}
+
+        {visor === "pdf" && pdfUrl && (
           <span style={{ display: "inline-flex", gap: "var(--space-2)" }}>
             <button type="button" className="btn btn-primary btn-sm" onClick={baixarPdf}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -166,11 +191,36 @@ const AnaliseDetalhe = () => {
             </a>
           </span>
         )}
+        {visor === "video" && videoUrl && (
+          <a className="btn btn-outline btn-sm" href={videoUrl} target="_blank" rel="noopener noreferrer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            ABRIR NO YOUTUBE
+          </a>
+        )}
+      </div>
+
+      <div className="double-blind-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        MODO DOUBLE-BLIND ATIVADO · Identificação de autores e orientador oculta
       </div>
 
       <div className="avaliacao-layout">
         <div className="pdf-viewer">
-          {pdfUrl ? (
+          {visor === "video" ? (
+            videoUrl ? (
+              <VideoViewer url={videoUrl} />
+            ) : (
+              <>
+                <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <div className="pdf-viewer-filename">VÍDEO NÃO ANEXADO</div>
+                <div className="pdf-viewer-description">Este trabalho não possui vídeo de apresentação.</div>
+              </>
+            )
+          ) : pdfUrl ? (
             <PdfViewer url={pdfUrl} />
           ) : (
             <>
@@ -188,13 +238,19 @@ const AnaliseDetalhe = () => {
             <div className="review-section-overline">DADOS DO TRABALHO</div>
             <div className="review-section-title">{assoc?.trabalho?.titulo ?? "—"}</div>
 
+            {/* Autores, coautores, orientador e data de submissão NÃO
+                aparecem aqui — e nem chegam ao navegador: `obterAssociacao`
+                não pede essas colunas. É o que sustenta a avaliação às
+                cegas. Categoria fica porque define os critérios do parecer
+                e não identifica ninguém. */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-secondary)", marginBottom: "var(--space-4)" }}>
-              <div><strong>Autores:</strong> {assoc?.trabalho?.autores ?? "—"}</div>
-              <div><strong>Orientador:</strong> {assoc?.trabalho?.orientador_email ?? "—"}</div>
               <div><strong>Categoria:</strong> {assoc?.trabalho?.categoria_id ? (categorias[assoc.trabalho.categoria_id] ?? "—") : "—"}</div>
-              <div><strong>Data de submissão:</strong> {assoc?.trabalho ? new Date(assoc.trabalho.data_submissao).toLocaleDateString("pt-BR") : "—"}</div>
-              {assoc?.trabalho?.resumo && (
-                <div style={{ marginTop: 4, padding: 8, background: "var(--gray-50)", borderRadius: 4, lineHeight: "var(--lh-normal)" }}>{assoc.trabalho.resumo}</div>
+              <div><strong>Tipo de resumo:</strong> {rotuloTipoResumo(assoc?.trabalho?.tipo_resumo)}</div>
+              {palavrasChave.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 2 }}>
+                  <strong>Palavras-chave:</strong>
+                  {palavrasChave.map((p) => <span className="badge badge-gray" key={p}>{p}</span>)}
+                </div>
               )}
             </div>
 
