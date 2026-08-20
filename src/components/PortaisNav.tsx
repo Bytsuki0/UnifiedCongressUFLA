@@ -6,7 +6,7 @@ type CurrentPage = "estudante" | "revisor" | "admin" | "dashboard" | "congresso"
 
 const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNode }> = {
   estudante: {
-    label: "Portal Estudante",
+    label: "Submissão",
     to: "/estudante",
     icon: (
       <>
@@ -16,7 +16,7 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
     ),
   },
   revisor: {
-    label: "Portal Revisor",
+    label: "Revisão",
     to: "/revisor",
     icon: (
       <>
@@ -26,7 +26,7 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
     ),
   },
   dashboard: {
-    label: "Portal Controle",
+    label: "Gerenciamento",
     to: "/co-chairs",
     icon: (
       <>
@@ -91,7 +91,7 @@ export function PortaisNav({ currentPage, pushToBottom = false, borderColor = "v
 
   const content = (
     <>
-      <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em", color: "var(--color-text-muted)", padding: "0 0 var(--space-2) 0", textTransform: "uppercase" }}>
+      <div className="sidebar-portais-label" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em", color: "var(--color-text-muted)", padding: "0 0 var(--space-2) 0", textTransform: "uppercase" }}>
         PORTAIS
       </div>
       {items.map(key => {
@@ -103,7 +103,7 @@ export function PortaisNav({ currentPage, pushToBottom = false, borderColor = "v
             to={item.to}
             className={`nav-item${isCurrent ? " active" : ""}`}
             aria-current={isCurrent ? "page" : undefined}
-            style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", textDecoration: "none" }}
+            title={item.label}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
               {item.icon}

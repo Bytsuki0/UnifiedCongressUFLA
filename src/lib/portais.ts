@@ -37,10 +37,10 @@ export function saudacaoDoPapel(papel: UserRole): string {
     case "admin":
       return "Bem-vindo, Administrador!";
     case "avaliador":
-      return "Bem-vindo ao Dashboard!";
+      return "Bem-vindo ao Gerenciamento!";
     case "professor":
-      return "Bem-vindo ao Portal Revisor!";
+      return "Bem-vindo à Revisão!";
     default:
-      return "Bem-vindo ao Portal Estudante!";
+      return "Bem-vindo à Submissão!";
   }
 }

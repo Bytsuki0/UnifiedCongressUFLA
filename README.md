@@ -42,10 +42,10 @@ Nunca para autorização ou acesso a dado que o RLS já cobre.
 ## O ciclo de um trabalho
 
 ```
-  autor submete            distribuição automática        3 revisores
-  (PDF + vídeo +      →    de revisores, barrando    →    emitem parecer
-   palavras-chave)         conflito de interesse          por critérios
-                                                          da categoria
+  autor submete          co-chair recomenda,          3 revisores
+  (PDF + vídeo +    →    REVISA e confirma a     →    emitem parecer
+   palavras-chave)       distribuição, barrando       por critérios
+                         conflito de interesse        da categoria
                                      ↓
       rankings dos           decisão consolidada:
       co-chairs        ←     a MODA dos 3 pareceres
@@ -60,11 +60,18 @@ Nunca para autorização ou acesso a dado que o RLS já cobre.
   categoria, palavras-chave, tipo de resumo (simples ou estendido), link do
   vídeo no YouTube e o PDF. O PDF vai para um bucket **privado**; a leitura é
   sempre por URL assinada.
-- **Distribuição de revisores** roda no instante da submissão
-  (`distribuir_revisores`) e monta o pool a partir de `user_roles`, excluindo
-  autor, orientador e coautores — é assim que conflito de interesse é barrado.
-  Por isso **editar um trabalho não reabre autoria nem categoria**, mesmo
-  dentro do prazo: mudá-las invalidaria a distribuição em silêncio.
+- **Distribuição de revisores** **não acontece sozinha**. Um co-chair (ou admin)
+  clica em "Recomendar distribuição" em `/co-chairs/atribuicoes`;
+  `recomendar_distribuicao` devolve uma proposta **sem gravar nada**, a pessoa
+  altera o que quiser trabalho a trabalho, e só o "Confirmar" grava — por
+  `confirmar_distribuicao`, numa transação em que um par recusado aborta o lote
+  inteiro. O pool sai de `user_roles`, excluindo autor, orientador e coautores,
+  que é como conflito de interesse é barrado (por trigger, não só na tela).
+  A carga é equilibrada com **meta de 4 trabalhos por revisor** — meta, não
+  teto: o pool esgotado faz o número passar de 4 em vez de deixar trabalho com
+  menos de 3 revisores. Por isso **editar um trabalho não reabre autoria nem
+  categoria**, mesmo dentro do prazo: a distribuição pode já ter sido
+  confirmada, e mudá-las a invalidaria em silêncio.
 - **Decisão consolidada**: cada trabalho recebe até 3 pareceres
   (`aprovado` | `aprovado_correcoes` | `nao_aprovado`) e o status sai da moda
   dos votos; empate 1/1/1 vira "aprovado com correções".

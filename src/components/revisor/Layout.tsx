@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
+import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { initials } from "@/pages/revisor/shared";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
@@ -23,6 +24,8 @@ const Layout = () => {
   return (
     <div>
       <aside className="sidebar">
+        <BotaoRecolherSidebar />
+
         <NavLink to="/revisor/atribuicoes" className="sidebar-logo">
           <div className="logo-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
@@ -32,7 +35,7 @@ const Layout = () => {
           </div>
           <div>
             <div className="logo-text">{APP_SHORT}</div>
-            <div className="logo-sub">Revisor</div>
+            <div className="logo-sub">Revisão</div>
           </div>
         </NavLink>
 
@@ -41,6 +44,7 @@ const Layout = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              title={item.label}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>{item.icon}</svg>
@@ -52,7 +56,7 @@ const Layout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="nav-item" onClick={handleLogout} style={{ width: "100%" }}>
+          <button className="nav-item" onClick={handleLogout} title="Sair" style={{ width: "100%" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -64,7 +68,7 @@ const Layout = () => {
 
       <main className="main-content">
         <header className="top-bar">
-          <span className="top-bar-title">PAINEL DO REVISOR</span>
+          <span className="top-bar-title">REVISÃO</span>
           <div className="user-info">
             <div className="user-details">
               <div className="user-name">{user?.nome}</div>

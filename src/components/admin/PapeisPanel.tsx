@@ -72,7 +72,7 @@ export function PapeisPanel() {
         <div>
           <strong>ALTERAÇÕES VALEM IMEDIATAMENTE:</strong> o papel é lido do banco a cada carregamento de sessão,
           a pessoa afetada só precisa recarregar a página. <strong>Avaliador</strong> e <strong>Professor</strong>{" "}
-          colocam a conta no pool de revisores (Atribuições e distribuição automática). Um usuário pode acumular
+          colocam a conta no pool de revisores (Atribuições e distribuição recomendada). Um usuário pode acumular
           papéis; vale sempre o de maior privilégio.
         </div>
       </div>

@@ -118,7 +118,15 @@ const RPCS_NEGADAS = [
   ["conflitos_do_trabalho", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
   ["decisao_consolidada", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
   ["aplicar_decisao", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
-  ["distribuir_revisores", { p_trabalho_id: "00000000-0000-0000-0000-000000000000" }],
+  // O nome do argumento aqui era `p_trabalho_id`, mas a assinatura real é
+  // `_trabalho_id`: o PostgREST devolvia PGRST202 ("função não encontrada")
+  // e a sonda registrava "negada" sem ter testado permissão nenhuma — a
+  // sonda cega contra a qual o comentário logo abaixo adverte.
+  ["distribuir_revisores", { _trabalho_id: "00000000-0000-0000-0000-000000000000" }],
+  // Distribuição recomendada (migration 20260820120000): a que propõe e a
+  // que grava. Ambas exigem `is_event_staff()`, e nem executáveis por anon.
+  ["recomendar_distribuicao", {}],
+  ["confirmar_distribuicao", { _pares: [] }],
   // Prazo de submissão (migration 20260813120000). Os nomes de argumento
   // aqui são os REAIS da assinatura: com nome errado o PostgREST devolve
   // PGRST202 ("função não encontrada") e a sonda registraria "negada" sem

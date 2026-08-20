@@ -4,6 +4,10 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  // `src/lib/config.ts` lê este define, injetado pelo Vite no build. Sem
+  // ele aqui, qualquer teste que alcance esse módulo (ainda que de longe,
+  // via um service) morre no import com "__BUILD_ID__ is not defined".
+  define: { __BUILD_ID__: JSON.stringify("test") },
   test: {
     environment: "jsdom",
     globals: true,

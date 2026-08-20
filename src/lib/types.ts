@@ -100,5 +100,20 @@ export type Avaliacao = {
   created_at: string;
 };
 
-// Limite máximo de trabalhos por avaliador (regra de negócio)
+// Limite máximo de trabalhos por avaliador no sistema legado de
+// `avaliacoes` (o que alimenta os Rankings). NÃO vale para a associação
+// de revisores em `trabalho_revisores` — lá o número abaixo é o que conta.
 export const LIMITE_TRABALHOS_POR_AVALIADOR = 5;
+
+/**
+ * Quantos trabalhos a recomendação tenta não passar por revisor.
+ *
+ * ⚠ É uma META, não um teto: nada recusa um revisor acima disso. A
+ * recomendação sempre escolhe quem tem menos trabalhos, então ninguém
+ * chega a 5 enquanto houver alguém elegível com 4 ou menos — e quando
+ * todo o pool já está em 4 e ainda faltam revisores para completar os
+ * trabalhos, o número passa de 4 em vez de deixar trabalho a descoberto.
+ * Um teto duro fazia exatamente isso: parava a distribuição no 5 e o
+ * trabalho ficava com menos de 3 revisores sem ninguém avisar.
+ */
+export const META_TRABALHOS_POR_REVISOR = 4;

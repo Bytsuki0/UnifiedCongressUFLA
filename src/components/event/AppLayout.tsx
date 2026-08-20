@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import { PortaisNav } from "@/components/PortaisNav";
+import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { e, EVENT_BASE } from "./paths";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,6 +102,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div>
       <aside className="sidebar" style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+        {/* A área do evento está congelada; entra só o botão, para que quem
+            recolheu a barra em outro portal consiga abri-la de volta aqui. */}
+        <BotaoRecolherSidebar />
+
         <NavLink to={e("/dashboard")} className="sidebar-logo">
           <div className="logo-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>

@@ -62,11 +62,10 @@ const Landing = () => {
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-text">
-            <span className="hero-overline">CONGRESSO UFLA · EDIÇÃO 2026</span>
-            <h1 className="hero-title">Pesquisa que move o conhecimento.</h1>
+            <span className="hero-overline">UNIVERSIDADE FEDERAL DE LAVRAS · ICTIN</span>
+            <h1 className="hero-title">O congresso anual CIUFLA campus ICTIN.</h1>
             <p className="hero-description">
-              Submeta seus trabalhos acadêmicos de forma simples e acompanhe cada etapa
-              do processo de avaliação em tempo real, com total transparência.
+              Sistema oficial do {APP_NAME}.
             </p>
             <div className="hero-actions">
               <Link to="/cadastro" className="btn btn-outline-white">
@@ -79,44 +78,17 @@ const Landing = () => {
             </div>
           </div>
 
-          <div className="hero-features">
-            <div className="feature-card">
-              <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
-              </div>
-              <div className="feature-content">
-                <div className="feature-title">Avaliação Double-Blind</div>
-                <div className="feature-desc">Anonimato garantido em todas as rodadas</div>
-              </div>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </div>
-              <div className="feature-content">
-                <div className="feature-title">Acompanhamento em Tempo Real</div>
-                <div className="feature-desc">Status atualizado a cada minuto</div>
-              </div>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-              </div>
-              <div className="feature-content">
-                <div className="feature-title">Múltiplas Categorias</div>
-                <div className="feature-desc">PIBIC, BIC Jr, Extensão e mais</div>
-              </div>
-            </div>
+          {/* Selo institucional. Ocupa a coluna onde ficavam três cartões de
+              recurso ("double-blind", "tempo real", "múltiplas categorias") que
+              anunciavam o que o sistema não entrega. */}
+          <div className="hero-brand">
+            <img
+              className="hero-brand-logo"
+              src="/imagens/logo-ufla-branca.png"
+              alt="Universidade Federal de Lavras"
+              width={753}
+              height={317}
+            />
           </div>
         </div>
       </section>

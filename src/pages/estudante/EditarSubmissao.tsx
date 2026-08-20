@@ -30,10 +30,11 @@ import {
  * Mesmo conjunto de campos das duas — título, tipo de resumo,
  * palavras-chave, vídeo e PDF. Autoria e
  * categoria ficam travadas mesmo com o prazo aberto, e não por descuido:
- * a distribuição de revisores roda no INSTANTE da submissão, a partir do
- * orientador e dos coautores (é assim que o conflito de interesse é
- * barrado) e os critérios do parecer saem da categoria. Trocar isso
- * depois invalidaria em silêncio a checagem de conflito.
+ * a distribuição de revisores sai do orientador e dos coautores (é assim
+ * que o conflito de interesse é barrado) e os critérios do parecer saem
+ * da categoria. Um co-chair pode já ter confirmado a distribuição deste
+ * trabalho a qualquer momento — trocar autoria depois invalidaria em
+ * silêncio a checagem de conflito que escolheu aqueles revisores.
  *
  * Quem recusa de fato é a RPC `editar_submissao`. Esta tela só evita que
  * a pessoa preencha um formulário que o banco vai rejeitar.
@@ -59,7 +60,7 @@ const EditarSubmissao = () => {
     const data = await obterMeuTrabalho(id, user.id).catch(() => null);
     if (!data) {
       toast.error("Trabalho não encontrado.");
-      navigate("/estudante/historico");
+      navigate("/estudante/papeis-submetidos");
       return;
     }
     const sub = {
@@ -122,7 +123,7 @@ const EditarSubmissao = () => {
         arquivo,
       });
       toast.success("Alterações salvas.");
-      navigate("/estudante/historico");
+      navigate("/estudante/papeis-submetidos");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar as alterações.");
       setSalvando(false);
@@ -140,7 +141,7 @@ const EditarSubmissao = () => {
   }
 
   const voltar = (
-    <button className="back-link" onClick={() => navigate("/estudante/historico")}>
+    <button className="back-link" onClick={() => navigate("/estudante/papeis-submetidos")}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       Voltar
     </button>
@@ -369,7 +370,7 @@ const EditarSubmissao = () => {
           </div>
 
           <div className="form-footer">
-            <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/historico")}>
+            <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/papeis-submetidos")}>
               Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={salvando}>

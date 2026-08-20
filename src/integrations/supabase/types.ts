@@ -879,6 +879,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      confirmar_distribuicao: { Args: { _pares: Json }; Returns: number }
       confirmar_email: { Args: { p_token: string }; Returns: string }
       conflitos_do_trabalho: {
         Args: { _trabalho_id: string }
@@ -1008,6 +1009,15 @@ export type Database = {
           abertura: string
           encerramento: string
           hoje: string
+        }[]
+      }
+      recomendar_distribuicao: {
+        Args: never
+        Returns: {
+          revisor_email: string
+          revisor_nome: string
+          tipo: string
+          trabalho_id: string
         }[]
       }
       submissoes_abertas: { Args: never; Returns: boolean }

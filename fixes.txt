@@ -2,17 +2,17 @@
 2- adicionar carrossel nos arquivos de download 
 3- trocar .key pelo canva x
 4- email de suporte x
-5- email de adm novo quando chegar 
+5- email de adm novo quando chegar x
 6- senha necessaria 8 x
 7- esqueci minha senha x 
 8- co chairs que dâo nota final baseado na nota dos professores revisores, eles tem acesso não blind e podem ver todas as notas e categorias
 9- pode haver a possibilidade de resubmissões, categoria resubmeter.
-10- nada automatico
-11- submissão ativa, aprovado e reprovado
-12- tira tex
-13- tirar resumo da submissão
-14- radio de resumo simples ou extendido
-15- palavra chaves
+10- nada automatico 
+11- submissão ativa, aprovado e reprovado 
+12- tira tex x
+13- tirar resumo da submissão x
+14- radio de resumo simples ou extendido x
+15- palavra chaves x
 16- opções de parecer final editaveis pelo chairs/ co chair
-17- video do youtube
+17- video do youtube x
 

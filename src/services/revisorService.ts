@@ -2,8 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import {
   Criterio,
-  LIMITE_TRABALHOS_POR_AVALIADOR,
   MAX_REVISORES_POR_TRABALHO,
+  META_TRABALHOS_POR_REVISOR,
   Parecer,
   ParecerItem,
   ResultadoParecer,
@@ -281,79 +281,130 @@ export async function removerRevisor(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Um par proposto (ou escolhido) da distribuição: um revisor num trabalho. */
+export type ParDistribuicao = {
+  trabalho_id: string;
+  revisor_email: string;
+  revisor_nome: string | null;
+  tipo: "avaliador" | "professor";
+};
+
 /**
- * Distribuição automática unificada: para cada trabalho, tenta preencher até
- * MAX_REVISORES_POR_TRABALHO (3) revisores (avaliador OU professor, tratados
- * igualmente), sempre escolhendo o revisor de menor carga e respeitando o
- * limite por revisor. Trabalhos que já têm revisores são complementados até 3.
- * Só associa menos de 3 quando não há revisores disponíveis o bastante.
- * Retorna o número de associações criadas.
+ * Proposta de distribuição para todos os trabalhos com menos de 3
+ * revisores. **Não grava nada** — quem grava é `confirmarDistribuicao`,
+ * depois de um co-chair revisar par a par.
+ *
+ * O cálculo mora no servidor (`recomendar_distribuicao`, STABLE) e não
+ * aqui: era exatamente esta função que, na versão anterior, gravava
+ * enquanto calculava. Deixar a regra num laço do navegador significava
+ * duas cópias dela — uma em TypeScript, outra em SQL — livres para
+ * divergir sem ninguém notar.
  */
-export async function distribuirRevisoresAutomaticamente(
-  revisores: RevisorOption[],
-  trabalhoIds: string[],
+export async function recomendarDistribuicao(): Promise<ParDistribuicao[]> {
+  const { data, error } = await supabase.rpc("recomendar_distribuicao");
+  // `new Error` e não `throw error`: o PostgrestError é objeto puro, não
+  // instância de Error, e a página filtra por `e instanceof Error` — sem
+  // isto "Acesso negado." vira uma frase genérica na tela.
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ParDistribuicao[];
+}
+
+/**
+ * Grava a distribuição que o co-chair confirmou.
+ *
+ * Tudo ou nada: a RPC é uma transação, então um par recusado (conflito de
+ * interesse, teto de 3 por trabalho, teto de 5 por revisor) aborta o lote
+ * inteiro e nada é gravado. A mensagem do banco sobe intacta — é lá que
+ * mora a frase que diz QUEM foi recusado e por quê.
+ */
+export async function confirmarDistribuicao(
+  pares: { trabalho_id: string; revisor_email: string }[],
 ): Promise<number> {
-  if (revisores.length === 0) {
-    throw new Error("Nenhum revisor disponível (conceda o papel de professor ou avaliador a alguma conta).");
-  }
+  if (pares.length === 0) return 0;
+  const { data, error } = await supabase.rpc("confirmar_distribuicao", { _pares: pares });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}
 
-  const [{ data, error }, conflitos] = await Promise.all([
-    supabase.from("trabalho_revisores").select("trabalho_id, revisor_email"),
-    carregarConflitos(),
-  ]);
-  if (error) throw error;
-  const existentes = data ?? [];
-  const conflitoPorTrabalho = indexarConflitos(conflitos);
+/** Uma opção do seletor de revisor, já resolvida quanto a impedimentos. */
+export type OpcaoSlot = {
+  opcao: RevisorOption;
+  desabilitado: boolean;
+  /** Frase curta em pt-BR quando desabilitado. */
+  motivo?: string;
+  /** Carga já gravada + escolhas ainda não confirmadas no diálogo. */
+  carga: number;
+  /**
+   * Passou de `META_TRABALHOS_POR_REVISOR`. É AVISO, não impedimento:
+   * a opção continua selecionável, porque o contrário é deixar trabalho
+   * com menos de 3 revisores quando o pool acaba.
+   */
+  acimaDaMeta: boolean;
+};
 
-  // Carga atual por revisor (e-mail).
-  const carga = new Map<string, number>();
-  revisores.forEach((r) => carga.set(r.email, 0));
-  existentes.forEach((e) => carga.set(e.revisor_email, (carga.get(e.revisor_email) ?? 0) + 1));
+/**
+ * Opções de revisor para UM slot da distribuição em revisão.
+ *
+ * Pura de propósito (nada de Supabase): é a regra que o co-chair enxerga
+ * enquanto edita, e ela precisa recontar a cada troca — escolher alguém
+ * num slot muda a carga dele em todos os outros. O banco continua sendo
+ * quem recusa de fato; isto só evita que a pessoa monte um lote que a
+ * transação inteira vai rejeitar no fim.
+ */
+export function opcoesParaSlot(args: {
+  pool: RevisorOption[];
+  /** Índice de `indexarConflitos`: trabalho -> e-mail minúsculo -> motivo. */
+  conflitos: Map<string, Map<string, MotivoConflito>>;
+  /** Carga já gravada por e-mail. */
+  cargaBase: Map<string, number>;
+  /** Escolhas do diálogo: trabalho -> e-mails por slot (null = vago). */
+  escolhas: Map<string, (string | null)[]>;
+  /** E-mails já associados a este trabalho no banco. */
+  jaAssociados: string[];
+  trabalhoId: string;
+  slotAtual: number;
+}): OpcaoSlot[] {
+  const { pool, conflitos, cargaBase, escolhas, jaAssociados, trabalhoId, slotAtual } = args;
 
-  // Nº de revisores já associados por trabalho.
-  const countTrab = new Map<string, number>();
-  existentes.forEach((e) => countTrab.set(e.trabalho_id, (countTrab.get(e.trabalho_id) ?? 0) + 1));
+  // Carga extra que as escolhas ainda não confirmadas acrescentam.
+  const cargaExtra = new Map<string, number>();
+  escolhas.forEach((slots) => {
+    slots.forEach((email) => {
+      if (email) cargaExtra.set(email, (cargaExtra.get(email) ?? 0) + 1);
+    });
+  });
 
-  const jaAtribuido = new Set(existentes.map((e) => `${e.revisor_email}:${e.trabalho_id}`));
+  const noTrabalho = escolhas.get(trabalhoId) ?? [];
+  const associados = new Set(jaAssociados.map((e) => e.toLowerCase()));
+  const emConflito = conflitos.get(trabalhoId);
 
-  let criados = 0;
-  for (const tid of trabalhoIds) {
-    let atuais = countTrab.get(tid) ?? 0;
-    const emConflito = conflitoPorTrabalho.get(tid);
+  return pool.map((opcao) => {
+    const chave = opcao.email.toLowerCase();
+    const escolhidoAqui = noTrabalho[slotAtual] === opcao.email;
+    // A própria escolha do slot não pode se tornar inválida por causa de
+    // si mesma — senão o Select mostraria vazio ao reabrir.
+    const carga =
+      (cargaBase.get(opcao.email) ?? 0) +
+      (cargaExtra.get(opcao.email) ?? 0) -
+      (escolhidoAqui ? 1 : 0);
+    // Carga NÃO desabilita ninguém: a meta de 4 é preferência da
+    // recomendação, e um co-chair sem mais ninguém no pool precisa poder
+    // passar dela. Só marca.
+    const base = { opcao, carga, acimaDaMeta: carga >= META_TRABALHOS_POR_REVISOR };
 
-    // Tenta preencher o trabalho até o máximo de revisores.
-    while (atuais < MAX_REVISORES_POR_TRABALHO) {
-      const candidato = [...revisores]
-        .filter(
-          (r) =>
-            (carga.get(r.email) ?? 0) < LIMITE_TRABALHOS_POR_AVALIADOR &&
-            !jaAtribuido.has(`${r.email}:${tid}`) &&
-            // Autor, orientador ou coautor não revisa o próprio trabalho.
-            !emConflito?.has(r.email.toLowerCase()),
-        )
-        .sort((a, b) => (carga.get(a.email) ?? 0) - (carga.get(b.email) ?? 0))[0];
-
-      // Sem revisor possível para este trabalho — segue para o próximo.
-      if (!candidato) break;
-
-      const { error: insErr } = await supabase.from("trabalho_revisores").insert({
-        trabalho_id: tid,
-        revisor_email: candidato.email,
-        revisor_nome: candidato.nome,
-        tipo: candidato.tipo,
-      });
-
-      // Falha (ex.: trigger de limite) — para este trabalho e segue adiante.
-      if (insErr) break;
-
-      carga.set(candidato.email, (carga.get(candidato.email) ?? 0) + 1);
-      jaAtribuido.add(`${candidato.email}:${tid}`);
-      atuais++;
-      criados++;
+    const motivoConflito = emConflito?.get(chave);
+    if (motivoConflito) {
+      return { ...base, desabilitado: true, motivo: `impedido (${motivoConflito})` };
     }
-  }
-
-  return criados;
+    if (associados.has(chave)) {
+      return { ...base, desabilitado: true, motivo: "já revisa este trabalho" };
+    }
+    // Escolhido em OUTRO slot do mesmo trabalho.
+    if (noTrabalho.some((e, i) => i !== slotAtual && e === opcao.email)) {
+      return { ...base, desabilitado: true, motivo: "já escolhido neste trabalho" };
+    }
+    return { ...base, desabilitado: false };
+  });
 }
 
 /**

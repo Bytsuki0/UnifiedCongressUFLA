@@ -225,12 +225,16 @@ export async function excluirTrabalhos(ids: string[]): Promise<number> {
 
 /**
  * Submissão do autor: sobe o PDF para a pasta do próprio usuário (exigida
- * pela policy do Storage), grava o trabalho e dispara a distribuição
- * automática de revisores.
+ * pela policy do Storage) e grava o trabalho. Só isso.
  *
- * A distribuição é best-effort de propósito: roda numa RPC SECURITY
- * DEFINER porque o estudante não tem acesso às tabelas de revisores, e
- * uma falha ali não pode invalidar uma submissão já gravada.
+ * ⚠ O trabalho nasce SEM revisores, e é de propósito. Até 20260820 esta
+ * função chamava `distribuir_revisores` logo depois do INSERT, então o
+ * autor apertava "Enviar" e o banco já escolhia até 3 revisores sem que
+ * ninguém da organização autorizasse. Agora quem distribui é um co-chair,
+ * em /co-chairs/atribuicoes, revisando a proposta antes de confirmá-la.
+ * A migration 20260820120000 fechou o portão do outro lado: a RPC deixou
+ * de aceitar o dono do trabalho, então nem por chamada direta à API o
+ * autor consegue se atribuir revisores.
  */
 export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
   const nomeSeguro = input.arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -263,12 +267,6 @@ export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
     .single();
 
   if (error || !novo) throw new Error("Erro ao submeter trabalho. Tente novamente.");
-
-  try {
-    await supabase.rpc("distribuir_revisores", { _trabalho_id: novo.id });
-  } catch {
-    /* distribuição automática silenciosa — não bloqueia o envio */
-  }
 
   return novo.id;
 }

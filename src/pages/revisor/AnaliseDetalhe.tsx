@@ -199,13 +199,6 @@ const AnaliseDetalhe = () => {
         )}
       </div>
 
-      <div className="double-blind-banner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        MODO DOUBLE-BLIND ATIVADO · Identificação de autores e orientador oculta
-      </div>
-
       <div className="avaliacao-layout">
         <div className="pdf-viewer">
           {visor === "video" ? (

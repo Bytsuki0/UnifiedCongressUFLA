@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert } from "lucide-react";
 import {
-  LIMITE_TRABALHOS_POR_AVALIADOR,
   MAX_REVISORES_POR_TRABALHO,
+  META_TRABALHOS_POR_REVISOR,
   ResultadoParecer,
   Trabalho,
   TrabalhoRevisor,
@@ -11,13 +11,16 @@ import {
 import {
   associarRevisor,
   carregarPainelAtribuicoes,
-  distribuirRevisoresAutomaticamente,
+  confirmarDistribuicao,
   indexarConflitos,
   MotivoConflito,
+  ParDistribuicao,
   ParecerLite,
+  recomendarDistribuicao,
   removerRevisor,
   RevisorOption,
 } from "@/services/revisorService";
+import DialogoDistribuicao from "@/components/co-chairs/DialogoDistribuicao";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -79,6 +82,11 @@ const Atribuicoes = () => {
   const [revisorEmail, setRevisorEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Distribuição em revisão: a proposta e a janela onde ela é editada.
+  // `plano` só existe entre o clique em "Recomendar" e o Confirmar/Cancelar.
+  const [plano, setPlano] = useState<ParDistribuicao[]>([]);
+  const [dialogoAberto, setDialogoAberto] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
@@ -142,6 +150,9 @@ const Atribuicoes = () => {
   const revCount = trabalhoId ? (revisoresPorTrabalho.get(trabalhoId)?.length ?? 0) : 0;
   const revLimiteAtingido = revCount >= MAX_REVISORES_POR_TRABALHO;
 
+  // Trabalhos que ninguém revisa ainda — ver o aviso no topo.
+  const semRevisor = trabalhos.filter((t) => !revisoresPorTrabalho.has(t.id)).length;
+
   // Revisores impedidos no trabalho selecionado (autor/orientador/coautor).
   const impedidos = trabalhoId
     ? revisorOptions.filter((o) => motivoConflito(trabalhoId, o.email))
@@ -171,23 +182,46 @@ const Atribuicoes = () => {
     }
   };
 
-  const handleAuto = async () => {
+  /**
+   * Pede a proposta ao servidor e abre a janela de revisão.
+   * **Não grava nada** — é o ponto do fluxo novo.
+   */
+  const handleRecomendar = async () => {
     setSubmitting(true);
     try {
-      const criados = await distribuirRevisoresAutomaticamente(
-        revisorOptions,
-        trabalhos.map((t) => t.id),
-      );
-      if (criados === 0) {
-        toast.info("Nenhum trabalho disponível para distribuição automática");
-      } else {
-        toast.success(`${criados} associação(ões) criada(s) automaticamente`);
+      const proposta = await recomendarDistribuicao();
+      if (proposta.length === 0) {
+        toast.info("Nada a recomendar: todos os trabalhos já estão completos ou não há revisor livre");
+        return;
       }
-      await carregar();
+      setPlano(proposta);
+      setDialogoAberto(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro na distribuição");
+      toast.error(e instanceof Error ? e.message : "Erro ao montar a recomendação");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * Grava o que o co-chair confirmou. Em caso de recusa a janela FICA
+   * ABERTA com as escolhas intactas: o banco recusa o lote inteiro, e a
+   * pessoa precisa poder consertar a linha apontada em vez de recomeçar.
+   */
+  const handleConfirmarDistribuicao = async (
+    pares: { trabalho_id: string; revisor_email: string }[],
+  ) => {
+    setConfirmando(true);
+    try {
+      const criados = await confirmarDistribuicao(pares);
+      toast.success(`${criados} associação(ões) criada(s)`);
+      setDialogoAberto(false);
+      setPlano([]);
+      await carregar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao confirmar a distribuição");
+    } finally {
+      setConfirmando(false);
     }
   };
 
@@ -217,25 +251,44 @@ const Atribuicoes = () => {
           </h1>
           <p className="text-muted-foreground">
             Associe revisores (avaliadores e professores, tratados igualmente) aos trabalhos. Até{" "}
-            {MAX_REVISORES_POR_TRABALHO} revisores por trabalho · limite de {LIMITE_TRABALHOS_POR_AVALIADOR}{" "}
-            trabalhos por revisor · autor, orientador e coautores não podem revisar o próprio trabalho.
+            {MAX_REVISORES_POR_TRABALHO} revisores por trabalho · a recomendação evita passar de{" "}
+            {META_TRABALHOS_POR_REVISOR} trabalhos por revisor, mas passa se for isso ou deixar trabalho a
+            descoberto · autor, orientador e coautores não podem revisar o próprio trabalho.
           </p>
         </div>
-        <Button onClick={handleAuto} disabled={submitting || loading} variant="secondary">
+        <Button onClick={handleRecomendar} disabled={submitting || loading} variant="secondary">
           <Sparkles className="mr-2 h-4 w-4" />
-          Distribuição automática
+          Recomendar distribuição
         </Button>
       </div>
+
+      {/*
+        Nenhum trabalho recebe revisor sozinho desde 20260820: se ninguém
+        clicar em "Recomendar distribuição", eles ficam parados. O aviso
+        existe para que isso não passe despercebido.
+      */}
+      {!loading && semRevisor > 0 && (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span>
+            <strong>
+              {semRevisor} trabalho(s) aguardando distribuição
+            </strong>{" "}
+            — nenhum revisor é associado automaticamente. Use "Recomendar distribuição" para revisar uma
+            proposta e confirmá-la.
+          </span>
+        </div>
+      )}
 
       {/* Associação manual unificada */}
       <Card>
         <CardHeader>
           <CardTitle>Associar revisor</CardTitle>
           <CardDescription>
-            Selecione um trabalho e um revisor, a lista traz toda conta com papel de avaliador ou professor
-            (concedido em Papéis, no Portal Admin), tratadas da mesma forma. O revisor verá o trabalho no portal
-            do revisor pelo e-mail associado. Quem consta como autor, orientador ou coautor do trabalho aparece
-            impedido.
+            Para um trabalho de cada vez. Para vários de uma vez, use "Recomendar distribuição". A lista traz
+            toda conta com papel de avaliador ou professor (concedido em Papéis, no Portal Admin), tratadas da
+            mesma forma. O revisor verá o trabalho no portal do revisor pelo e-mail associado. Quem consta como
+            autor, orientador ou coautor do trabalho aparece impedido.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
@@ -279,7 +332,7 @@ const Atribuicoes = () => {
                     const motivo = trabalhoId ? motivoConflito(trabalhoId, o.email) : undefined;
                     return (
                       <SelectItem key={o.email} value={o.email} disabled={!!motivo}>
-                        {o.nome} · {TIPO_LABEL[o.tipo]}, {carga}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                        {o.nome} · {TIPO_LABEL[o.tipo]}, {carga}/{META_TRABALHOS_POR_REVISOR}
                         {motivo && ` · impedido (${motivo})`}
                       </SelectItem>
                     );
@@ -384,8 +437,9 @@ const Atribuicoes = () => {
                       </CardTitle>
                       <CardDescription>{o.email}</CardDescription>
                     </div>
-                    <Badge variant={lista.length >= LIMITE_TRABALHOS_POR_AVALIADOR ? "destructive" : "secondary"}>
-                      {lista.length}/{LIMITE_TRABALHOS_POR_AVALIADOR}
+                    {/* Acima da meta é aviso, não erro — daí `outline` e não `destructive`. */}
+                    <Badge variant={lista.length > META_TRABALHOS_POR_REVISOR ? "outline" : "secondary"}>
+                      {lista.length}/{META_TRABALHOS_POR_REVISOR}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -417,6 +471,18 @@ const Atribuicoes = () => {
           })}
         </TabsContent>
       </Tabs>
+
+      <DialogoDistribuicao
+        aberto={dialogoAberto}
+        onOpenChange={setDialogoAberto}
+        plano={plano}
+        trabalhos={trabalhos}
+        pool={revisorOptions}
+        conflitos={conflitos}
+        revisoresAtuais={revisores}
+        confirmando={confirmando}
+        onConfirmar={handleConfirmarDistribuicao}
+      />
     </div>
   );
 };

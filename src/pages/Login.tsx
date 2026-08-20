@@ -87,24 +87,19 @@ const Login = () => {
         </div>
 
         <div className="login-left-content">
-          <h1 className="hero-title">Pesquisa que move o conhecimento.</h1>
+          {/* Marca da universidade: a tela de acesso é institucional, e o
+              logotipo branco só funciona sobre este painel escuro. */}
+          <img
+            className="login-ufla-logo"
+            src="/imagens/logo-ufla-branca.png"
+            alt="Universidade Federal de Lavras"
+            width={753}
+            height={317}
+          />
+          <h1 className="hero-title">O congresso anual CIUFLA campus ICTIN.</h1>
           <p className="hero-description">
-            Plataforma institucional para submissão, avaliação e publicação de trabalhos acadêmicos com revisão por pares e acompanhamento em tempo real.
+            Sistema oficial do {APP_NAME}.
           </p>
-          <div className="login-features">
-            {[
-              { label: "Avaliação Double-Blind", icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></> },
-              { label: "Acompanhamento em Tempo Real", icon: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></> },
-              { label: "Múltiplas Categorias", icon: <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></> },
-            ].map((f) => (
-              <div className="login-feature-item" key={f.label}>
-                <span className="feature-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>{f.icon}</svg>
-                </span>
-                <span className="feature-label">{f.label}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         <footer className="login-left-footer">

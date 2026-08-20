@@ -78,7 +78,7 @@ const NovaSubmissao = () => {
         ownerId: user.id,
       });
       toast.success("Trabalho submetido com sucesso!");
-      navigate("/estudante/historico");
+      navigate("/estudante/papeis-submetidos");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Erro ao submeter trabalho. Tente novamente.",
@@ -88,7 +88,7 @@ const NovaSubmissao = () => {
   };
 
   const voltar = (
-    <button className="back-link" onClick={() => navigate("/estudante/dashboard")}>
+    <button className="back-link" onClick={() => navigate("/estudante/papeis-submetidos")}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       Voltar
     </button>
@@ -132,7 +132,7 @@ const NovaSubmissao = () => {
                 ? `O envio de trabalhos abre em ${formatarData(prazo?.abertura ?? null)}.`
                 : `O prazo terminou em ${formatarData(prazo?.encerramento ?? null)}. Novos trabalhos não podem mais ser enviados, e os que já estão aprovados com correções continuam podendo ser corrigidos.`}
             </p>
-            <button className="btn btn-primary btn-sm" onClick={() => navigate("/estudante/historico")}>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate("/estudante/papeis-submetidos")}>
               VER MEUS TRABALHOS
             </button>
           </div>

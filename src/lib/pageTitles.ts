@@ -21,10 +21,10 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   // Autenticada, mas sem portal: a sala de espera de quem não confirmou.
   ["/verifique-email", "Confirme seu e-mail"],
 
-  // Portal do Estudante
-  ["/estudante/dashboard", "Painel do estudante"],
+  // Portal do Estudante (Painel + Histórico viraram "Papéis Submetidos";
+  // /estudante/dashboard e /estudante/historico só redirecionam para cá)
+  ["/estudante/papeis-submetidos", "Papéis submetidos"],
   ["/estudante/nova-submissao", "Nova submissão"],
-  ["/estudante/historico", "Histórico de trabalhos"],
   ["/estudante/correcao/:id", "Enviar correção"],
   ["/estudante/editar/:id", "Editar submissão"],
   ["/estudante/trabalho/:id", "Resultado da avaliação"],

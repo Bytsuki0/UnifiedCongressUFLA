@@ -75,7 +75,7 @@ const DetalheTrabalho = () => {
     const data = await obterMeuTrabalho(id, user.id).catch(() => null);
     if (!data) {
       toast.error("Trabalho não encontrado.");
-      navigate("/estudante/historico");
+      navigate("/estudante/papeis-submetidos");
       return;
     }
     setTrabalho({
@@ -121,7 +121,7 @@ const DetalheTrabalho = () => {
   return (
     <div className="section active">
       <div className="content-area">
-        <button className="back-link" onClick={() => navigate("/estudante/historico")}>
+        <button className="back-link" onClick={() => navigate("/estudante/papeis-submetidos")}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           Voltar
         </button>

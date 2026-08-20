@@ -37,17 +37,6 @@ export type Categoria = { id: string; nome: string };
 // "@/lib/pdfStorage".
 export const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
 
-export const statusBadge = (s: string) => {
-  const map: Record<string, string> = {
-    pendente: "badge badge-amber",
-    em_avaliacao: "badge badge-blue",
-    aprovado_correcoes: "badge badge-amber",
-    aprovado: "badge badge-green",
-    reprovado: "badge badge-red",
-  };
-  return map[s] ?? "badge badge-gray";
-};
-
 export const statusLabel: Record<string, string> = {
   pendente: "Recebido",
   em_avaliacao: "Em Avaliação",
@@ -61,6 +50,47 @@ export const AGUARDANDO_CORRECAO = "aprovado_correcoes";
 
 /** Status em que o trabalho ainda não entrou em avaliação. */
 export const PENDENTE = "pendente";
+
+/** Status em que o trabalho está com os revisores. */
+export const EM_AVALIACAO = "em_avaliacao";
+
+/**
+ * Desfecho de uma submissão na leitura do AUTOR — é o que decide a cor da
+ * etiqueta e da faixa da linha, no mesmo código de cores dos sistemas de
+ * submissão (JEMS e afins): azul em andamento, amarelo devolvido para
+ * correção, verde aprovado, vermelho reprovado.
+ *
+ * "ativa" é tudo que ainda NÃO recebeu decisão — `pendente` e `em_avaliacao`
+ * juntos, porque para quem submeteu a diferença entre "recebido" e "com os
+ * revisores" não muda o que há para fazer (nada, além de esperar).
+ * `aprovado_correcoes` fica DE FORA de "ativa" de propósito: já foi julgado,
+ * e é justamente o caso que precisa saltar aos olhos com cor própria.
+ */
+export type Desfecho = "ativa" | "correcoes" | "aprovada" | "reprovada" | "outro";
+
+export const desfechoDo = (status: string): Desfecho => {
+  if (status === PENDENTE || status === EM_AVALIACAO) return "ativa";
+  if (status === AGUARDANDO_CORRECAO) return "correcoes";
+  if (status === "aprovado") return "aprovada";
+  if (status === "reprovado") return "reprovada";
+  return "outro";
+};
+
+const BADGE_DO_DESFECHO: Record<Desfecho, string> = {
+  ativa: "badge badge-blue",
+  correcoes: "badge badge-amber",
+  aprovada: "badge badge-green",
+  reprovada: "badge badge-red",
+  outro: "badge badge-gray",
+};
+
+export const statusBadge = (s: string) => BADGE_DO_DESFECHO[desfechoDo(s)];
+
+/** Classe da linha da tabela — a faixa colorida na borda esquerda. */
+export const linhaDesfecho = (s: string) => `linha-desfecho linha-${desfechoDo(s)}`;
+
+/** As submissões sem decisão: o único número que a tela ainda mostra. */
+export const estaAtiva = (status: string) => desfechoDo(status) === "ativa";
 
 /**
  * Status em que a decisão já está fechada — é quando os pareceres ficam

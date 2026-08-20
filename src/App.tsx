@@ -45,9 +45,8 @@ import NotFound from "./pages/NotFound.tsx";
 // Portal do Estudante — uma página por função, sob /estudante.
 // (Autor do trabalho: envia, acompanha e corrige submissões.)
 import EstudanteLayout from "./components/estudante/Layout";
-import EstudanteDashboard from "./pages/estudante/Dashboard";
+import EstudantePapeis from "./pages/estudante/PapeisSubmetidos";
 import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
-import EstudanteHistorico from "./pages/estudante/Historico";
 import EstudanteCorrecao from "./pages/estudante/Correcao";
 import EstudanteEditar from "./pages/estudante/EditarSubmissao";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
@@ -164,10 +163,15 @@ const App = () => (
                 (`owner_id = auth.uid()`), nunca por papel. */}
             <Route element={<ProtectedRoute allowedRoles={[...ALL_ROLES]} />}>
               <Route path="/estudante" element={<EstudanteLayout />}>
-                <Route index element={<Navigate to="/estudante/dashboard" replace />} />
-                <Route path="dashboard" element={<EstudanteDashboard />} />
+                <Route index element={<Navigate to="/estudante/papeis-submetidos" replace />} />
+                {/* Painel + Histórico viraram uma tela só ("Papéis
+                    Submetidos"): mostravam a mesma lista com recortes
+                    diferentes. As duas URLs antigas continuam vivas, como
+                    redirecionamento — links salvos não podem morrer. */}
+                <Route path="papeis-submetidos" element={<EstudantePapeis />} />
+                <Route path="dashboard" element={<Navigate to="/estudante/papeis-submetidos" replace />} />
+                <Route path="historico" element={<Navigate to="/estudante/papeis-submetidos" replace />} />
                 <Route path="nova-submissao" element={<EstudanteNovaSubmissao />} />
-                <Route path="historico" element={<EstudanteHistorico />} />
                 {/* Notas e comentários recebidos, em qualquer desfecho —
                     aprovado, com correções ou reprovado. */}
                 <Route path="trabalho/:id" element={<EstudanteDetalhe />} />
