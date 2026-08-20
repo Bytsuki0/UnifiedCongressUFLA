@@ -21,19 +21,24 @@ Escolha o arquivo conforme a hospedagem — todos já estão prontos:
 | Hospedagem | Arquivo | Precisa fazer |
 |---|---|---|
 | Vercel | [`vercel.json`](../vercel.json) (raiz) | nada, é detectado sozinho |
-| Netlify / Cloudflare Pages | [`public/_redirects`](../public/_redirects) e [`public/_headers`](../public/_headers) | nada, o Vite copia para `dist/` |
+| Cloudflare Workers (**atual**) | [`wrangler.jsonc`](../wrangler.jsonc) + [`public/_headers`](../public/_headers) | nada: `npm run deploy` publica e o fallback de SPA vem de `assets.not_found_handling` |
 | nginx | [`nginx.conf.example`](./nginx.conf.example) | copiar para `sites-available`, ajustar `server_name` e `root` |
 | Apache | [`apache.htaccess.example`](./apache.htaccess.example) | renomear para `.htaccess` na raiz publicada; exige `AllowOverride All` e `mod_rewrite` |
 
-Os arquivos de Vercel/Netlify/Cloudflare convivem sem conflito: cada
-plataforma ignora os das outras.
+A hospedagem em uso é a **Cloudflare Workers** (`npm run deploy`, ver o README
+da raiz). As linhas restantes são alternativas; os arquivos convivem sem
+conflito, porque cada plataforma ignora os das outras.
+
+> `public/_redirects` **não existe mais**: a regra catch-all `/* /index.html 200`
+> é rejeitada pela API da Cloudflare ("infinite loop detected").
 
 ## Indexação
 
 `public/robots.txt` pede aos robôs que não visitem as áreas logadas.
 Isso **não** impede a indexação da URL em si — o bloqueio de verdade é o
-cabeçalho `X-Robots-Tag: noindex`, já configurado nos quatro arquivos
-acima. Como a aplicação é client-side, não há como emitir
+cabeçalho `X-Robots-Tag: noindex`, configurado em `public/_headers` (é ele
+que vale no deploy atual, em Workers), em `vercel.json` e nos dois exemplos de
+servidor. Como a aplicação é client-side, não há como emitir
 `<meta name="robots">` por rota; o cabeçalho HTTP é o caminho correto.
 
 ## Variáveis de ambiente
