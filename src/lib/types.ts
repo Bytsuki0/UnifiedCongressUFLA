@@ -37,6 +37,8 @@ export type TrabalhoRevisor = {
   revisor_email: string;
   revisor_nome: string | null;
   tipo: "avaliador" | "professor";
+  /** Rodada em que a associação nasceu; carimbada pelo banco, nunca pelo cliente. */
+  rodada: number;
   created_at: string;
 };
 

@@ -94,6 +94,8 @@ export type TrabalhoAssociado = {
   video_url: string | null;
   palavras_chave: string[] | null;
   tipo_resumo: string | null;
+  /** Rodada CORRENTE do trabalho. Não identifica ninguém; ver `daRodadaCorrente`. */
+  rodada: number;
 };
 
 /**
@@ -102,13 +104,25 @@ export type TrabalhoAssociado = {
  * aqui sem pensar reabre o buraco da avaliação às cegas.
  */
 const COLUNAS_VISIVEIS =
-  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, tipo_resumo";
+  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, tipo_resumo, rodada";
 
 export type AssociacaoComTrabalho = TrabalhoRevisor & {
   trabalho: TrabalhoAssociado | null;
 };
 
-/** Lista os trabalhos associados a um revisor (por e-mail), com os dados do trabalho. */
+/**
+ * A associação vale para a rodada corrente do trabalho?
+ *
+ * Depois de um reenvio ("resubmeter") a rodada do trabalho avança e as
+ * associações antigas ficam para trás, carimbadas com a rodada em que
+ * nasceram. Elas não são apagadas — é assim que a rodada anterior segue
+ * legível no parecer editorial — mas o revisor daquela rodada não deve
+ * continuar vendo o trabalho na fila dele.
+ */
+export const daRodadaCorrente = (a: AssociacaoComTrabalho): boolean =>
+  a.trabalho != null && a.rodada === a.trabalho.rodada;
+
+/** Lista os trabalhos associados a um revisor (por e-mail), na rodada corrente. */
 export async function listarTrabalhosAssociados(
   email: string,
 ): Promise<AssociacaoComTrabalho[]> {
@@ -118,10 +132,17 @@ export async function listarTrabalhosAssociados(
     .eq("revisor_email", email)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as AssociacaoComTrabalho[];
+  return ((data ?? []) as unknown as AssociacaoComTrabalho[]).filter(daRodadaCorrente);
 }
 
-/** Uma associação específica (por id), com os dados do trabalho embarcados. */
+/**
+ * Uma associação específica (por id), com os dados do trabalho embarcados.
+ *
+ * Devolve `null` para associação de rodada vencida: a tela de análise
+ * grava parecer, e o parecer sempre nasce na rodada CORRENTE do trabalho
+ * (trigger `carimba_rodada`). Deixar abrir por URL uma associação antiga
+ * faria o revisor da rodada 1 emitir um parecer que conta na rodada 2.
+ */
 export async function obterAssociacao(
   id: string,
 ): Promise<AssociacaoComTrabalho | null> {
@@ -131,7 +152,8 @@ export async function obterAssociacao(
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as AssociacaoComTrabalho) ?? null;
+  const assoc = (data as unknown as AssociacaoComTrabalho) ?? null;
+  return assoc && daRodadaCorrente(assoc) ? assoc : null;
 }
 
 /** Critérios de avaliação de uma categoria, em ordem. */
@@ -185,7 +207,16 @@ export async function salvarParecer(input: SalvarParecerInput): Promise<void> {
       comentario_geral: input.comentarioGeral ?? null,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "trabalho_id,revisor_email" },
+    // A rodada entrou no UNIQUE em 20260820140000 e precisa entrar aqui
+    // junto: o índice antigo (trabalho_id, revisor_email) não existe mais,
+    // e nomear um alvo de conflito inexistente devolve 42P10.
+    //
+    // A rodada NÃO é enviada de propósito — o trigger `carimba_rodada`
+    // a preenche a partir do trabalho, e triggers BEFORE INSERT rodam
+    // antes da arbitragem do ON CONFLICT, então é o valor certo que
+    // decide o conflito. Deixar o cliente escolher a rodada permitiria
+    // gravar parecer carimbado numa rodada antiga.
+    { onConflict: "trabalho_id,revisor_email,rodada" },
   );
   if (error) throw error;
 }
@@ -415,6 +446,7 @@ export type ParecerLite = {
   trabalho_id: string;
   revisor_email: string;
   resultado: ResultadoParecer;
+  rodada: number;
 };
 
 /**
@@ -435,15 +467,24 @@ export async function carregarPainelAtribuicoes(): Promise<{
     carregarPoolRevisores(),
     supabase.from("trabalhos").select("*").order("titulo"),
     supabase.from("trabalho_revisores").select("*").order("created_at"),
-    supabase.from("pareceres").select("trabalho_id, revisor_email, resultado"),
+    supabase.from("pareceres").select("trabalho_id, revisor_email, resultado, rodada"),
     carregarConflitos(),
   ]);
   if (tr.error || rv.error || pa.error) throw tr.error ?? rv.error ?? pa.error;
+
+  const trabalhos = tr.data ?? [];
+  // A tela de Atribuições é sempre da rodada CORRENTE: contar as
+  // associações e os pareceres das rodadas anteriores mostraria "3/3" num
+  // trabalho reenviado que na verdade está sem revisor nenhum.
+  const rodadaDo = new Map(trabalhos.map((t) => [t.id, t.rodada]));
+  const corrente = <T extends { trabalho_id: string; rodada: number }>(x: T) =>
+    x.rodada === (rodadaDo.get(x.trabalho_id) ?? x.rodada);
+
   return {
     pool,
-    trabalhos: tr.data ?? [],
-    revisores: (rv.data ?? []) as TrabalhoRevisor[],
-    pareceres: (pa.data ?? []) as ParecerLite[],
+    trabalhos,
+    revisores: ((rv.data ?? []) as TrabalhoRevisor[]).filter(corrente),
+    pareceres: ((pa.data ?? []) as ParecerLite[]).filter(corrente),
     conflitos,
   };
 }

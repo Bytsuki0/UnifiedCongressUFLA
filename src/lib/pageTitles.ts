@@ -27,6 +27,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/estudante/nova-submissao", "Nova submissão"],
   ["/estudante/correcao/:id", "Enviar correção"],
   ["/estudante/editar/:id", "Editar submissão"],
+  ["/estudante/reenvio/:id", "Reenviar trabalho"],
   ["/estudante/trabalho/:id", "Resultado da avaliação"],
   ["/estudante/templates", "Templates"],
 
@@ -55,6 +56,8 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/trabalhos", "Trabalhos"],
   ["/co-chairs/categorias", "Categorias"],
   ["/co-chairs/atribuicoes", "Atribuição de revisores"],
+  ["/co-chairs/parecer-editorial/:id", "Analisar trabalho"],
+  ["/co-chairs/parecer-editorial", "Parecer editorial"],
   ["/co-chairs/rankings", "Rankings"],
   ["/co-chairs", "Painel de co-chairs"],
 

@@ -49,6 +49,7 @@ import EstudantePapeis from "./pages/estudante/PapeisSubmetidos";
 import EstudanteNovaSubmissao from "./pages/estudante/NovaSubmissao";
 import EstudanteCorrecao from "./pages/estudante/Correcao";
 import EstudanteEditar from "./pages/estudante/EditarSubmissao";
+import EstudanteReenvio from "./pages/estudante/Reenvio";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
 
@@ -71,6 +72,8 @@ import TrabalhoForm from "./pages/co-chairs/TrabalhoForm";
 import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
 import Categorias from "./pages/co-chairs/Categorias";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
+import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
+import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
 import Rankings from "./pages/co-chairs/Rankings";
 
 // Páginas do evento (congresso) — todas sob /congresso, hoje só para admin.
@@ -182,6 +185,10 @@ const App = () => (
                     consolidam em "aprovado com correções". É a ÚNICA
                     escrita do autor que sobrevive ao fim do prazo. */}
                 <Route path="correcao/:id" element={<EstudanteCorrecao />} />
+                {/* Reenvio — só abre com a decisão editorial "resubmeter".
+                    A ÚNICA tela do autor que abre autoria e categoria, e
+                    de envio único: depois dela nem editar/:id volta. */}
+                <Route path="reenvio/:id" element={<EstudanteReenvio />} />
                 <Route path="templates" element={<EstudanteTemplates />} />
               </Route>
             </Route>
@@ -223,6 +230,8 @@ const App = () => (
                 <Route path="trabalhos/:id/editar" element={<TrabalhoForm />} />
                 <Route path="categorias" element={<Categorias />} />
                 <Route path="atribuicoes" element={<Atribuicoes />} />
+                <Route path="parecer-editorial" element={<ParecerEditorial />} />
+                <Route path="parecer-editorial/:id" element={<ParecerEditorialDetalhe />} />
                 <Route path="rankings" element={<Rankings />} />
               </Route>
             </Route>

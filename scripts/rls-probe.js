@@ -91,6 +91,7 @@ const TABELAS = {
   congress_registrations: "negada",
   configuracoes: "negada",
   criterios: "negada",
+  decisoes_editoriais: "negada",
   estudantes: "negada",
   minicourse_registrations: "negada",
   minicourses: "publica",
@@ -127,6 +128,35 @@ const RPCS_NEGADAS = [
   // que grava. Ambas exigem `is_event_staff()`, e nem executáveis por anon.
   ["recomendar_distribuicao", {}],
   ["confirmar_distribuicao", { _pares: [] }],
+  // Parecer editorial (migration 20260820140000). A primeira é staff-only;
+  // as outras duas exigem sessão do autor.
+  [
+    "registrar_parecer_editorial",
+    {
+      _trabalho_id: "00000000-0000-0000-0000-000000000000",
+      _decisao: "aprovado",
+      _comentario: "sonda",
+    },
+  ],
+  [
+    "parecer_editorial_do_meu_trabalho",
+    { _trabalho_id: "00000000-0000-0000-0000-000000000000" },
+  ],
+  [
+    "reenviar_trabalho",
+    {
+      _trabalho_id: "00000000-0000-0000-0000-000000000000",
+      _titulo: "sonda",
+      _palavras_chave: ["sonda"],
+      _video_url: "https://youtu.be/dQw4w9WgXcQ",
+      _tipo_resumo: "simples",
+      _autores: "sonda",
+      _orientador_email: null,
+      _coautores: [],
+      _categoria_id: "00000000-0000-0000-0000-000000000000",
+      _pdf_url: null,
+    },
+  ],
   // Prazo de submissão (migration 20260813120000). Os nomes de argumento
   // aqui são os REAIS da assinatura: com nome errado o PostgREST devolve
   // PGRST202 ("função não encontrada") e a sonda registraria "negada" sem

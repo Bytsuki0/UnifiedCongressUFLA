@@ -1,0 +1,466 @@
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { obterMeuTrabalho } from "@/services/trabalhosService";
+import { openPdf } from "@/lib/pdfStorage";
+import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
+import {
+  carregarPareceresDoTrabalho,
+  type ParecerAnonimo,
+} from "@/services/correcaoService";
+import {
+  carregarDecisaoEditorial,
+  reenviarTrabalho,
+  type DecisaoDoAutor,
+} from "@/services/parecerEditorialService";
+import {
+  formatarPalavrasChave,
+  parsePalavrasChave,
+  TIPO_RESUMO_OPTIONS,
+  type TipoResumo,
+} from "@/lib/submissao";
+import { idDoVideo } from "@/lib/youtube";
+import {
+  AGUARDANDO_REENVIO,
+  MAX_PDF_BYTES,
+  useTrabalhos,
+  type Coautor,
+  type Submission,
+} from "./shared";
+
+/**
+ * Reenvio do trabalho, depois da decisão editorial "resubmeter".
+ *
+ * É a ÚNICA tela do autor com o formulário completo. `EditarSubmissao` e
+ * `Correcao` mostram autoria e categoria travadas, porque nas duas os
+ * revisores já foram escolhidos a partir do orientador e dos coautores, e
+ * os critérios já saíram da categoria. Aqui não: o trabalho volta ao
+ * começo, os revisores da rodada nova ainda serão atribuídos, e é por
+ * isso que abrir esses campos é seguro exatamente aqui.
+ *
+ * E é envio único. Depois dele, `reenviado_em` fica gravado e
+ * `editar_submissao` recusa para sempre — o aviso na tela existe para
+ * ninguém descobrir isso só depois de clicar.
+ */
+const Reenvio = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { categorias } = useTrabalhos();
+
+  const [trabalho, setTrabalho] = useState<Submission | null>(null);
+  const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
+  const [decisao, setDecisao] = useState<DecisaoDoAutor | null>(null);
+
+  const [titulo, setTitulo] = useState("");
+  const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [tipoResumo, setTipoResumo] = useState<TipoResumo>("simples");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [orientador, setOrientador] = useState("");
+  const [coautores, setCoautores] = useState<Coautor[]>([{ nome: "", email: "" }]);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    if (!id || !user) return;
+    setLoading(true);
+    const data = await obterMeuTrabalho(id, user.id).catch(() => null);
+    if (!data) {
+      toast.error("Trabalho não encontrado.");
+      navigate("/estudante/papeis-submetidos");
+      return;
+    }
+
+    const lista = Array.isArray(data.coautores) ? (data.coautores as Coautor[]) : [];
+    const sub = { ...data, coautores: lista } as Submission;
+    setTrabalho(sub);
+    setTitulo(sub.titulo ?? "");
+    setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
+    setVideoUrl(sub.video_url ?? "");
+    setTipoResumo(sub.tipo_resumo === "estendido" ? "estendido" : "simples");
+    setCategoriaId(sub.categoria_id ?? "");
+    setOrientador(sub.orientador_email ?? "");
+    setCoautores(lista.length > 0 ? lista : [{ nome: "", email: "" }]);
+
+    try {
+      setPareceres(await carregarPareceresDoTrabalho(id));
+    } catch {
+      setPareceres([]);
+    }
+    try {
+      setDecisao(await carregarDecisaoEditorial(id));
+    } catch {
+      setDecisao(null);
+    }
+    setLoading(false);
+  }, [id, user, navigate]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const verPdf = async () => {
+    if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
+  };
+
+  const setCoautor = (i: number, campo: keyof Coautor, valor: string) =>
+    setCoautores((anterior) =>
+      anterior.map((c, idx) => (idx === i ? { ...c, [campo]: valor } : c)),
+    );
+
+  /** Valida tudo e abre a confirmação — o envio em si é o `confirmar`. */
+  function revisar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!titulo.trim()) {
+      toast.error("O título é obrigatório.");
+      return;
+    }
+    if (!categoriaId) {
+      toast.error("Selecione a categoria.");
+      return;
+    }
+    if (parsePalavrasChave(palavrasChaveTexto).length === 0) {
+      toast.error("Informe ao menos uma palavra-chave.");
+      return;
+    }
+    if (!idDoVideo(videoUrl)) {
+      toast.error("Informe um link válido de vídeo do YouTube.");
+      return;
+    }
+    if (arquivo) {
+      if (arquivo.type !== "application/pdf") {
+        toast.error("O arquivo precisa estar em formato PDF.");
+        return;
+      }
+      if (arquivo.size > MAX_PDF_BYTES) {
+        toast.error("O PDF excede o limite de 10MB.");
+        return;
+      }
+    }
+    setConfirmando(true);
+  }
+
+  async function confirmar() {
+    if (!trabalho || !user) return;
+    setEnviando(true);
+    try {
+      const limpos = coautores
+        .map((c) => ({ nome: (c.nome ?? "").trim(), email: (c.email ?? "").trim() }))
+        .filter((c) => c.nome || c.email);
+      const autores = [
+        user.nome ?? "Autor",
+        ...limpos.filter((c) => c.nome).map((c) => c.nome),
+      ].join(", ");
+
+      await reenviarTrabalho({
+        trabalhoId: trabalho.id,
+        ownerId: user.id,
+        titulo: titulo.trim(),
+        palavrasChave: parsePalavrasChave(palavrasChaveTexto),
+        videoUrl: videoUrl.trim(),
+        tipoResumo,
+        autores,
+        orientadorEmail: orientador.trim() || null,
+        coautores: limpos,
+        categoriaId,
+        arquivo,
+      });
+      toast.success("Trabalho reenviado. Ele voltou para a fila de avaliação.");
+      navigate("/estudante/papeis-submetidos");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao reenviar o trabalho.");
+      setEnviando(false);
+      setConfirmando(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="section active">
+        <div className="content-area">
+          <p style={{ color: "var(--color-text-muted)" }}>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const voltar = (
+    <button className="back-link" onClick={() => navigate("/estudante/papeis-submetidos")}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar
+    </button>
+  );
+
+  // O banco recusa fora deste status; a interface avisa antes.
+  if (trabalho && trabalho.status !== AGUARDANDO_REENVIO) {
+    return (
+      <div className="section active">
+        <div className="content-area">
+          {voltar}
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <h3 className="empty-state-title">Nada a reenviar</h3>
+            <p className="empty-state-description">
+              Este trabalho não está aguardando reenvio. O reenvio só abre quando a organização
+              devolve o trabalho com a decisão “reenviar para nova avaliação”.
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate(`/estudante/trabalho/${trabalho.id}`)}>
+              VER SITUAÇÃO
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const passo = (n: number) => String(n).padStart(2, "0");
+  let etapa = 0;
+
+  return (
+    <div className="section active">
+      <div className="content-area">
+        {voltar}
+
+        <div className="page-header">
+          <div className="page-overline">Reenvio solicitado</div>
+          <h1 className="page-title">Reenviar trabalho</h1>
+          <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
+            Você pode alterar tudo — inclusive autoria e categoria. Depois do reenvio o trabalho
+            volta para a fila e recebe três avaliadores novos.
+          </p>
+        </div>
+
+        <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <div>
+            <strong>Este envio é único.</strong> Depois de reenviar, o trabalho não poderá mais ser
+            editado — nem por esta tela, nem pela de edição. Confira tudo antes de confirmar.
+          </div>
+        </div>
+
+        {decisao && (
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">{passo(++etapa)}</div>
+              <div>
+                <div className="step-title">Decisão da organização</div>
+                <div className="step-subtitle">O que foi pedido, e por quê</div>
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: "var(--fs-sm)",
+                background: "var(--gray-50)",
+                padding: 12,
+                borderRadius: 4,
+                lineHeight: "var(--lh-normal)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {decisao.comentario}
+            </div>
+          </div>
+        )}
+
+        {pareceres.length > 0 && (
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">{passo(++etapa)}</div>
+              <div>
+                <div className="step-title">Notas e comentários dos avaliadores</div>
+                <div className="step-subtitle">Avaliação às cegas, a identificação dos avaliadores é omitida</div>
+              </div>
+            </div>
+            <PareceresRecebidos pareceres={pareceres} />
+          </div>
+        )}
+
+        <form onSubmit={revisar}>
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">{passo(++etapa)}</div>
+              <div>
+                <div className="step-title">Informações do Trabalho</div>
+                <div className="step-subtitle">Tudo editável nesta etapa</div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-titulo">Título do Trabalho *</label>
+              <input type="text" id="reenvio-titulo" className="form-input" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Tipo de Resumo *</label>
+              <div className="profile-select-group">
+                {TIPO_RESUMO_OPTIONS.map((o) => (
+                  <label className="profile-select-btn" key={o.value}>
+                    <input type="radio" name="reenvio-tipo-resumo" value={o.value} checked={tipoResumo === o.value} onChange={() => setTipoResumo(o.value)} />
+                    <span className="profile-select-text">{o.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-palavras-chave">Palavras-chave *</label>
+              <input type="text" id="reenvio-palavras-chave" className="form-input" value={palavrasChaveTexto} onChange={(e) => setPalavrasChaveTexto(e.target.value)} />
+              <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-video">Vídeo de Apresentação (YouTube) *</label>
+              <input type="url" id="reenvio-video" className="form-input" placeholder="https://www.youtube.com/watch?v=..." value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-categoria">Categoria *</label>
+              <select id="reenvio-categoria" className="form-select" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required>
+                <option value="">Selecione a categoria</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+              <div className="form-hint">
+                A categoria define os critérios pelos quais o trabalho será avaliado na rodada nova.
+              </div>
+            </div>
+          </div>
+
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">{passo(++etapa)}</div>
+              <div>
+                <div className="step-title">Autoria</div>
+                <div className="step-subtitle">Editável no reenvio — os avaliadores novos são escolhidos a partir daqui</div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-orientador">E-mail do Orientador</label>
+              <input type="email" id="reenvio-orientador" className="form-input" value={orientador} onChange={(e) => setOrientador(e.target.value)} />
+              <div className="form-hint">
+                Orientador e coautores ficam impedidos de avaliar este trabalho.
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Coautores</label>
+              {coautores.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input type="text" className="form-input" placeholder="Nome" value={c.nome ?? ""} onChange={(e) => setCoautor(i, "nome", e.target.value)} />
+                  <input type="email" className="form-input" placeholder="E-mail" value={c.email ?? ""} onChange={(e) => setCoautor(i, "email", e.target.value)} />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setCoautores((a) => (a.length === 1 ? [{ nome: "", email: "" }] : a.filter((_, idx) => idx !== i)))}
+                    title="Remover coautor"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setCoautores((a) => [...a, { nome: "", email: "" }])}>
+                Adicionar coautor
+              </button>
+            </div>
+          </div>
+
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">{passo(++etapa)}</div>
+              <div>
+                <div className="step-title">Arquivo</div>
+                <div className="step-subtitle">Opcional · Limite 10MB · o PDF novo substitui e apaga o anterior</div>
+              </div>
+            </div>
+
+            {trabalho?.pdf_url && (
+              <div className="import-row">
+                <div className="import-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <div className="import-info">
+                  <div className="import-label">Versão atual</div>
+                  <div className="import-desc">Confira o arquivo que está registrado hoje</div>
+                </div>
+                <button type="button" className="btn btn-outline btn-sm" onClick={verPdf}>Ver PDF</button>
+              </div>
+            )}
+
+            <div
+              className="drop-zone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setArquivo(f); }}
+            >
+              <div className="drop-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48 }}>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              {arquivo ? (
+                <div style={{ color: "var(--color-success)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  {arquivo.name}
+                </div>
+              ) : (
+                <>
+                  <div className="drop-title">Arraste o PDF aqui</div>
+                  <div className="drop-subtitle">Sem arquivo novo, o PDF atual é mantido</div>
+                  <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
+                    Selecionar Arquivo
+                    <input type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) setArquivo(e.target.files[0]); }} />
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+
+          {confirmando ? (
+            <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <div style={{ flex: 1 }}>
+                <strong>Confirmar o reenvio?</strong> Esta é a última chance de editar. Depois de
+                confirmar, o trabalho volta para avaliação e você não poderá mais alterá-lo.
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setConfirmando(false)} disabled={enviando}>
+                    Voltar e revisar
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={confirmar} disabled={enviando}>
+                    {enviando ? "Enviando..." : "Confirmar reenvio"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="form-footer">
+              <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/papeis-submetidos")}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Revisar e reenviar
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default Reenvio;

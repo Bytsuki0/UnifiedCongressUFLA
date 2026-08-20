@@ -8,7 +8,6 @@ import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { UsuariosPanel } from "@/components/admin/UsuariosPanel";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  atualizarStatusDoTrabalho,
   excluirTrabalho,
   excluirTrabalhos,
   listarTrabalhosComCategorias,
@@ -103,7 +102,9 @@ const AdminPortal = () => {
   const statusBadge: Record<string, string> = {
     pendente: "badge badge-amber",
     em_avaliacao: "badge badge-blue",
+    aguardando_parecer_editorial: "badge badge-blue",
     aprovado_correcoes: "badge badge-amber",
+    resubmeter: "badge badge-orange",
     aprovado: "badge badge-green",
     reprovado: "badge badge-red",
   };
@@ -111,7 +112,9 @@ const AdminPortal = () => {
   const statusLabel: Record<string, string> = {
     pendente: "Recebido",
     em_avaliacao: "Em Análise",
+    aguardando_parecer_editorial: "Aguardando parecer editorial",
     aprovado_correcoes: "Aprovado c/ correções",
+    resubmeter: "Reenvio solicitado",
     aprovado: "Aprovado",
     reprovado: "Reprovado",
   };
@@ -124,16 +127,6 @@ const AdminPortal = () => {
   // está na tela. É também o que o contador do botão mostra.
   const selecionadosVisiveis = filtered.filter(t => selecionados.has(t.id));
   const todosVisiveisMarcados = filtered.length > 0 && selecionadosVisiveis.length === filtered.length;
-
-  const updateStatus = async (id: string, status: string) => {
-    try {
-      await atualizarStatusDoTrabalho(id, status);
-      toast.success("Status atualizado");
-      await loadData();
-    } catch {
-      toast.error("Erro ao atualizar status");
-    }
-  };
 
   const alternarSelecao = (id: string) =>
     setSelecionados(atual => {
@@ -405,20 +398,21 @@ const AdminPortal = () => {
                         <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
                         <td>
                           <div style={{ display: "flex", gap: 4 }}>
-                            {t.status !== "em_avaliacao" && (
-                              <button className="btn btn-primary btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "em_avaliacao")}>Analisar</button>
-                            )}
-                            {t.status !== "aprovado" && (
-                              <button className="btn btn-sm" style={{ background: "var(--color-success)", color: "#fff", border: "none", padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "aprovado")}>Aprovar</button>
-                            )}
-                            {/* Abre a rodada de correção para o autor sem
-                                esperar os 3 pareceres (override manual). */}
-                            {t.status !== "aprovado_correcoes" && (
-                              <button className="btn btn-outline btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "aprovado_correcoes")}>Aprovar c/ correções</button>
-                            )}
-                            {t.status !== "reprovado" && (
-                              <button className="btn btn-danger btn-sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => updateStatus(t.id, "reprovado")}>Reprovar</button>
-                            )}
+                            {/* Os botões de desfecho (Aprovar / Aprovar c/
+                                correções / Reprovar) saíram em 20260820140000.
+                                Eles gravavam `status` cru: sem autor, sem
+                                justificativa, sem data — e o parecer seguinte
+                                sobrescrevia em silêncio. A decisão agora tem
+                                dono e motivo, e mora em Parecer Editorial.
+                                Manter os dois seria manter dois caminhos
+                                contraditórios para a mesma decisão. */}
+                            <button
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: "4px 8px", fontSize: 11 }}
+                              onClick={() => navigate(`/co-chairs/parecer-editorial/${t.id}`)}
+                            >
+                              Parecer editorial
+                            </button>
                             {/* Exclusão definitiva — leva pareceres,
                                 avaliações, revisores e o PDF junto. É a
                                 limpeza de fim de edição. */}

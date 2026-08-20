@@ -501,6 +501,10 @@
 
 .badge-green { background-color: var(--green-50); color: var(--green-800); }
 .badge-amber { background-color: var(--amber-100); color: var(--amber-700); }
+/* "Reenvio solicitado": entre o amarelo da correção e o vermelho da
+   reprovação, porque é o que ele é — o trabalho volta ao começo, mas não
+   foi recusado. Precisa se distinguir do amber à primeira vista. */
+.badge-orange { background-color: #FFEDD5; color: #C2410C; }
 .badge-red { background-color: var(--red-50); color: var(--red-700); }
 .badge-blue { background-color: var(--blue-50); color: var(--blue-700); }
 .badge-gray { background-color: var(--gray-200); color: var(--gray-800); }
@@ -1055,6 +1059,7 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 
 .linha-ativa { --cor-desfecho: var(--color-primary); }
 .linha-correcoes { --cor-desfecho: var(--color-warning); }
+.linha-reenvio { --cor-desfecho: #EA580C; }
 .linha-aprovada { --cor-desfecho: var(--color-success); }
 .linha-reprovada { --cor-desfecho: var(--color-danger); }
 .linha-outro { --cor-desfecho: var(--gray-300); }

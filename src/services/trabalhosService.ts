@@ -136,15 +136,18 @@ export async function atualizarTrabalho(
   if (error) throw error;
 }
 
-/**
- * Move o status manualmente (Portal Admin). É a saída de emergência: o
- * caminho normal é a decisão consolidada dos pareceres definir o status
- * no servidor.
+/*
+ * `atualizarStatusDoTrabalho` foi removida em 20260820140000.
+ *
+ * Ela gravava `trabalhos.status` cru a partir dos botões do Portal Admin
+ * — sem autor, sem justificativa e sem data — e o parecer seguinte a
+ * sobrescrevia em silêncio. Era o único override humano que existia, e
+ * agora existe um caminho próprio para isso: `registrar_parecer_editorial`,
+ * que exige comentário e deixa rastro em `decisoes_editoriais`.
+ *
+ * Se um dia voltar a fazer falta um "mover status na marra", ele tem de
+ * nascer como RPC auditada, não como UPDATE solto.
  */
-export async function atualizarStatusDoTrabalho(id: string, status: string): Promise<void> {
-  const { error } = await supabase.from("trabalhos").update({ status }).eq("id", id);
-  if (error) throw error;
-}
 
 /**
  * Caminho do objeto dentro do bucket de PDFs, a partir do que está

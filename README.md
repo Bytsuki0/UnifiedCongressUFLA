@@ -47,13 +47,15 @@ Nunca para autorização ou acesso a dado que o RLS já cobre.
    palavras-chave)       distribuição, barrando       por critérios
                          conflito de interesse        da categoria
                                      ↓
-      rankings dos           decisão consolidada:
-      co-chairs        ←     a MODA dos 3 pareceres
+      rankings dos          PARECER EDITORIAL: um co-chair lê os 3
+      co-chairs        ←    pareceres e decide, com justificativa
+                            (a moda dos votos é só sugestão)
                                      ↓
-                     aprovado · aprovado com correções · reprovado
-                                     ↓
-                         rodada de correção do autor
-                     (única escrita que sobrevive ao prazo)
+      aprovado · aprovado com correções · reprovado · REENVIAR
+                            ↓                            ↓
+                rodada de correção          reenvio ÚNICO do trabalho
+              (aprova ao ser enviada)       inteiro → volta ao começo,
+                                            3 revisores novos
 ```
 
 - **Submissão** (`/estudante/nova-submissao`): título, autores/orientador,
@@ -72,15 +74,27 @@ Nunca para autorização ou acesso a dado que o RLS já cobre.
   menos de 3 revisores. Por isso **editar um trabalho não reabre autoria nem
   categoria**, mesmo dentro do prazo: a distribuição pode já ter sido
   confirmada, e mudá-las a invalidaria em silêncio.
-- **Decisão consolidada**: cada trabalho recebe até 3 pareceres
-  (`aprovado` | `aprovado_correcoes` | `nao_aprovado`) e o status sai da moda
-  dos votos; empate 1/1/1 vira "aprovado com correções".
+- **Parecer editorial** (`/co-chairs/parecer-editorial`): a decisão final **não sai
+  sozinha**. Com os 3 pareceres o trabalho vai para `aguardando_parecer_editorial`
+  e entra na fila; um co-chair abre a análise — onde vê os pareceres **com o nome
+  de quem assinou**, além de autor, orientador, coautores, PDF e vídeo — e registra
+  a decisão com um comentário obrigatório, que fica em `decisoes_editoriais`. A moda
+  dos votos (`decisao_consolidada`) continua sendo calculada, mas como **sugestão**.
+  Rever a decisão vale enquanto o autor não agiu; cada mudança fica no histórico.
+- **Quatro desfechos**: `aprovado`, `aprovado com correções`, `reprovado` e
+  **`reenviar`**. Nos três primeiros nada muda. No `reenviar`, o autor reedita o
+  trabalho **inteiro** — inclusive autoria e categoria, o único lugar onde isso
+  abre — e o trabalho volta a `pendente` numa **rodada nova**, para receber 3
+  revisores de novo. É envio único: depois dele o trabalho não é mais editável.
+  Os pareceres e as associações da rodada anterior não são apagados, ficam
+  carimbados com a rodada e continuam legíveis na análise editorial.
 - **Correção**: no desfecho "aprovado com correções" o autor reenvia pela RPC
-  `enviar_correcao`, que atravessa o prazo de propósito — é a única escrita do
-  autor que continua valendo depois do fim das submissões.
+  `enviar_correcao`, que atravessa o prazo de propósito — e aprova no ato, sem
+  nova rodada de revisão. É a diferença deliberada para o `reenviar`.
 - **Notas e comentários** aparecem em `/estudante/trabalho/:id` em **qualquer**
-  desfecho, sem identificação do revisor e só depois da decisão consolidada
-  (`pareceres_do_meu_trabalho`).
+  desfecho, sem identificação do revisor e só **depois do parecer editorial**
+  (`pareceres_do_meu_trabalho`) — nunca na janela entre o 3º parecer e a decisão,
+  em que os vereditos existem mas a organização ainda pode contrariá-los.
 
 ---
 

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { openPdf } from "@/lib/pdfStorage";
 import {
   AGUARDANDO_CORRECAO,
+  AGUARDANDO_REENVIO,
   PENDENTE,
   STATUS_COM_PARECER,
   estaAtiva,
@@ -21,7 +22,8 @@ import {
  * a outra tudo) e o autor tinha de saltar entre elas para descobrir o que
  * fazer. Aqui a lista é uma: TODAS as submissões, e a cor da linha diz em que
  * pé cada uma está — azul em andamento, amarelo devolvida para correção,
- * verde aprovada, vermelho reprovada (ver `desfechoDo` em ./shared).
+ * laranja devolvida para reenvio, verde aprovada, vermelho reprovada
+ * (ver `desfechoDo` em ./shared).
  *
  * Dos quatro cartões de número sobraram dois — "submissões ativas" e "total".
  * "Em avaliação" foi absorvido por "ativas" (para o autor é a mesma espera) e
@@ -156,9 +158,14 @@ const PapeisSubmetidos = () => {
                   const podeVerParecer = STATUS_COM_PARECER.includes(t.status);
                   // `aberto === null` é "não sei" (falha de rede) e não
                   // esconde o botão — quem recusa é a RPC editar_submissao.
-                  const podeEditar = t.status === PENDENTE && aberto !== false;
+                  // Reenviado é envio único: `editar_submissao` recusa
+                  // para sempre depois disso, e o botão sai junto.
+                  const podeEditar =
+                    t.status === PENDENTE && aberto !== false && !t.reenviado_em;
                   const podeCorrigir = t.status === AGUARDANDO_CORRECAO;
-                  const semAcao = !podeVerParecer && !podeEditar && !podeCorrigir;
+                  const podeReenviar = t.status === AGUARDANDO_REENVIO;
+                  const semAcao =
+                    !podeVerParecer && !podeEditar && !podeCorrigir && !podeReenviar;
                   return (
                   <tr key={t.id} className={linhaDesfecho(t.status)}>
                     <td style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</td>
@@ -197,6 +204,15 @@ const PapeisSubmetidos = () => {
                             onClick={() => navigate(`/estudante/correcao/${t.id}`)}
                           >
                             Corrigir
+                          </button>
+                        )}
+                        {podeReenviar && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => navigate(`/estudante/reenvio/${t.id}`)}
+                          >
+                            Reenviar
                           </button>
                         )}
                         {semAcao && "—"}

@@ -4,11 +4,17 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterMeuTrabalho } from "@/services/trabalhosService";
 import { carregarPareceresDoTrabalho, type ParecerAnonimo } from "@/services/correcaoService";
+import {
+  carregarDecisaoEditorial,
+  type DecisaoDoAutor,
+} from "@/services/parecerEditorialService";
 import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import { openPdf } from "@/lib/pdfStorage";
 import { rotuloTipoResumo } from "@/lib/submissao";
 import {
   AGUARDANDO_CORRECAO,
+  AGUARDANDO_EDITORIAL,
+  AGUARDANDO_REENVIO,
   PENDENTE,
   statusBadge,
   statusLabel,
@@ -26,7 +32,9 @@ import {
  *
  * O que pode ser visto e quando é decisão do servidor
  * (`pareceres_do_meu_trabalho`): sem identificação do revisor, e só
- * depois de a decisão consolidar.
+ * depois do PARECER EDITORIAL — não mais assim que o 3º parecer entra.
+ * A diferença importa: entre uma coisa e outra existe uma janela em que
+ * os três vereditos existem e a organização ainda pode contrariá-los.
  */
 
 /** Mensagem de topo por desfecho — o que a pessoa faz com esta tela. */
@@ -40,6 +48,19 @@ const ORIENTACAO: Record<string, { overline: string; titulo: string; texto: stri
     overline: "Em avaliação",
     titulo: "Avaliação em andamento",
     texto: "Os pareceres já emitidos só são revelados quando a decisão fecha, é o que mantém a avaliação às cegas.",
+  },
+  // Os 3 pareceres chegaram, a organização ainda não decidiu. Para o
+  // autor isto continua sendo "espere" — dizer que os pareceres já
+  // existem convidaria a perguntar um resultado que não existe.
+  [AGUARDANDO_EDITORIAL]: {
+    overline: "Em análise final",
+    titulo: "Avaliação concluída, decisão em andamento",
+    texto: "Os avaliadores concluíram e a organização está analisando o conjunto. A decisão e os pareceres aparecem aqui assim que ela for registrada.",
+  },
+  [AGUARDANDO_REENVIO]: {
+    overline: "Reenvio solicitado",
+    titulo: "Reenvie o trabalho para nova avaliação",
+    texto: "A organização pediu um novo envio. Você pode alterar tudo — inclusive autoria e categoria — mas só uma vez: depois de reenviar, o trabalho não poderá mais ser editado.",
   },
   aprovado: {
     overline: "Aprovado",
@@ -65,6 +86,7 @@ const DetalheTrabalho = () => {
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
+  const [decisao, setDecisao] = useState<DecisaoDoAutor | null>(null);
   const [loading, setLoading] = useState(true);
 
   const carregar = useCallback(async () => {
@@ -89,6 +111,11 @@ const DetalheTrabalho = () => {
       // Decisão ainda não fechada, ou falha de rede: a tela funciona
       // sem os pareceres, e o texto de orientação já explica o estado.
       setPareceres([]);
+    }
+    try {
+      setDecisao(await carregarDecisaoEditorial(id));
+    } catch {
+      setDecisao(null);
     }
     setLoading(false);
   }, [id, user, navigate]);
@@ -210,9 +237,37 @@ const DetalheTrabalho = () => {
           )}
         </div>
 
+        {/* A decisão da organização vem ANTES dos pareceres: é ela que
+            vale, e os pareceres são a fundamentação. Até 20260820140000
+            não havia o que mostrar aqui — o desfecho saía da média sem
+            que ninguém escrevesse uma linha de justificativa. */}
+        {decisao && (
+          <div className="step-card">
+            <div className="step-card-header">
+              <div className="step-number">02</div>
+              <div>
+                <div className="step-title">Decisão da organização</div>
+                <div className="step-subtitle">O parecer editorial sobre o seu trabalho</div>
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: "var(--fs-sm)",
+                background: "var(--gray-50)",
+                padding: 12,
+                borderRadius: 4,
+                lineHeight: "var(--lh-normal)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {decisao.comentario}
+            </div>
+          </div>
+        )}
+
         <div className="step-card">
           <div className="step-card-header">
-            <div className="step-number">02</div>
+            <div className="step-number">{decisao ? "03" : "02"}</div>
             <div>
               <div className="step-title">Notas e comentários dos avaliadores</div>
               <div className="step-subtitle">Avaliação às cegas, a identificação dos avaliadores é omitida</div>
@@ -230,8 +285,8 @@ const DetalheTrabalho = () => {
               </div>
               <h3 className="empty-state-title">Nenhum parecer disponível ainda</h3>
               <p className="empty-state-description">
-                Os pareceres são revelados quando a avaliação fecha. Até lá, nem as notas nem os
-                comentários ficam visíveis, é o que mantém a avaliação às cegas.
+                Os pareceres são revelados junto com a decisão da organização. Até lá, nem as notas
+                nem os comentários ficam visíveis, é o que mantém a avaliação às cegas.
               </p>
             </div>
           )}
@@ -241,6 +296,14 @@ const DetalheTrabalho = () => {
           <div className="form-footer">
             <button className="btn btn-primary" onClick={() => navigate(`/estudante/correcao/${trabalho.id}`)}>
               Enviar correção
+            </button>
+          </div>
+        )}
+
+        {trabalho.status === AGUARDANDO_REENVIO && (
+          <div className="form-footer">
+            <button className="btn btn-primary" onClick={() => navigate(`/estudante/reenvio/${trabalho.id}`)}>
+              Reenviar trabalho
             </button>
           </div>
         )}
