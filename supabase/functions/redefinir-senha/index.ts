@@ -40,7 +40,7 @@ const APP_TAGLINE = "ICTIN · Submissões Científicas";
 // Duplicada de src/lib/cadastro.ts (MIN_SENHA) pelo mesmo motivo da
 // marca. O GoTrue tem a própria política como retaguarda; validar aqui
 // devolve um erro legível antes de queimar o token.
-const MIN_SENHA = 12;
+const MIN_SENHA = 8;
 
 // ------------------------------------------------------------
 // CORS — mesma allowlist explícita de `enviar-email`

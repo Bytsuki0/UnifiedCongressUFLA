@@ -37,7 +37,7 @@ export const AREAS = [
 export const PERIODOS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** Tamanho mínimo de senha (espelha a política do Supabase Auth — SEC-11). */
-export const MIN_SENHA = 12;
+export const MIN_SENHA = 8;
 
 export const PERFIL_INFO: Record<PerfilCadastro, { overline: string; titulo: string; descricao: string }> = {
   estudante: {
