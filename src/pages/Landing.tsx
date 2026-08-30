@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { APP_MARK, APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
 import { BotaoBaixar } from "@/components/BotaoBaixar";
+import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
+import { RodapePublico } from "@/components/publico/RodapePublico";
+import { CalendarioCronograma } from "@/components/cronograma/CalendarioCronograma";
+import { useCronograma } from "@/hooks/use-cronograma";
 import { useLinksDownloads } from "@/hooks/use-links-downloads";
 import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
 
@@ -10,18 +14,12 @@ const CORES_TEMPLATE = ["blue-800", "blue-700", "blue-600", "blue-500"];
 
 const Landing = () => {
   const links = useLinksDownloads();
+  const { cronograma, carregando } = useCronograma();
 
-
+  // O efeito de sombra da barra superior mudou de dono: mora em
+  // <CabecalhoPublico>, que /cronograma também usa. Aqui ficou só a
+  // animação de entrada dos blocos, que é da landing.
   useEffect(() => {
-    const header = document.getElementById("landing-header");
-    const handleScroll = () => {
-      if (header) {
-        if (window.scrollY > 10) header.classList.add("scrolled");
-        else header.classList.remove("scrolled");
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-
     const reveals = document.querySelectorAll(".reveal");
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("revealed"); }),
@@ -29,35 +27,16 @@ const Landing = () => {
     );
     reveals.forEach((r) => observer.observe(r));
 
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      observer.disconnect();
-    };
-  }, []);
+    return () => observer.disconnect();
+    // Depende do cronograma: a seção dele só entra no DOM quando a busca
+    // volta, e o observer é montado uma vez. Sem reobservar, os blocos
+    // `.reveal` de lá ficariam parados em opacity 0 — invisíveis para
+    // sempre. Quem já revelou mantém a classe.
+  }, [cronograma]);
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff" }}>
-      <header className="landing-header" id="landing-header">
-        <Link to="/" className="header-logo">
-          <div className="logo-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/>
-              <path d="M21.1 8A9 9 0 0 0 5.3 5.3L2.5 8"/>
-              <path d="M2.9 16a9 9 0 0 0 15.8 2.7l2.8-2.7"/>
-            </svg>
-          </div>
-          <div className="logo-text-group">
-            <span className="logo-title">{APP_MARK}</span>
-            <span className="logo-subtitle">{APP_TAGLINE}</span>
-          </div>
-        </Link>
-
-        <nav className="header-nav">
-          <Link to="/login" className="btn btn-ghost">ENTRAR</Link>
-          <Link to="/cadastro" className="btn btn-primary">CADASTRAR-SE</Link>
-          <Link to="/admin" className="btn btn-outline btn-hide-mobile" style={{ display: "none" }}>ADMIN</Link>
-        </nav>
-      </header>
+      <CabecalhoPublico />
 
       <section className="hero">
         <div className="hero-inner">
@@ -92,6 +71,28 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      {/* Cronograma — some inteiro quando a organização ainda não
+          publicou mês nenhum. Um calendário vazio na página inicial diria
+          menos que nada: sugeriria que o congresso não tem datas. */}
+      {!carregando && cronograma.meses.length > 0 && (
+        <section className="cronograma-section" id="cronograma">
+          <div className="cronograma-inner">
+            <div className="reveal">
+              <div className="section-overline">📅 DATAS IMPORTANTES</div>
+              <h2 className="section-title">Cronograma do congresso.</h2>
+              <p className="section-description">
+                Prazos de submissão, avaliação e realização do evento. Clique em um dia marcado
+                para ver o que acontece nele.
+              </p>
+            </div>
+
+            <div className="reveal">
+              <CalendarioCronograma meses={cronograma.meses} marcacoes={cronograma.marcacoes} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="templates-section" id="templates">
         <div className="templates-inner">
@@ -141,10 +142,7 @@ const Landing = () => {
         </div>
       </section>
 
-      <footer className="landing-footer">
-        <div>© 2026 {APP_NAME} · Universidade Federal de Lavras</div>
-        <div>Suporte: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></div>
-      </footer>
+      <RodapePublico />
     </div>
   );
 };

@@ -35,6 +35,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import CronogramaPublico from "./pages/Cronograma";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
 import VerifiqueEmail from "./pages/VerifiqueEmail";
 import EsqueciSenha from "./pages/EsqueciSenha";
@@ -52,6 +53,7 @@ import EstudanteEditar from "./pages/estudante/EditarSubmissao";
 import EstudanteReenvio from "./pages/estudante/Reenvio";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
+import EstudanteCronograma from "./pages/estudante/Cronograma";
 
 // Painel do Revisor — uma página por função, sob /revisor
 import RevisorLayout from "./components/revisor/Layout";
@@ -71,6 +73,7 @@ import Trabalhos from "./pages/co-chairs/Trabalhos";
 import TrabalhoForm from "./pages/co-chairs/TrabalhoForm";
 import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
 import Categorias from "./pages/co-chairs/Categorias";
+import CoChairsCronograma from "./pages/co-chairs/Cronograma";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
@@ -134,6 +137,12 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
+            {/* Cronograma: pública e SEM sessão de propósito — é a
+                informação que o visitante procura antes de decidir se
+                vai se cadastrar. A landing traz o mesmo calendário numa
+                seção; esta rota é o destino da aba CRONOGRAMA. Os dados
+                vêm das RPCs `cronograma_publico_*`, abertas a `anon`. */}
+            <Route path="/cronograma" element={<CronogramaPublico />} />
             {/* Rotas antigas de cadastro (pré-cadastro / professor) foram
                 unificadas em /cadastro. */}
             <Route path="/pre-cadastro" element={<Navigate to="/cadastro" replace />} />
@@ -190,6 +199,9 @@ const App = () => (
                     de envio único: depois dela nem editar/:id volta. */}
                 <Route path="reenvio/:id" element={<EstudanteReenvio />} />
                 <Route path="templates" element={<EstudanteTemplates />} />
+                {/* Mesmo calendário de /cronograma, para quem já entrou
+                    não ter de sair do portal para conferir um prazo. */}
+                <Route path="cronograma" element={<EstudanteCronograma />} />
               </Route>
             </Route>
 
@@ -229,6 +241,7 @@ const App = () => (
                 <Route path="trabalhos/:id" element={<TrabalhoDetalhe />} />
                 <Route path="trabalhos/:id/editar" element={<TrabalhoForm />} />
                 <Route path="categorias" element={<Categorias />} />
+                <Route path="cronograma" element={<CoChairsCronograma />} />
                 <Route path="atribuicoes" element={<Atribuicoes />} />
                 <Route path="parecer-editorial" element={<ParecerEditorial />} />
                 <Route path="parecer-editorial/:id" element={<ParecerEditorialDetalhe />} />

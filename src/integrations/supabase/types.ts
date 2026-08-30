@@ -343,6 +343,115 @@ export type Database = {
           },
         ]
       }
+      cronograma_dias: {
+        Row: {
+          dia: string
+          evento_id: string
+        }
+        Insert: {
+          dia: string
+          evento_id: string
+        }
+        Update: {
+          dia?: string
+          evento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronograma_dias_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "cronograma_eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cronograma_eventos: {
+        Row: {
+          cor: string
+          criado_em: string
+          criado_por: string | null
+          descricao: string
+          id: string
+          titulo: string
+        }
+        Insert: {
+          cor: string
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          id?: string
+          titulo: string
+        }
+        Update: {
+          cor?: string
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          id?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      cronograma_meses: {
+        Row: {
+          ano: number
+          criado_em: string
+          mes: number
+        }
+        Insert: {
+          ano: number
+          criado_em?: string
+          mes: number
+        }
+        Update: {
+          ano?: number
+          criado_em?: string
+          mes?: number
+        }
+        Relationships: []
+      }
+      decisoes_editoriais: {
+        Row: {
+          comentario: string
+          created_at: string
+          decidido_nome: string | null
+          decidido_por: string | null
+          decisao: string
+          id: string
+          rodada: number
+          trabalho_id: string
+        }
+        Insert: {
+          comentario: string
+          created_at?: string
+          decidido_nome?: string | null
+          decidido_por?: string | null
+          decisao: string
+          id?: string
+          rodada: number
+          trabalho_id: string
+        }
+        Update: {
+          comentario?: string
+          created_at?: string
+          decidido_nome?: string | null
+          decidido_por?: string | null
+          decisao?: string
+          id?: string
+          rodada?: number
+          trabalho_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decisoes_editoriais_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estudantes: {
         Row: {
           created_at: string | null
@@ -521,6 +630,7 @@ export type Database = {
           resultado: string
           revisor_email: string
           revisor_nome: string | null
+          rodada: number
           trabalho_id: string
           updated_at: string
         }
@@ -532,6 +642,7 @@ export type Database = {
           resultado: string
           revisor_email: string
           revisor_nome?: string | null
+          rodada?: number
           trabalho_id: string
           updated_at?: string
         }
@@ -543,6 +654,7 @@ export type Database = {
           resultado?: string
           revisor_email?: string
           revisor_nome?: string | null
+          rodada?: number
           trabalho_id?: string
           updated_at?: string
         }
@@ -724,6 +836,7 @@ export type Database = {
           id: string
           revisor_email: string
           revisor_nome: string | null
+          rodada: number
           tipo: string
           trabalho_id: string
         }
@@ -732,6 +845,7 @@ export type Database = {
           id?: string
           revisor_email: string
           revisor_nome?: string | null
+          rodada?: number
           tipo?: string
           trabalho_id: string
         }
@@ -740,6 +854,7 @@ export type Database = {
           id?: string
           revisor_email?: string
           revisor_nome?: string | null
+          rodada?: number
           tipo?: string
           trabalho_id?: string
         }
@@ -766,7 +881,9 @@ export type Database = {
           owner_id: string | null
           palavras_chave: string[]
           pdf_url: string | null
+          reenviado_em: string | null
           resumo: string | null
+          rodada: number
           status: string
           tipo_resumo: string
           titulo: string
@@ -784,7 +901,9 @@ export type Database = {
           owner_id?: string | null
           palavras_chave?: string[]
           pdf_url?: string | null
+          reenviado_em?: string | null
           resumo?: string | null
+          rodada?: number
           status?: string
           tipo_resumo?: string
           titulo: string
@@ -802,7 +921,9 @@ export type Database = {
           owner_id?: string | null
           palavras_chave?: string[]
           pdf_url?: string | null
+          reenviado_em?: string | null
           resumo?: string | null
+          rodada?: number
           status?: string
           tipo_resumo?: string
           titulo?: string
@@ -920,6 +1041,23 @@ export type Database = {
           token: string
         }[]
       }
+      cronograma_publico_dias: {
+        Args: never
+        Returns: {
+          cor: string
+          descricao: string
+          dia: string
+          evento_id: string
+          titulo: string
+        }[]
+      }
+      cronograma_publico_meses: {
+        Args: never
+        Returns: {
+          ano: number
+          mes: number
+        }[]
+      }
       data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
@@ -985,6 +1123,15 @@ export type Database = {
           minicourse_id: string
         }[]
       }
+      parecer_editorial_do_meu_trabalho: {
+        Args: { _trabalho_id: string }
+        Returns: {
+          comentario: string
+          created_at: string
+          decisao: string
+          rodada: number
+        }[]
+      }
       pareceres_do_meu_trabalho: {
         Args: { _trabalho_id: string }
         Returns: {
@@ -992,6 +1139,7 @@ export type Database = {
           itens: Json
           ordem: number
           resultado: string
+          rodada: number
         }[]
       }
       pool_revisores: {
@@ -1019,6 +1167,35 @@ export type Database = {
           tipo: string
           trabalho_id: string
         }[]
+      }
+      reenviar_trabalho: {
+        Args: {
+          _autores: string
+          _categoria_id: string
+          _coautores: Json
+          _orientador_email: string
+          _palavras_chave: string[]
+          _pdf_url?: string
+          _tipo_resumo: string
+          _titulo: string
+          _trabalho_id: string
+          _video_url: string
+        }
+        Returns: string
+      }
+      registrar_parecer_editorial: {
+        Args: { _comentario: string; _decisao: string; _trabalho_id: string }
+        Returns: string
+      }
+      salvar_marcacao_cronograma: {
+        Args: {
+          p_cor: string
+          p_descricao: string
+          p_dias: string[]
+          p_id: string
+          p_titulo: string
+        }
+        Returns: string
       }
       submissoes_abertas: { Args: never; Returns: boolean }
       verify_and_mark_certificate: {

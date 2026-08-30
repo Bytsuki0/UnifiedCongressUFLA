@@ -13,6 +13,6 @@
 13- tirar resumo da submissão x
 14- radio de resumo simples ou extendido x
 15- palavra chaves x
-16- opções de parecer final editaveis pelo chairs/ co chair
+16- opções de parecer final editaveis pelo chairs/ co chair x
 17- video do youtube x
 

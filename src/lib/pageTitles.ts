@@ -14,6 +14,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/", "Início"],
   ["/login", "Entrar"],
   ["/cadastro", "Criar conta"],
+  ["/cronograma", "Cronograma"],
   ["/confirmar-email", "Confirmar e-mail"],
   ["/esqueci-senha", "Esqueci minha senha"],
   ["/redefinir-senha", "Redefinir senha"],
@@ -30,6 +31,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/estudante/reenvio/:id", "Reenviar trabalho"],
   ["/estudante/trabalho/:id", "Resultado da avaliação"],
   ["/estudante/templates", "Templates"],
+  ["/estudante/cronograma", "Cronograma"],
 
   // Painel do Revisor
   ["/revisor/analise/:id", "Analisar trabalho"],
@@ -55,6 +57,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/trabalhos/:id", "Detalhe do trabalho"],
   ["/co-chairs/trabalhos", "Trabalhos"],
   ["/co-chairs/categorias", "Categorias"],
+  ["/co-chairs/cronograma", "Cronograma"],
   ["/co-chairs/atribuicoes", "Atribuição de revisores"],
   ["/co-chairs/parecer-editorial/:id", "Analisar trabalho"],
   ["/co-chairs/parecer-editorial", "Parecer editorial"],

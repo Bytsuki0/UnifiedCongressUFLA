@@ -36,5 +36,9 @@ Disallow: /categorias
 Disallow: /atribuicoes
 Disallow: /rankings
 
-# Público: / , /login , /cadastro
+# Público: / , /login , /cadastro , /cronograma
+# O cronograma é conteúdo público de verdade (datas do congresso, sem
+# dado de ninguém) e deve ser indexado — é o que um interessado procura
+# antes de se cadastrar. Por isso NÃO entra na lista de Disallow acima,
+# e nem em vercel.json / _headers como noindex.
 # (/confirmar-email também é público, mas fica fora do índice — ver acima)
