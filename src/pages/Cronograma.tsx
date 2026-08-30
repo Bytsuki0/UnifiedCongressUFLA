@@ -26,7 +26,7 @@ const Cronograma = () => {
 
       <section className="cronograma-pagina">
         <div className="cronograma-inner">
-          <div className="section-overline">📅 DATAS IMPORTANTES</div>
+          <div className="section-overline">DATAS IMPORTANTES</div>
           <h1 className="section-title">Cronograma do congresso.</h1>
           <p className="section-description">
             Prazos de submissão, avaliação e realização do evento. Clique em um dia marcado para
