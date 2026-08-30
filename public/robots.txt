@@ -34,7 +34,6 @@ Disallow: /avaliadores
 Disallow: /trabalhos
 Disallow: /categorias
 Disallow: /atribuicoes
-Disallow: /rankings
 
 # Público: / , /login , /cadastro , /cronograma
 # O cronograma é conteúdo público de verdade (datas do congresso, sem

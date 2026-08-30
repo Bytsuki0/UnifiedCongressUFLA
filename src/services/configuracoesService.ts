@@ -22,44 +22,7 @@ export type Configuracoes = {
   max_coautores: number;
   alerta_horas: number;
   edital: string;
-  link_template_word: string;
-  link_template_latex: string;
-  link_template_slides: string;
-  link_normas_formatacao: string;
-  link_edital_congresso: string;
-  link_manual_revisor: string;
-  link_diretrizes_avaliacao: string;
-  link_codigo_etica: string;
   atualizado_em: string;
-};
-
-/**
- * Os links de download que a organização cadastra no painel admin —
- * o subconjunto de `Configuracoes` que a RPC `links_downloads()` expõe
- * publicamente (migration 20260817120000).
- */
-export type LinksDownloads = Pick<
-  Configuracoes,
-  | "link_template_word"
-  | "link_template_latex"
-  | "link_template_slides"
-  | "link_normas_formatacao"
-  | "link_edital_congresso"
-  | "link_manual_revisor"
-  | "link_diretrizes_avaliacao"
-  | "link_codigo_etica"
->;
-
-/** Nenhum link configurado — o estado em que a interface desabilita os botões. */
-export const LINKS_VAZIOS: LinksDownloads = {
-  link_template_word: "",
-  link_template_latex: "",
-  link_template_slides: "",
-  link_normas_formatacao: "",
-  link_edital_congresso: "",
-  link_manual_revisor: "",
-  link_diretrizes_avaliacao: "",
-  link_codigo_etica: "",
 };
 
 /** O que o autor precisa saber antes de tentar enviar ou editar. */
@@ -107,20 +70,110 @@ export async function carregarPrazoSubmissoes(): Promise<PrazoSubmissoes> {
   return data[0];
 }
 
+/* ------------------------------------------------------------------
+ * Arquivos para download (migration 20260830120000)
+ * ------------------------------------------------------------------
+ * Eram 8 colunas `link_*` em `configuracoes` mais uma lista fixa em
+ * `src/lib/downloads.ts`: publicar um arquivo novo exigia migration,
+ * código e deploy. Agora são linhas de `arquivos_download`, editadas em
+ * /admin/configuracoes.
+ * ----------------------------------------------------------------- */
+
+/** Onde o arquivo aparece. É coluna com CHECK no banco, não texto livre. */
+export type GrupoDownload = "estudante" | "revisor";
+
+/** Um arquivo publicado, como as telas públicas o recebem. */
+export type ArquivoDownload = {
+  id: string;
+  grupo: GrupoDownload;
+  titulo: string;
+  url: string;
+  /** Selo do formato (".DOCX", "PDF", ...). Vazio esconde o selo. */
+  formato: string;
+  /** Linha de apoio; hoje só /revisor/arquivo a mostra. */
+  descricao: string;
+};
+
+/** O mesmo arquivo do ponto de vista de quem edita: leva a ordem junto. */
+export type ArquivoDownloadAdmin = ArquivoDownload & { ordem: number };
+
 /**
- * Links de download da organização. Chamada por páginas PÚBLICAS
- * (landing e /login), por isso vem da RPC `links_downloads()`, aberta a
- * `anon` — a tabela `configuracoes` continua fechada.
+ * Arquivos publicados, para as telas que mostram botões de baixar.
+ * Chamada por páginas PÚBLICAS (landing e /login), por isso vem da RPC
+ * `arquivos_download_publicos()`, aberta a `anon` — a tabela continua
+ * fechada para quem não tem sessão.
  *
- * Falha devolve tudo vazio, ao contrário do prazo, que falha aberto. São
- * invariantes opostas pelo mesmo motivo: aqui o "não sei" seguro é o
- * botão desabilitado. Mandar o usuário para um link que não existe é
- * pior do que dizer que o link ainda não foi configurado.
+ * Falha devolve lista vazia, ao contrário do prazo, que falha aberto.
+ * São invariantes opostas pelo mesmo motivo: aqui o "não sei" seguro é
+ * não oferecer o download. Mandar o usuário para um link que não existe
+ * é pior do que não mostrar link nenhum.
  */
-export async function carregarLinksDownloads(): Promise<LinksDownloads> {
-  const { data, error } = await supabase.rpc("links_downloads");
-  if (error || !data || data.length === 0) return LINKS_VAZIOS;
-  // Espalha sobre LINKS_VAZIOS para que uma chave ausente na resposta
-  // vire "" (botão desabilitado) em vez de `undefined` no href.
-  return { ...LINKS_VAZIOS, ...data[0] };
+export async function carregarArquivosDownload(): Promise<ArquivoDownload[]> {
+  const { data, error } = await supabase.rpc("arquivos_download_publicos");
+  if (error || !data) return [];
+  return data as ArquivoDownload[];
+}
+
+/**
+ * A mesma lista pela TABELA, para a tela do admin: ela precisa da
+ * `ordem` para saber onde encaixar o próximo arquivo. Aqui o erro
+ * PROPAGA — quem está editando tem de saber que a lista não carregou,
+ * senão acrescenta em cima de um estado que não é o do banco.
+ */
+export async function listarArquivosDownload(): Promise<ArquivoDownloadAdmin[]> {
+  const { data, error } = await supabase
+    .from("arquivos_download")
+    .select("id, grupo, titulo, url, formato, descricao, ordem")
+    .order("grupo")
+    .order("ordem")
+    .order("criado_em");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ArquivoDownloadAdmin[];
+}
+
+export type NovoArquivoDownload = {
+  grupo: GrupoDownload;
+  titulo: string;
+  url: string;
+  formato: string;
+  descricao: string;
+  ordem: number;
+};
+
+/** Publica um arquivo. A RLS recusa quem não é admin. */
+export async function criarArquivoDownload(
+  entrada: NovoArquivoDownload,
+): Promise<ArquivoDownloadAdmin> {
+  const { data, error } = await supabase
+    .from("arquivos_download")
+    .insert({
+      grupo: entrada.grupo,
+      titulo: entrada.titulo.trim(),
+      url: entrada.url.trim(),
+      formato: entrada.formato.trim(),
+      descricao: entrada.descricao.trim(),
+      ordem: entrada.ordem,
+    })
+    .select("id, grupo, titulo, url, formato, descricao, ordem")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as ArquivoDownloadAdmin;
+}
+
+/** Corrige título, link, formato ou descrição de um arquivo já publicado. */
+export async function atualizarArquivoDownload(
+  id: string,
+  campos: Partial<Omit<NovoArquivoDownload, "grupo">>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("arquivos_download")
+    .update(campos)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Tira o arquivo do ar. Some das telas públicas na hora; o Drive não é tocado. */
+export async function removerArquivoDownload(id: string): Promise<void> {
+  const { error } = await supabase.from("arquivos_download").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }

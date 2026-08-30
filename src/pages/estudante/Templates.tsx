@@ -1,17 +1,15 @@
 import { BotaoBaixar } from "@/components/BotaoBaixar";
-import { useLinksDownloads } from "@/hooks/use-links-downloads";
-import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
+import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 
-// Os dois primeiros itens são os modelos de artigo; os dois últimos, os
-// slides e as normas. A ordem é a de `DOWNLOADS_ESTUDANTE` — recortar
-// aqui mantém a mesma lista da landing e do /login sem duplicá-la.
-const ARTIGOS = DOWNLOADS_ESTUDANTE.slice(0, 2);
-const APRESENTACAO_E_NORMAS = DOWNLOADS_ESTUDANTE.slice(2);
-
+// `auto-fill` e não um número de colunas: a lista é editável desde a
+// migration 20260830120000 e pode ter um arquivo ou dez. As duas seções
+// que existiam aqui ("Artigos Científicos" e "Apresentação e Normas")
+// eram recortes por índice de uma lista de quatro itens fixos — com a
+// lista variável, o recorte passaria a agrupar arquivo por acaso.
 const GRADE = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 } as const;
 
 const Templates = () => {
-  const links = useLinksDownloads();
+  const { arquivos, carregando } = useArquivosDownload("estudante");
 
   return (
     <div className="section active">
@@ -30,33 +28,34 @@ const Templates = () => {
           <span>Atenção: os templates devem ser utilizados sem modificações estruturais. Alterações na formatação podem acarretar reprovação automática do trabalho.</span>
         </div>
 
-        <div className="template-section-title">Artigos Científicos</div>
-        <div style={{ ...GRADE, marginBottom: 24 }}>
-          {ARTIGOS.map(t => (
-            <div className="template-card" key={t.chave}>
-              <div className="template-icon blue-800">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </div>
-              <div className="template-meta">{t.ext}</div>
-              <div className="template-name">{t.nome}</div>
-              <BotaoBaixar url={links[t.chave]} className="btn btn-primary btn-sm">Baixar</BotaoBaixar>
+        {/* Aqui a lista vazia AVISA, ao contrário da landing e do /login,
+            onde a seção some. Esta tela existe só para os downloads: sem
+            o aviso, o autor ficaria olhando uma página em branco sem
+            saber se falhou o carregamento ou se não há nada publicado. */}
+        {carregando ? (
+          <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-muted)" }}>Carregando modelos...</div>
+        ) : arquivos.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             </div>
-          ))}
-        </div>
-
-        <div className="template-section-title">Apresentação e Normas</div>
-        <div style={GRADE}>
-          {APRESENTACAO_E_NORMAS.map(t => (
-            <div className="template-card" key={t.chave}>
-              <div className="template-icon blue-600">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+            <h3 className="empty-state-title">Nenhum modelo publicado</h3>
+            <p className="empty-state-description">A organização ainda não disponibilizou arquivos para download.</p>
+          </div>
+        ) : (
+          <div style={GRADE}>
+            {arquivos.map(a => (
+              <div className="template-card" key={a.id}>
+                <div className="template-icon blue-800">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                {a.formato && <div className="template-meta">{a.formato}</div>}
+                <div className="template-name">{a.titulo}</div>
+                <BotaoBaixar url={a.url} className="btn btn-primary btn-sm">Baixar</BotaoBaixar>
               </div>
-              <div className="template-meta">{t.ext}</div>
-              <div className="template-name">{t.nome}</div>
-              <BotaoBaixar url={links[t.chave]} className="btn btn-primary btn-sm">Baixar</BotaoBaixar>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

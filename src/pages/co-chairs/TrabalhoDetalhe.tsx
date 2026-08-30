@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { rotuloTipoResumo } from "@/lib/submissao";
 import type { Trabalho, Categoria } from "@/lib/types";
 
 const TrabalhoDetalhe = () => {
@@ -62,10 +61,6 @@ const TrabalhoDetalhe = () => {
           <div>
             <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Autores</h3>
             <p>{trabalho.autores}</p>
-          </div>
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Tipo de resumo</h3>
-            <p>{rotuloTipoResumo(trabalho.tipo_resumo)}</p>
           </div>
           {(trabalho.palavras_chave ?? []).length > 0 && (
             <div>

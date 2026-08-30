@@ -61,7 +61,6 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/atribuicoes", "Atribuição de revisores"],
   ["/co-chairs/parecer-editorial/:id", "Analisar trabalho"],
   ["/co-chairs/parecer-editorial", "Parecer editorial"],
-  ["/co-chairs/rankings", "Rankings"],
   ["/co-chairs", "Painel de co-chairs"],
 
   // Congresso — área congelada, hoje visível só para o admin.

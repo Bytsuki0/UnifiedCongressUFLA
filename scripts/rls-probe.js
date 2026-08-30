@@ -83,6 +83,7 @@ const falhou = (msg) => {
 const TABELAS = {
   _migrations: "negada",
   allowed_email_domains: "negada",
+  arquivos_download: "negada",
   attendances: "negada",
   avaliacoes: "negada",
   avaliadores: "negada",
@@ -189,24 +190,24 @@ const RPCS_INOCUAS = [
 ];
 
 /**
- * As únicas colunas que `links_downloads()` tem direito de devolver.
+ * As únicas colunas que `arquivos_download_publicos()` tem direito de
+ * devolver (migration 20260830120000, que aposentou `links_downloads()`).
  *
  * A função é aberta a `anon` de propósito (a landing e o /login mostram
  * botões de download sem sessão) e é a única janela pública para dentro
- * de `configuracoes` — tabela que continua negada. O risco dela não é
- * executar, é DEVOLVER DEMAIS: um `SELECT *` ou uma coluna nova entrando
- * na lista publicaria prazo, edital e afins para o mundo. Por isso o
- * teste é sobre o formato do retorno, não sobre a permissão.
+ * de `arquivos_download` — tabela que fica negada, logo acima. O risco
+ * dela não é executar, é DEVOLVER DEMAIS: um `SELECT *` ou uma coluna
+ * nova entrando na lista publicaria `criado_por` (o uuid do admin) para
+ * o mundo. Por isso o teste é sobre o formato do retorno, não sobre a
+ * permissão.
  */
-const COLUNAS_LINKS_DOWNLOADS = [
-  "link_template_word",
-  "link_template_latex",
-  "link_template_slides",
-  "link_normas_formatacao",
-  "link_edital_congresso",
-  "link_manual_revisor",
-  "link_diretrizes_avaliacao",
-  "link_codigo_etica",
+const COLUNAS_ARQUIVOS_DOWNLOAD = [
+  "id",
+  "grupo",
+  "titulo",
+  "url",
+  "formato",
+  "descricao",
 ];
 
 // ---------------------------------------------------------------------
@@ -217,11 +218,11 @@ console.log(`Chave:   ${KEY.slice(0, 12)}… (publishable/anon)\n`);
 if (AUTOTESTE) {
   TABELAS.minicourses = "negada";
   TABELAS.schedule = "negada";
-  // Mesma ideia do lado das RPCs: links_downloads() é executável por anon
-  // por desenho, então exigi-la negada obriga a sonda a acusá-la.
-  RPCS_NEGADAS.push(["links_downloads", {}]);
+  // Mesma ideia do lado das RPCs: arquivos_download_publicos() é executável
+  // por anon por desenho, então exigi-la negada obriga a sonda a acusá-la.
+  RPCS_NEGADAS.push(["arquivos_download_publicos", {}]);
   console.log(
-    "\x1b[33mAUTOTESTE\x1b[0m: minicourses, schedule e links_downloads() " +
+    "\x1b[33mAUTOTESTE\x1b[0m: minicourses, schedule e arquivos_download_publicos() " +
       "foram marcadas como 'negada'.\n  São legivelmente públicas, então a " +
       "sonda TEM de acusar vazamento nas três.\n  Se esta execução passar, " +
       "a sonda está cega.\n",
@@ -272,21 +273,28 @@ for (const [nome, args, aceitavel] of RPCS_INOCUAS) {
   else falhou(`${nome}(): retornou ${JSON.stringify(data).slice(0, 120)} para anon`);
 }
 
-// links_downloads(): pública por desenho. O teste não é se executa — é se
-// devolve SÓ os links. Ver COLUNAS_LINKS_DOWNLOADS.
+// arquivos_download_publicos(): pública por desenho. O teste não é se
+// executa — é se devolve SÓ o que a tela precisa. Ver COLUNAS_ARQUIVOS_DOWNLOAD.
+//
+// Lista vazia é resposta legítima (a organização pode não ter publicado
+// nada), e nesse caso não há chave para conferir: o que se prova aqui é
+// que a função executou sem erro.
 {
-  const { data, error } = await anon.rpc("links_downloads");
+  const { data, error } = await anon.rpc("arquivos_download_publicos");
   if (error) {
     falhou(
-      `links_downloads(): deveria executar como anon e não executou ` +
-        `(${error.code || error.message})`
+      `arquivos_download_publicos(): deveria executar como anon e não executou ` +
+        `(${error.code || error.message}) — a migration 20260830120000 já subiu?`
     );
   } else {
     const extras = Object.keys(data?.[0] ?? {}).filter(
-      (k) => !COLUNAS_LINKS_DOWNLOADS.includes(k)
+      (k) => !COLUNAS_ARQUIVOS_DOWNLOAD.includes(k)
     );
-    if (extras.length) falhou(`links_downloads(): expõe além dos links → ${extras.join(", ")}`);
-    else ok("links_downloads(): executável por anon, devolve só os links");
+    if (extras.length) {
+      falhou(`arquivos_download_publicos(): expõe além do previsto → ${extras.join(", ")}`);
+    } else {
+      ok("arquivos_download_publicos(): executável por anon, devolve só os campos da tela");
+    }
   }
 }
 

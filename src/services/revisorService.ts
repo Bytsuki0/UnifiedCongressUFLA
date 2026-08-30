@@ -93,7 +93,6 @@ export type TrabalhoAssociado = {
   pdf_url: string | null;
   video_url: string | null;
   palavras_chave: string[] | null;
-  tipo_resumo: string | null;
   /** Rodada CORRENTE do trabalho. Não identifica ninguém; ver `daRodadaCorrente`. */
   rodada: number;
 };
@@ -104,7 +103,7 @@ export type TrabalhoAssociado = {
  * aqui sem pensar reabre o buraco da avaliação às cegas.
  */
 const COLUNAS_VISIVEIS =
-  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, tipo_resumo, rodada";
+  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, rodada";
 
 export type AssociacaoComTrabalho = TrabalhoRevisor & {
   trabalho: TrabalhoAssociado | null;
@@ -222,9 +221,10 @@ export async function salvarParecer(input: SalvarParecerInput): Promise<void> {
 }
 
 /**
- * Espelha um parecer na tabela `avaliacoes`, alimentando a página de Rankings.
- * Só atualiza quando existe uma atribuição (avaliador registrado + trabalho)
- * para o e-mail informado; caso contrário, é um no-op silencioso.
+ * Espelha um parecer na tabela legada `avaliacoes`, que alimenta a tela de
+ * Avaliadores. Só atualiza quando existe uma atribuição (avaliador
+ * registrado + trabalho) para o e-mail informado; caso contrário, é um
+ * no-op silencioso.
  */
 export async function espelharParecerEmAvaliacao(input: {
   trabalhoId: string;
@@ -552,7 +552,7 @@ export async function carregarPainelConflitos(): Promise<{
 /**
  * Desfaz uma associação em conflito, apagando antes o parecer que ela
  * porventura gerou: um parecer emitido por quem nunca poderia avaliar o
- * trabalho não pode seguir contando nas Atribuições nem nos Rankings.
+ * trabalho não pode seguir contando nas Atribuições.
  */
 export async function desfazerAssociacaoEmConflito(linha: LinhaConflito): Promise<void> {
   const { error } = await supabase

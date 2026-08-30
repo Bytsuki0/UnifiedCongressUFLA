@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { ArquivosDownloadPanel } from "@/components/admin/ArquivosDownloadPanel";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { UsuariosPanel } from "@/components/admin/UsuariosPanel";
@@ -469,7 +470,7 @@ const AdminPortal = () => {
             <div className="page-header">
               <div className="page-overline">CONFIGURAÇÕES DO CONGRESSO</div>
               <h1 className="page-title">Parâmetros operacionais.</h1>
-              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Defina prazos, regras de submissão e alertas automáticos.</p>
+              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>Defina prazos, alertas automáticos e os arquivos disponíveis para download.</p>
             </div>
 
             {!config ? (
@@ -549,97 +550,6 @@ const AdminPortal = () => {
                   <label className="toggle"><input type="checkbox" defaultChecked /><span className="toggle-slider" /></label>
                 </div>
               </div>
-
-              <div className="config-card">
-                <div className="config-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span className="config-title">Regras de Submissão</span>
-                </div>
-                {/* ⚠ Diferente do prazo acima, estes três são apenas
-                    GRAVADOS: ainda não há regra de servidor aplicando
-                    nenhum deles. Usar um exige escrever a trava em SQL. */}
-                <div className="config-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-min-parecer">Tamanho Mínimo do Parecer (Caracteres)</label>
-                    <input type="number" id="cfg-min-parecer" className="form-input" value={config.parecer_min_caracteres} min={100} onChange={e => setCampo("parecer_min_caracteres", Number(e.target.value))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-max-coautores">Máximo de Coautores</label>
-                    <input type="number" id="cfg-max-coautores" className="form-input" value={config.max_coautores} min={1} onChange={e => setCampo("max_coautores", Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="cfg-edital">Mensagem do Edital</label>
-                  <textarea id="cfg-edital" className="form-textarea" value={config.edital} onChange={e => setCampo("edital", e.target.value)} rows={4} />
-                </div>
-              </div>
-
-              <div className="config-card">
-                <div className="config-card-header">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span className="config-title">Links de Downloads (Google Drive)</span>
-                </div>
-                {/* Estes links alimentam TODOS os botões BAIXAR do site.
-                    Campo vazio deixa o botão correspondente desabilitado —
-                    é o estado normal enquanto o arquivo não foi publicado. */}
-                <p style={{ fontSize: "var(--fs-caption)", color: "var(--color-text-secondary)", marginBottom: 16 }}>
-                  Cole o link de compartilhamento do Drive. Os quatro primeiros aparecem na página
-                  inicial, na tela de login e em Templates; os demais, no arquivo do revisor.
-                  Lembre-se de deixar o arquivo acessível a quem tem o link.
-                </p>
-
-                <div style={{ fontWeight: "var(--fw-bold)", fontSize: "var(--fs-caption)", letterSpacing: "var(--ls-label)", color: "var(--color-text-secondary)", marginBottom: 8 }}>
-                  SUBMISSÃO E PÁGINAS PÚBLICAS
-                </div>
-                <div className="config-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-word">Modelo de artigo · Word (DOCX)</label>
-                    <input type="url" id="cfg-word" className="form-input" value={config.link_template_word} onChange={e => setCampo("link_template_word", e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-latex">Modelo de artigo · LaTeX (TEX)</label>
-                    <input type="url" id="cfg-latex" className="form-input" value={config.link_template_latex} onChange={e => setCampo("link_template_latex", e.target.value)} />
-                  </div>
-                </div>
-                <div className="config-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-slides">Modelo dos slides (PPTX)</label>
-                    <input type="url" id="cfg-slides" className="form-input" value={config.link_template_slides} onChange={e => setCampo("link_template_slides", e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-normas">Normas de formatação (PDF)</label>
-                    <input type="url" id="cfg-normas" className="form-input" value={config.link_normas_formatacao} onChange={e => setCampo("link_normas_formatacao", e.target.value)} />
-                  </div>
-                </div>
-
-                <div style={{ fontWeight: "var(--fw-bold)", fontSize: "var(--fs-caption)", letterSpacing: "var(--ls-label)", color: "var(--color-text-secondary)", margin: "16px 0 8px" }}>
-                  REVISÃO
-                </div>
-                <div className="config-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-edital-link">Edital do Congresso (PDF)</label>
-                    <input type="url" id="cfg-edital-link" className="form-input" value={config.link_edital_congresso} onChange={e => setCampo("link_edital_congresso", e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-manual">Manual do Revisor (PDF)</label>
-                    <input type="url" id="cfg-manual" className="form-input" value={config.link_manual_revisor} onChange={e => setCampo("link_manual_revisor", e.target.value)} />
-                  </div>
-                </div>
-                <div className="config-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-diretrizes">Diretrizes de Avaliação (PDF)</label>
-                    <input type="url" id="cfg-diretrizes" className="form-input" value={config.link_diretrizes_avaliacao} onChange={e => setCampo("link_diretrizes_avaliacao", e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="cfg-etica">Código de Ética (PDF)</label>
-                    <input type="url" id="cfg-etica" className="form-input" value={config.link_codigo_etica} onChange={e => setCampo("link_codigo_etica", e.target.value)} />
-                  </div>
-                </div>
-              </div>
             </div>
             )}
 
@@ -648,6 +558,14 @@ const AdminPortal = () => {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {salvandoConfig ? "SALVANDO..." : "SALVAR CONFIGURAÇÕES"}
               </button>
+            </div>
+
+            {/* Depois do botão, e não entre os cards acima, porque não é
+                ele quem grava esta lista: os arquivos moram em
+                `arquivos_download` e cada acréscimo ou remoção vale na
+                hora. Tudo o que está ACIMA do botão é o que ele salva. */}
+            <div className="config-cards" style={{ marginTop: 24 }}>
+              <ArquivosDownloadPanel />
             </div>
           </div>
 

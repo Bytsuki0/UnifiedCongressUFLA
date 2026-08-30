@@ -1,6 +1,6 @@
 /**
- * Campos que o autor declara na submissão: tipo de resumo e
- * palavras-chave.
+ * Palavras-chave da submissão — o que o autor digita e o que as telas
+ * leem de volta.
  *
  * Vive aqui, e não em `pages/estudante/shared.ts`, porque três portais
  * diferentes precisam das mesmas conversões: o estudante escreve, o
@@ -11,20 +11,19 @@
 
 export type TipoResumo = "simples" | "estendido";
 
-export const TIPO_RESUMO_OPTIONS: { value: TipoResumo; label: string }[] = [
-  { value: "simples", label: "Resumo simples" },
-  { value: "estendido", label: "Resumo estendido" },
-];
-
-export const TIPO_RESUMO_LABEL: Record<string, string> = {
-  simples: "Resumo simples",
-  estendido: "Resumo estendido",
-};
-
-/** Rótulo do tipo de resumo, tolerante a valor ausente ou desconhecido. */
-export function rotuloTipoResumo(tipo: string | null | undefined): string {
-  return tipo ? (TIPO_RESUMO_LABEL[tipo] ?? tipo) : "—";
-}
+/**
+ * O tipo de resumo saiu do formulário — a organização deixou de pedir
+ * essa distinção ao autor, e com ela saíram os rótulos e as telas que
+ * mostravam o valor.
+ *
+ * A constante fica porque a coluna `trabalhos.tipo_resumo` continua
+ * `NOT NULL` com `CHECK (tipo_resumo IN ('simples','estendido'))`, e as
+ * RPCs de escrita (`editar_submissao`, `enviar_correcao`,
+ * `reenviar_trabalho`) continuam exigindo `_tipo_resumo`. Toda escrita
+ * manda este valor. Apagar a constante exige migration mexendo no CHECK
+ * e na assinatura das três RPCs — não é edição de cliente.
+ */
+export const TIPO_RESUMO_PADRAO: TipoResumo = "simples";
 
 /**
  * Texto digitado -> lista de termos.

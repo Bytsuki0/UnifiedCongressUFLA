@@ -1471,12 +1471,6 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   margin-bottom: 40px;
 }
 
-.templates-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-}
-
 .template-card {
   background: var(--white);
   border: 1px solid var(--color-border);
@@ -1532,6 +1526,73 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   color: var(--color-text);
   margin: 8px 0 20px;
   line-height: var(--lh-normal);
+}
+
+/* ---- Carrossel de downloads (landing) ----
+   A grade de templates era `repeat(4, 1fr)` para uma lista de quatro
+   itens fixos no código. Com a lista editável (migration 20260830120000)
+   o número varia, e uma grade de 4 colunas quebra em fileira torta com
+   cinco arquivos e deixa buracos com um. O trilho abaixo mostra quantos
+   couberem e rola o resto.
+
+   A rolagem é do navegador — `overflow-x` + `scroll-snap` — e não uma
+   posição em estado do React: é o que mantém o arrastar do celular e a
+   roda horizontal do trackpad funcionando sem código. As setas são
+   atalho, e o componente as esconde quando nada transborda. */
+.carrossel { position: relative; }
+
+.carrossel-controles {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.carrossel-seta {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.carrossel-seta svg { width: 18px; height: 18px; }
+
+.carrossel-seta:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.carrossel-seta:disabled { opacity: 0.35; cursor: default; }
+
+.carrossel-trilho {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Folga vertical para o translateY(-4px) do :hover do cartão não ser
+     cortado pelo overflow do trilho. */
+  padding: 6px 0;
+  /* A navegação é pelas setas e pelo gesto; a barra de rolagem no meio
+     da página inicial só sujaria o bloco. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.carrossel-trilho::-webkit-scrollbar { display: none; }
+
+/* Quatro por vez, descontados os três vãos de 24px — o mesmo ritmo da
+   grade que existia aqui antes. */
+.carrossel-trilho > .template-card {
+  flex: 0 0 calc((100% - 72px) / 4);
+  scroll-snap-align: start;
 }
 
 .cta-banner {
@@ -2422,7 +2483,8 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
     768px: o menu lateral sai da tela e só volta com a classe .open.
     640px: tudo em coluna única. */
 @media (max-width: 1024px) {
-  .templates-grid, .dashboard-stats-grid, .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-stats-grid, .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .carrossel-trilho > .template-card { flex-basis: calc((100% - 24px) / 2); }
   .hero-inner { flex-direction: column; gap: 40px; }
   .hero-brand { flex: none; width: 100%; justify-content: flex-start; }
   .login-wrapper { flex-direction: column; }
@@ -2439,7 +2501,8 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
 }
 
 @media (max-width: 640px) {
-  .templates-grid, .dashboard-stats-grid, .stats-grid { grid-template-columns: 1fr; }
+  .dashboard-stats-grid, .stats-grid { grid-template-columns: 1fr; }
+  .carrossel-trilho > .template-card { flex-basis: 100%; }
   .downloads-grid, .form-row { grid-template-columns: 1fr; flex-direction: column; }
   .landing-header { padding: 0 20px; }
   .hero { padding: 100px 20px 48px; }

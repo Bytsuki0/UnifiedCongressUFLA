@@ -17,8 +17,7 @@ import {
 import {
   formatarPalavrasChave,
   parsePalavrasChave,
-  TIPO_RESUMO_OPTIONS,
-  type TipoResumo,
+  TIPO_RESUMO_PADRAO,
 } from "@/lib/submissao";
 import { idDoVideo } from "@/lib/youtube";
 import {
@@ -56,7 +55,6 @@ const Reenvio = () => {
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
-  const [tipoResumo, setTipoResumo] = useState<TipoResumo>("simples");
   const [categoriaId, setCategoriaId] = useState("");
   const [orientador, setOrientador] = useState("");
   const [coautores, setCoautores] = useState<Coautor[]>([{ nome: "", email: "" }]);
@@ -82,7 +80,6 @@ const Reenvio = () => {
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
     setVideoUrl(sub.video_url ?? "");
-    setTipoResumo(sub.tipo_resumo === "estendido" ? "estendido" : "simples");
     setCategoriaId(sub.categoria_id ?? "");
     setOrientador(sub.orientador_email ?? "");
     setCoautores(lista.length > 0 ? lista : [{ nome: "", email: "" }]);
@@ -163,7 +160,7 @@ const Reenvio = () => {
         titulo: titulo.trim(),
         palavrasChave: parsePalavrasChave(palavrasChaveTexto),
         videoUrl: videoUrl.trim(),
-        tipoResumo,
+        tipoResumo: TIPO_RESUMO_PADRAO,
         autores,
         orientadorEmail: orientador.trim() || null,
         coautores: limpos,
@@ -299,18 +296,6 @@ const Reenvio = () => {
             <div className="form-group">
               <label className="form-label" htmlFor="reenvio-titulo">Título do Trabalho *</label>
               <input type="text" id="reenvio-titulo" className="form-input" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Tipo de Resumo *</label>
-              <div className="profile-select-group">
-                {TIPO_RESUMO_OPTIONS.map((o) => (
-                  <label className="profile-select-btn" key={o.value}>
-                    <input type="radio" name="reenvio-tipo-resumo" value={o.value} checked={tipoResumo === o.value} onChange={() => setTipoResumo(o.value)} />
-                    <span className="profile-select-text">{o.label}</span>
-                  </label>
-                ))}
-              </div>
             </div>
 
             <div className="form-group">

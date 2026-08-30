@@ -15,7 +15,6 @@ import { ParecerCompleto } from "@/components/co-chairs/ParecerCompleto";
 import { PdfViewer } from "@/components/PdfViewer";
 import { VideoViewer } from "@/components/VideoViewer";
 import { resolvePdfUrl } from "@/lib/pdfStorage";
-import { rotuloTipoResumo } from "@/lib/submissao";
 import { RESULTADO_OPTIONS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -143,7 +142,6 @@ const ParecerEditorialDetalhe = () => {
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
             {categoria && <Badge variant="secondary">{categoria.nome}</Badge>}
-            <Badge variant="outline">{rotuloTipoResumo(trabalho.tipo_resumo)}</Badge>
             <span className="text-xs text-muted-foreground">
               Submetido em {new Date(trabalho.data_submissao).toLocaleDateString("pt-BR")}
             </span>

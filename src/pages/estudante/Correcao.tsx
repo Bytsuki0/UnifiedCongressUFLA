@@ -13,8 +13,7 @@ import {
 import {
   formatarPalavrasChave,
   parsePalavrasChave,
-  TIPO_RESUMO_OPTIONS,
-  type TipoResumo,
+  TIPO_RESUMO_PADRAO,
 } from "@/lib/submissao";
 import { idDoVideo } from "@/lib/youtube";
 import { AGUARDANDO_CORRECAO, MAX_PDF_BYTES, type Coautor, type Submission } from "./shared";
@@ -37,7 +36,6 @@ const Correcao = () => {
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
-  const [tipoResumo, setTipoResumo] = useState<TipoResumo>("simples");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -64,7 +62,6 @@ const Correcao = () => {
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
     setVideoUrl(sub.video_url ?? "");
-    setTipoResumo(sub.tipo_resumo === "estendido" ? "estendido" : "simples");
 
     try {
       setPareceres(await carregarPareceresDoTrabalho(id));
@@ -118,7 +115,7 @@ const Correcao = () => {
         titulo: titulo.trim(),
         palavrasChave,
         videoUrl: videoUrl.trim(),
-        tipoResumo,
+        tipoResumo: TIPO_RESUMO_PADRAO,
         arquivo,
       });
       toast.success("Versão corrigida enviada. Seu trabalho está aprovado.");
@@ -204,7 +201,7 @@ const Correcao = () => {
               <div className="step-number">{pareceres.length > 0 ? "02" : "01"}</div>
               <div>
                 <div className="step-title">Informações do Trabalho</div>
-                <div className="step-subtitle">Título, tipo de resumo, palavras-chave e vídeo podem ser alterados</div>
+                <div className="step-subtitle">Título, palavras-chave e vídeo podem ser alterados</div>
               </div>
             </div>
 
@@ -218,24 +215,6 @@ const Correcao = () => {
                 onChange={(e) => setTitulo(e.target.value)}
                 required
               />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Tipo de Resumo *</label>
-              <div className="profile-select-group">
-                {TIPO_RESUMO_OPTIONS.map((o) => (
-                  <label className="profile-select-btn" key={o.value}>
-                    <input
-                      type="radio"
-                      name="correcao-tipo-resumo"
-                      value={o.value}
-                      checked={tipoResumo === o.value}
-                      onChange={() => setTipoResumo(o.value)}
-                    />
-                    <span className="profile-select-text">{o.label}</span>
-                  </label>
-                ))}
-              </div>
             </div>
 
             <div className="form-group">

@@ -1,19 +1,15 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { APP_NAME } from "@/lib/brand";
-import { BotaoBaixar } from "@/components/BotaoBaixar";
 import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
+import { CarrosselTemplates } from "@/components/publico/CarrosselTemplates";
 import { RodapePublico } from "@/components/publico/RodapePublico";
 import { CalendarioCronograma } from "@/components/cronograma/CalendarioCronograma";
 import { useCronograma } from "@/hooks/use-cronograma";
-import { useLinksDownloads } from "@/hooks/use-links-downloads";
-import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
-
-/** Cores dos ícones, na ordem dos cards. */
-const CORES_TEMPLATE = ["blue-800", "blue-700", "blue-600", "blue-500"];
+import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 
 const Landing = () => {
-  const links = useLinksDownloads();
+  const { arquivos } = useArquivosDownload("estudante");
   const { cronograma, carregando } = useCronograma();
 
   // O efeito de sombra da barra superior mudou de dono: mora em
@@ -94,36 +90,25 @@ const Landing = () => {
         </section>
       )}
 
-      <section className="templates-section" id="templates">
-        <div className="templates-inner">
-          <div className="reveal">
-            <div className="section-overline">↓ DOWNLOADS RÁPIDOS</div>
-            <h2 className="section-title">Templates oficiais.</h2>
-            <p className="section-description">
-              Baixe os modelos padronizados para submissão do seu trabalho. Todos os templates seguem
-              as normas do congresso e são atualizados a cada edição.
-            </p>
-          </div>
+      {/* A seção inteira sai do ar quando não há arquivo publicado: um
+          bloco "Templates oficiais." vazio parece página quebrada, e a
+          lista agora pode legitimamente estar vazia. */}
+      {arquivos.length > 0 && (
+        <section className="templates-section" id="templates">
+          <div className="templates-inner">
+            <div className="reveal">
+              <div className="section-overline">↓ DOWNLOADS RÁPIDOS</div>
+              <h2 className="section-title">Templates oficiais.</h2>
+              <p className="section-description">
+                Baixe os modelos padronizados para submissão do seu trabalho. Todos os templates seguem
+                as normas do congresso e são atualizados a cada edição.
+              </p>
+            </div>
 
-          <div className="templates-grid">
-            {DOWNLOADS_ESTUDANTE.map((t, i) => (
-              <div className={`template-card reveal reveal-delay-${i + 1}`} key={t.chave}>
-                <div className={`template-icon ${CORES_TEMPLATE[i]}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
-                <div className="template-type" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                  <span className="template-ext">{t.ext}</span>
-                </div>
-                <div className="template-name">{t.nome}</div>
-                <BotaoBaixar url={links[t.chave]} className="btn btn-primary btn-sm">BAIXAR</BotaoBaixar>
-              </div>
-            ))}
+            <CarrosselTemplates arquivos={arquivos} />
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="cta-banner">
         <div className="cta-inner reveal">

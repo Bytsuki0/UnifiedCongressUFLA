@@ -103,8 +103,9 @@ export type Avaliacao = {
 };
 
 // Limite máximo de trabalhos por avaliador no sistema legado de
-// `avaliacoes` (o que alimenta os Rankings). NÃO vale para a associação
-// de revisores em `trabalho_revisores` — lá o número abaixo é o que conta.
+// `avaliacoes` (o que alimenta Avaliadores e Atribuições). NÃO vale para a
+// associação de revisores em `trabalho_revisores` — lá o número abaixo é o
+// que conta.
 export const LIMITE_TRABALHOS_POR_AVALIADOR = 5;
 
 /**

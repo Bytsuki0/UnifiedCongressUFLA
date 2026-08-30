@@ -10,7 +10,6 @@ import {
 } from "@/services/parecerEditorialService";
 import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import { openPdf } from "@/lib/pdfStorage";
-import { rotuloTipoResumo } from "@/lib/submissao";
 import {
   AGUARDANDO_CORRECAO,
   AGUARDANDO_EDITORIAL,
@@ -191,11 +190,6 @@ const DetalheTrabalho = () => {
               </div>
             </div>
           )}
-
-          <div className="form-group">
-            <label className="form-label">Tipo de resumo</label>
-            <div style={{ fontSize: "var(--fs-sm)" }}>{rotuloTipoResumo(trabalho.tipo_resumo)}</div>
-          </div>
 
           {palavrasChave.length > 0 && (
             <div className="form-group">

@@ -151,29 +151,3 @@ export async function distribuirAutomaticamente(
 
   return criados;
 }
-/** Linha da consulta de rankings: nota + trabalho + categoria embarcados. */
-export type RankingAvaliacao = {
-  nota_geral: number | null;
-  trabalhos: {
-    id: string;
-    titulo: string;
-    autores: string;
-    categorias: { id: string; nome: string } | null;
-  } | null;
-};
-
-/**
- * Avaliações com nota, para montar os rankings.
- *
- * Aqui o embed do PostgREST funciona: `avaliacoes` tem FK para
- * `trabalhos`, e `trabalhos` para `categorias` — diferente das telas do
- * evento, onde a junção precisa ser feita no cliente.
- */
-export async function listarAvaliacoesParaRanking(): Promise<RankingAvaliacao[]> {
-  const { data, error } = await supabase
-    .from("avaliacoes")
-    .select("nota_geral, trabalhos(id, titulo, autores, categorias(id, nome))")
-    .not("nota_geral", "is", null);
-  if (error) throw error;
-  return (data ?? []) as unknown as RankingAvaliacao[];
-}

@@ -13,7 +13,7 @@ import type { UserRole } from "@/contexts/AuthContext";
 // Papéis atribuíveis. Precisa bater com o CHECK de public.user_roles.
 const ROLES: { value: UserRole; label: string; hint: string }[] = [
   { value: "admin", label: "Admin", hint: "Acesso total, incluindo esta tela" },
-  { value: "avaliador", label: "Avaliador", hint: "Co-chair: gestão do congresso e rankings" },
+  { value: "avaliador", label: "Avaliador", hint: "Co-chair: gestão do congresso e parecer editorial" },
   { value: "professor", label: "Professor", hint: "Painel de revisão de trabalhos" },
   { value: "estudante", label: "Estudante", hint: "Portal de submissões" },
   { value: "externo", label: "Externo", hint: "Participante de fora da UFLA: mesma alçada de autor do estudante" },

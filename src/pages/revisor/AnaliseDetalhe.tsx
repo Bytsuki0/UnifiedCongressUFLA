@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PdfViewer } from "@/components/PdfViewer";
 import { VideoViewer } from "@/components/VideoViewer";
-import { rotuloTipoResumo } from "@/lib/submissao";
 import { toast } from "sonner";
 import {
   Criterio,
@@ -130,7 +129,7 @@ const AnaliseDetalhe = () => {
         itens,
         comentarioGeral: comentarioGeral.trim() || null,
       });
-      // Espelha nota/decisão na tabela de avaliações para alimentar os Rankings.
+      // Espelha nota/decisão na tabela legada de avaliações (Avaliadores).
       await espelharParecerEmAvaliacao({
         trabalhoId: assoc.trabalho.id,
         revisorEmail: user.email,
@@ -164,8 +163,7 @@ const AnaliseDetalhe = () => {
         </span>
 
         {/* Alternador do painel de leitura. Só aparece quando há vídeo:
-            sem ele o seletor teria uma opção morta. Mesmas classes do
-            radio de tipo de resumo no formulário de submissão. */}
+            sem ele o seletor teria uma opção morta. */}
         {videoUrl && (
           <div className="profile-select-group" style={{ marginBottom: 0, maxWidth: 260 }}>
             <label className="profile-select-btn">
@@ -238,7 +236,6 @@ const AnaliseDetalhe = () => {
                 e não identifica ninguém. */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-secondary)", marginBottom: "var(--space-4)" }}>
               <div><strong>Categoria:</strong> {assoc?.trabalho?.categoria_id ? (categorias[assoc.trabalho.categoria_id] ?? "—") : "—"}</div>
-              <div><strong>Tipo de resumo:</strong> {rotuloTipoResumo(assoc?.trabalho?.tipo_resumo)}</div>
               {palavrasChave.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 2 }}>
                   <strong>Palavras-chave:</strong>

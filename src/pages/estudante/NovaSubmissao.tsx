@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { submeterTrabalho } from "@/services/trabalhosService";
-import { parsePalavrasChave, TIPO_RESUMO_OPTIONS, type TipoResumo } from "@/lib/submissao";
+import { parsePalavrasChave, TIPO_RESUMO_PADRAO } from "@/lib/submissao";
 import { idDoVideo } from "@/lib/youtube";
 import { toast } from "sonner";
 import { MAX_PDF_BYTES, formatarData, usePrazo, useTrabalhos } from "./shared";
@@ -16,7 +16,7 @@ const NovaSubmissao = () => {
   const [form, setForm] = useState({
     titulo: "", categoria: "", orientador: "",
     // Digitadas como texto separado por vírgula; viram lista só no envio.
-    palavrasChave: "", videoUrl: "", tipoResumo: "simples" as TipoResumo,
+    palavrasChave: "", videoUrl: "",
   });
   const [coauthors, setCoauthors] = useState([{ nome: "", email: "" }]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -69,7 +69,7 @@ const NovaSubmissao = () => {
         titulo: form.titulo,
         palavrasChave,
         videoUrl: form.videoUrl.trim(),
-        tipoResumo: form.tipoResumo,
+        tipoResumo: TIPO_RESUMO_PADRAO,
         categoriaId: form.categoria,
         autores,
         orientadorEmail: form.orientador.trim() || null,
@@ -168,24 +168,6 @@ const NovaSubmissao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Tipo de Resumo *</label>
-              <div className="profile-select-group">
-                {TIPO_RESUMO_OPTIONS.map(o => (
-                  <label className="profile-select-btn" key={o.value}>
-                    <input
-                      type="radio"
-                      name="tipoResumo"
-                      value={o.value}
-                      checked={form.tipoResumo === o.value}
-                      onChange={() => setForm(f => ({ ...f, tipoResumo: o.value }))}
-                    />
-                    <span className="profile-select-text">{o.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group">
               <label className="form-label" htmlFor="palavras-chave">Palavras-chave *</label>
               <input type="text" id="palavras-chave" className="form-input" placeholder="aprendizado de máquina, visão computacional, agricultura" value={form.palavrasChave} onChange={e => setForm(f => ({ ...f, palavrasChave: e.target.value }))} />
               <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
@@ -278,7 +260,6 @@ const NovaSubmissao = () => {
           </div>
 
           <div className="form-footer">
-            <button type="button" className="btn btn-outline" onClick={() => toast.info("Rascunho salvo localmente.")}>Salvar Rascunho</button>
             <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Enviando..." : "Enviar Submissão"}</button>
           </div>
         </form>

@@ -53,6 +53,42 @@ export type Database = {
         }
         Relationships: []
       }
+      arquivos_download: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          descricao: string
+          formato: string
+          grupo: string
+          id: string
+          ordem: number
+          titulo: string
+          url: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          formato?: string
+          grupo: string
+          id?: string
+          ordem?: number
+          titulo: string
+          url: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          formato?: string
+          grupo?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+          url?: string
+        }
+        Relationships: []
+      }
       attendances: {
         Row: {
           checked_in_at: string
@@ -237,14 +273,6 @@ export type Database = {
           atualizado_por: string | null
           edital: string
           id: boolean
-          link_codigo_etica: string
-          link_diretrizes_avaliacao: string
-          link_edital_congresso: string
-          link_manual_revisor: string
-          link_normas_formatacao: string
-          link_template_latex: string
-          link_template_slides: string
-          link_template_word: string
           max_coautores: number
           parecer_min_caracteres: number
           submissoes_abertura: string | null
@@ -256,14 +284,6 @@ export type Database = {
           atualizado_por?: string | null
           edital?: string
           id?: boolean
-          link_codigo_etica?: string
-          link_diretrizes_avaliacao?: string
-          link_edital_congresso?: string
-          link_manual_revisor?: string
-          link_normas_formatacao?: string
-          link_template_latex?: string
-          link_template_slides?: string
-          link_template_word?: string
           max_coautores?: number
           parecer_min_caracteres?: number
           submissoes_abertura?: string | null
@@ -275,14 +295,6 @@ export type Database = {
           atualizado_por?: string | null
           edital?: string
           id?: boolean
-          link_codigo_etica?: string
-          link_diretrizes_avaliacao?: string
-          link_edital_congresso?: string
-          link_manual_revisor?: string
-          link_normas_formatacao?: string
-          link_template_latex?: string
-          link_template_slides?: string
-          link_template_word?: string
           max_coautores?: number
           parecer_min_caracteres?: number
           submissoes_abertura?: string | null
@@ -992,6 +1004,17 @@ export type Database = {
         }[]
       }
       aplicar_decisao: { Args: { _trabalho_id: string }; Returns: string }
+      arquivos_download_publicos: {
+        Args: never
+        Returns: {
+          descricao: string
+          formato: string
+          grupo: string
+          id: string
+          titulo: string
+          url: string
+        }[]
+      }
       close_event_and_issue_certificates: {
         Args: { _carga_horaria: number; _event_id: string; _event_type: string }
         Returns: {
@@ -1092,19 +1115,6 @@ export type Database = {
       liberar_email_nao_confirmado: {
         Args: { p_email: string }
         Returns: string
-      }
-      links_downloads: {
-        Args: never
-        Returns: {
-          link_codigo_etica: string
-          link_diretrizes_avaliacao: string
-          link_edital_congresso: string
-          link_manual_revisor: string
-          link_normas_formatacao: string
-          link_template_latex: string
-          link_template_slides: string
-          link_template_word: string
-        }[]
       }
       mark_attendance: {
         Args: { _event_id: string; _event_type: string; _user_id: string }

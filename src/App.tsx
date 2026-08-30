@@ -8,8 +8,8 @@
  *   /estudante   → submissão de trabalhos (autor); qualquer papel autenticado
  *   /revisor     → análise/avaliação de trabalhos (professor, avaliador, admin)
  *   /admin       → Portal Admin: papéis, conflitos, usuários (só admin)
- *   /dashboard…  → gestão de co-chairs: trabalhos, categorias, atribuições,
- *                  rankings (avaliador, admin)
+ *   /dashboard…  → gestão de co-chairs: trabalhos, categorias, atribuições
+ *                  e parecer editorial (avaliador, admin)
  *   /congresso   → área do evento — CONGELADA, fora do escopo do projeto.
  *                  Só o admin enxerga; ninguém é redirecionado para lá.
  *
@@ -77,7 +77,6 @@ import CoChairsCronograma from "./pages/co-chairs/Cronograma";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
-import Rankings from "./pages/co-chairs/Rankings";
 
 // Páginas do evento (congresso) — todas sob /congresso, hoje só para admin.
 // Mantidas importadas de propósito: a área está congelada, não removida.
@@ -115,7 +114,6 @@ const ROTAS_ANTIGAS_CO_CHAIRS = [
   "/trabalhos/*",
   "/categorias",
   "/atribuicoes",
-  "/rankings",
 ];
 
 const RedirecionaCoChairs = () => {
@@ -229,7 +227,7 @@ const App = () => (
             </Route>
 
             {/* Gestão de co-chairs (avaliador e admin): cadastro de trabalhos,
-                categorias, distribuição de revisores e rankings finais. */}
+                categorias, distribuição de revisores e parecer editorial. */}
             <Route element={<ProtectedRoute allowedRoles={["avaliador", "admin"]} />}>
               <Route path="/co-chairs" element={<Layout />}>
                 <Route index element={<Navigate to="/co-chairs/dashboard" replace />} />
@@ -245,7 +243,6 @@ const App = () => (
                 <Route path="atribuicoes" element={<Atribuicoes />} />
                 <Route path="parecer-editorial" element={<ParecerEditorial />} />
                 <Route path="parecer-editorial/:id" element={<ParecerEditorialDetalhe />} />
-                <Route path="rankings" element={<Rankings />} />
               </Route>
             </Route>
 

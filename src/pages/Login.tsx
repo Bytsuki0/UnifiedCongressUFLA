@@ -7,12 +7,11 @@ import { APP_MARK, APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/brand";
 import { portalDoPapel, saudacaoDoPapel } from "@/lib/portais";
 import { emailEstaConfirmado } from "@/services/verificacaoEmailService";
 import { BotaoBaixar } from "@/components/BotaoBaixar";
-import { useLinksDownloads } from "@/hooks/use-links-downloads";
-import { DOWNLOADS_ESTUDANTE } from "@/lib/downloads";
+import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 
 const Login = () => {
   const navigate = useNavigate();
-  const links = useLinksDownloads();
+  const { arquivos } = useArquivosDownload("estudante");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -179,33 +178,37 @@ const Login = () => {
             </p>
           </section>
 
-          <section className="downloads-section">
-            <p className="section-overline">DOWNLOADS RÁPIDOS</p>
-            <h3 style={{ fontSize: "var(--fs-h3)", fontWeight: "var(--fw-black)", marginBottom: 8, color: "var(--color-text)" }}>Templates e Modelos</h3>
-            <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)", marginBottom: 24, lineHeight: "var(--lh-relaxed)" }}>
-              Baixe os modelos oficiais de formatação antes de preparar sua submissão.
-            </p>
+          {/* Some inteira quando a organização não publicou nada — a
+              coluna da direita do /login vira só o formulário. */}
+          {arquivos.length > 0 && (
+            <section className="downloads-section">
+              <p className="section-overline">DOWNLOADS RÁPIDOS</p>
+              <h3 style={{ fontSize: "var(--fs-h3)", fontWeight: "var(--fw-black)", marginBottom: 8, color: "var(--color-text)" }}>Templates e Modelos</h3>
+              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)", marginBottom: 24, lineHeight: "var(--lh-relaxed)" }}>
+                Baixe os modelos oficiais de formatação antes de preparar sua submissão.
+              </p>
 
-            <div className="downloads-grid">
-              {DOWNLOADS_ESTUDANTE.map((d) => (
-                <div className="download-card" key={d.chave}>
-                  <div className="download-card-top">
-                    <div className="download-card-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                      </svg>
+              <div className="downloads-grid">
+                {arquivos.map((a) => (
+                  <div className="download-card" key={a.id}>
+                    <div className="download-card-top">
+                      <div className="download-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      </div>
+                      {a.formato && <span className="download-card-meta">{a.formato}</span>}
                     </div>
-                    <span className="download-card-meta">{d.ext}</span>
+                    <p className="download-card-name">{a.titulo}</p>
+                    <BotaoBaixar url={a.url} className="btn btn-primary btn-sm btn-block">
+                      BAIXAR
+                    </BotaoBaixar>
                   </div>
-                  <p className="download-card-name">{d.nome}</p>
-                  <BotaoBaixar url={links[d.chave]} className="btn btn-primary btn-sm btn-block">
-                    BAIXAR
-                  </BotaoBaixar>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </div>
