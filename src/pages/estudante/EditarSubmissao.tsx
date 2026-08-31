@@ -42,7 +42,7 @@ const EditarSubmissao = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const { prazo, carregando: carregandoPrazo, aberto } = usePrazo();
+  const { prazo, carregando: carregandoPrazo, aberto, fase } = usePrazo();
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [titulo, setTitulo] = useState("");
@@ -168,25 +168,45 @@ const EditarSubmissao = () => {
     );
   }
 
-  // Prazo encerrado. `aberto === null` (não sei) não bloqueia: quem
-  // recusa de verdade é o banco, e uma falha de rede não pode trancar
+  // Fora da janela de submissão. `aberto === null` (não sei) não bloqueia:
+  // quem recusa de verdade é o banco, e uma falha de rede não pode trancar
   // quem ainda está dentro do prazo.
   if (aberto === false) {
+    // "antes" e "encerrado" fecham a edição do mesmo jeito, mas dizem
+    // coisas opostas: um é espera, o outro é fim. Ver `fasePrazo`.
+    const aindaVaiAbrir = fase === "antes";
     return (
       <div className="section active">
         <div className="content-area">
           {voltar}
           <div className="empty-state">
             <div className="empty-state-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
+              {aindaVaiAbrir ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+              )}
             </div>
-            <h3 className="empty-state-title">Prazo encerrado</h3>
+            <h3 className="empty-state-title">
+              {aindaVaiAbrir ? "As submissões ainda não abriram" : "Prazo encerrado"}
+            </h3>
             <p className="empty-state-description">
-              As submissões foram encerradas em {formatarData(prazo?.encerramento ?? null)} e o
-              trabalho não pode mais ser alterado. Trabalhos aprovados com correções continuam
-              editáveis pela tela de correção.
+              {aindaVaiAbrir ? (
+                <>
+                  A janela de submissão abre em {formatarData(prazo?.abertura ?? null)}; até lá o
+                  trabalho não pode ser alterado.
+                </>
+              ) : (
+                <>
+                  As submissões foram encerradas em {formatarData(prazo?.encerramento ?? null)} e o
+                  trabalho não pode mais ser alterado. Trabalhos aprovados com correções continuam
+                  editáveis pela tela de correção.
+                </>
+              )}
             </p>
           </div>
         </div>

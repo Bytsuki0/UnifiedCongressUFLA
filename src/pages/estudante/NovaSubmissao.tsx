@@ -11,7 +11,7 @@ const NovaSubmissao = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { categorias } = useTrabalhos();
-  const { prazo, carregando: carregandoPrazo, aberto } = usePrazo();
+  const { prazo, carregando: carregandoPrazo, aberto, fase } = usePrazo();
 
   const [form, setForm] = useState({
     titulo: "", categoria: "", orientador: "",
@@ -109,7 +109,9 @@ const NovaSubmissao = () => {
   // esconder o formulário por causa de um erro de transporte tiraria a
   // submissão de quem ainda está dentro do prazo.
   if (aberto === false) {
-    const aindaVaiAbrir = !!prazo?.abertura && !!prazo?.hoje && prazo.hoje < prazo.abertura;
+    // Por que está fechado: "antes" (ainda vai abrir) ou "encerrado". Ver
+    // `fasePrazo` em ./shared — a comparação é feita só com datas do servidor.
+    const aindaVaiAbrir = fase === "antes";
     return (
       <div className="section active">
         <div className="content-area">
@@ -120,16 +122,22 @@ const NovaSubmissao = () => {
           </div>
           <div className="empty-state">
             <div className="empty-state-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
+              {aindaVaiAbrir ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+              )}
             </div>
             <h3 className="empty-state-title">
               {aindaVaiAbrir ? "As submissões ainda não abriram" : "Prazo de submissão encerrado"}
             </h3>
             <p className="empty-state-description">
               {aindaVaiAbrir
-                ? `O envio de trabalhos abre em ${formatarData(prazo?.abertura ?? null)}.`
+                ? `O envio de trabalhos abre em ${formatarData(prazo?.abertura ?? null)}${prazo?.encerramento ? ` e vai até ${formatarData(prazo.encerramento)}` : ""}. Até lá nada pode ser enviado.`
                 : `O prazo terminou em ${formatarData(prazo?.encerramento ?? null)}. Novos trabalhos não podem mais ser enviados, e os que já estão aprovados com correções continuam podendo ser corrigidos.`}
             </p>
             <button className="btn btn-primary btn-sm" onClick={() => navigate("/estudante/papeis-submetidos")}>

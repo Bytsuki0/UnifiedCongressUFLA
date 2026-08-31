@@ -32,7 +32,7 @@ import {
 const PapeisSubmetidos = () => {
   const navigate = useNavigate();
   const { trabalhos, loading, catNome } = useTrabalhos();
-  const { prazo, aberto } = usePrazo();
+  const { prazo, aberto, fase } = usePrazo();
 
   const ativas = trabalhos.filter(t => estaAtiva(t.status));
   const aguardandoCorrecao = trabalhos.filter(t => t.status === AGUARDANDO_CORRECAO);
@@ -63,7 +63,24 @@ const PapeisSubmetidos = () => {
           </button>
         </div>
 
-        {aberto === false && (
+        {/* Janela fechada. As duas razões possíveis dizem coisas opostas ao
+            autor — "ainda vai abrir" pede espera, "encerrou" diz que acabou —
+            e por isso têm cor, ícone e texto próprios. */}
+        {fase === "antes" && (
+          <div className="alert alert-info" style={{ marginBottom: "var(--space-4)" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <div>
+              <strong>As submissões ainda não abriram.</strong>{" "}
+              O envio de trabalhos começa em {formatarData(prazo?.abertura ?? null)}
+              {prazo?.encerramento ? ` e vai até ${formatarData(prazo.encerramento)}` : ""}. Até
+              lá não é possível enviar nem editar trabalhos.
+            </div>
+          </div>
+        )}
+
+        {fase === "encerrado" && (
           <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>

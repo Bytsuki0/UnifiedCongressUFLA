@@ -22,7 +22,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: mocks.rpc, from: vi.fn() },
 }));
 
-import { carregarPrazoSubmissoes } from "@/services/configuracoesService";
+import { carregarPrazoSubmissoes, type PrazoSubmissoes } from "@/services/configuracoesService";
+import { fasePrazo } from "@/pages/estudante/shared";
 
 describe("carregarPrazoSubmissoes", () => {
   beforeEach(() => mocks.rpc.mockReset());
@@ -67,5 +68,48 @@ describe("carregarPrazoSubmissoes", () => {
     const prazo = await carregarPrazoSubmissoes();
     expect(prazo.aberto).toBe(true);
     expect(prazo.encerramento).toBeNull();
+  });
+});
+
+/**
+ * A terceira invariante, de 2026-08-31: janela fechada tem DOIS motivos, e
+ * a tela precisa saber qual. Antes disso quem chegava cedo demais lia
+ * "prazo de submissão encerrado" — a mensagem exatamente oposta à verdade.
+ */
+describe("fasePrazo", () => {
+  const prazo = (over: Partial<PrazoSubmissoes>): PrazoSubmissoes => ({
+    abertura: "2026-09-01",
+    encerramento: "2026-09-30",
+    aberto: false,
+    hoje: "2026-08-31",
+    ...over,
+  });
+
+  it("hoje antes da abertura é 'antes', não 'encerrado'", () => {
+    expect(fasePrazo(prazo({ hoje: "2026-08-31" }))).toBe("antes");
+  });
+
+  it("hoje depois do encerramento é 'encerrado'", () => {
+    expect(fasePrazo(prazo({ hoje: "2026-10-01" }))).toBe("encerrado");
+  });
+
+  it("o dia da abertura já não é 'antes' (janela inclusiva nas duas pontas)", () => {
+    expect(fasePrazo(prazo({ hoje: "2026-09-01", aberto: true }))).toBe("aberto");
+  });
+
+  // O servidor manda, aqui como em `aberto`: com `aberto: true` a fase é
+  // "aberto" mesmo que as datas sugiram outra coisa (prazo prorrogado
+  // entre uma leitura e outra, por exemplo).
+  it("nunca contraria o `aberto` do servidor", () => {
+    expect(fasePrazo(prazo({ hoje: "2026-08-01", aberto: true }))).toBe("aberto");
+    expect(fasePrazo(prazo({ hoje: "2026-12-31", aberto: true }))).toBe("aberto");
+  });
+
+  it("sem abertura cadastrada, fechado só pode ser encerramento", () => {
+    expect(fasePrazo(prazo({ abertura: null, hoje: "2026-10-01" }))).toBe("encerrado");
+  });
+
+  it("prazo ainda não carregado é 'indefinido'", () => {
+    expect(fasePrazo(null)).toBe("indefinido");
   });
 });

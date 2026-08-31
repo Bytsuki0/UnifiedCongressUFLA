@@ -149,6 +149,35 @@ export const formatarData = (iso: string | null): string =>
   iso ? iso.split("-").reverse().join("/") : "—";
 
 /**
+ * Onde estamos na janela de submissão — e o motivo de a janela estar
+ * fechada, que é o que a tela precisa dizer.
+ *
+ * `aberto: false` sozinho não distingue "ainda não abriu" de "já
+ * encerrou", e as duas frases são opostas para quem lê: uma manda
+ * esperar, a outra diz que acabou. Sem isto as telas mostravam
+ * "prazo encerrado" para quem chegou cedo demais.
+ *
+ * ⚠ A distinção compara `hoje` com `abertura`, DUAS DATAS DO SERVIDOR
+ * (a mesma RPC `prazo_submissoes` devolve as duas). O relógio do
+ * navegador continua fora da decisão — e nada aqui recalcula `aberto`,
+ * que segue vindo pronto de `submissoes_abertas()`.
+ *
+ * "indefinido" é o "não sei" — prazo ainda carregando ou falha de rede.
+ * Nenhuma tela bloqueia por causa dele: quem recusa é o banco.
+ */
+export type FasePrazo = "indefinido" | "antes" | "aberto" | "encerrado";
+
+export const fasePrazo = (prazo: PrazoSubmissoes | null): FasePrazo => {
+  if (!prazo) return "indefinido";
+  if (prazo.aberto) return "aberto";
+  if (prazo.abertura && prazo.hoje && prazo.hoje < prazo.abertura) return "antes";
+  // Fechado sem ser por antecedência: ou passou do encerramento, ou a
+  // configuração mudou entre a leitura e agora. Nos dois casos o que o
+  // autor pode fazer é o mesmo — não há mais envio.
+  return "encerrado";
+};
+
+/**
  * Prazo de submissão vigente, do servidor.
  *
  * `aberto` NUNCA é recalculado aqui a partir das datas: o relógio do
@@ -170,7 +199,7 @@ export function usePrazo() {
     return () => { vivo = false; };
   }, []);
 
-  return { prazo, carregando, aberto: prazo?.aberto ?? null };
+  return { prazo, carregando, aberto: prazo?.aberto ?? null, fase: fasePrazo(prazo) };
 }
 
 /**
