@@ -1,7 +1,7 @@
 # Congresso Unificado ICTIN — UFLA
 
 Plataforma de submissão e avaliação de trabalhos do congresso do ICTIN
-(Universidade Federal de Lavras). Autores — da UFLA ou de fora — submetem
+(Universidade Federal de Lavras). Autores da UFLA ou de fora — submetem
 trabalhos, revisores emitem pareceres, os co-chairs gerenciam categorias,
 atribuições e rankings, e o admin cuida de papéis, prazos e auditoria.
 
