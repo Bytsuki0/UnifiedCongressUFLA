@@ -2,39 +2,23 @@ import { describe, expect, it } from "vitest";
 import {
   chaveDia,
   corDoTexto,
-  diasNoMes,
-  gradeDoMes,
-  marcacoesDoMes,
-  marcacoesPorDia,
-  primeiroDiaSemana,
-  rotuloDiaCurto,
-  rotuloMes,
+  diasNoPeriodo,
+  estadoDoPeriodo,
+  rotuloDia,
+  rotuloPeriodo,
 } from "@/lib/cronograma";
-import type { MarcacaoCronograma } from "@/services/cronogramaService";
 
 /**
- * A aritmética do calendário do cronograma.
+ * As datas do cronograma, agora que ele é uma LISTA de períodos.
  *
  * O que estes testes protegem, acima de tudo, é a regra de NÃO passar
  * 'AAAA-MM-DD' por `new Date(...)`: a string sem hora é lida como UTC e,
  * no fuso de Lavras, o dia 1 vira o dia 31 do mês anterior. Uma
- * "simplificação" que troque os helpers por `new Date(chave)` passa em
- * qualquer inspeção visual feita em UTC e quebra em produção — daí o
- * teste.
+ * "simplificação" que troque a leitura por `new Date(chave).getDate()`
+ * passa em qualquer inspeção visual feita em UTC e quebra em produção —
+ * daí o teste. `diasNoPeriodo` é o único que toca `Date`, e só por
+ * `Date.UTC`, que é estável em qualquer fuso.
  */
-
-const marcacao = (
-  id: string,
-  dias: string[],
-  extra: Partial<MarcacaoCronograma> = {},
-): MarcacaoCronograma => ({
-  id,
-  titulo: `Evento ${id}`,
-  descricao: "",
-  cor: "#2563EB",
-  dias,
-  ...extra,
-});
 
 describe("chaveDia", () => {
   it("preenche mês e dia com zero à esquerda", () => {
@@ -43,88 +27,91 @@ describe("chaveDia", () => {
   });
 });
 
-describe("diasNoMes", () => {
-  it("conhece os meses de 30 e 31 dias", () => {
-    expect(diasNoMes(2026, 8)).toBe(31);
-    expect(diasNoMes(2026, 9)).toBe(30);
+describe("rotuloDia", () => {
+  it("escreve a data por extenso em pt-BR", () => {
+    expect(rotuloDia("2026-03-15")).toBe("15 de março de 2026");
   });
 
-  it("acerta fevereiro em ano bissexto e em ano comum", () => {
-    expect(diasNoMes(2026, 2)).toBe(28);
-    expect(diasNoMes(2028, 2)).toBe(29);
-  });
-});
-
-describe("primeiroDiaSemana", () => {
-  it("devolve o dia da semana do dia 1 (0 = domingo)", () => {
-    // 1º de agosto de 2026 é um sábado.
-    expect(primeiroDiaSemana(2026, 8)).toBe(6);
-    // 1º de setembro de 2026 é uma terça.
-    expect(primeiroDiaSemana(2026, 9)).toBe(2);
-  });
-
-  it("não escorrega para o mês anterior por causa do fuso", () => {
+  it("não escorrega para a véspera por causa do fuso", () => {
     // O caso que `new Date("2026-08-01")` erraria em UTC-3: o dia 1
-    // cairia na véspera, e a grade inteira sairia deslocada uma casa.
-    expect(primeiroDiaSemana(2026, 1)).toBe(4); // 01/01/2026 é quinta
+    // cairia em 31 de julho.
+    expect(rotuloDia("2026-08-01")).toBe("1 de agosto de 2026");
+    expect(rotuloDia("2026-01-01")).toBe("1 de janeiro de 2026");
+  });
+
+  it("devolve vazio para string que não é data", () => {
+    expect(rotuloDia("")).toBe("");
+    expect(rotuloDia("amanhã")).toBe("");
   });
 });
 
-describe("gradeDoMes", () => {
-  it("fecha em semanas inteiras de 7 casas", () => {
-    for (const mes of [1, 2, 8, 9, 12]) {
-      expect(gradeDoMes(2026, mes).length % 7).toBe(0);
-    }
+describe("rotuloPeriodo", () => {
+  it("mostra uma data só quando começa e termina no mesmo dia", () => {
+    expect(rotuloPeriodo("2026-08-12", "2026-08-12")).toBe("12 de agosto de 2026");
   });
 
-  it("põe o dia 1 na coluna certa e nada antes dele", () => {
-    const grade = gradeDoMes(2026, 8); // começa no sábado (índice 6)
-    expect(grade.slice(0, 6)).toEqual([null, null, null, null, null, null]);
-    expect(grade[6]).toBe(1);
+  it("trata término vazio como data única", () => {
+    expect(rotuloPeriodo("2026-08-12", "")).toBe("12 de agosto de 2026");
   });
 
-  it("mantém todos os dias do mês, sem repetir nem pular", () => {
-    const dias = gradeDoMes(2026, 9).filter((d): d is number => d !== null);
-    expect(dias).toEqual(Array.from({ length: 30 }, (_, i) => i + 1));
+  it("não repete o mês nem o ano dentro do mesmo mês", () => {
+    expect(rotuloPeriodo("2026-08-12", "2026-08-16")).toBe("12 a 16 de agosto de 2026");
   });
-});
 
-describe("marcacoesPorDia", () => {
-  it("indexa por dia e preserva a ordem de chegada", () => {
-    const mapa = marcacoesPorDia([
-      marcacao("a", ["2026-08-10", "2026-08-11"]),
-      marcacao("b", ["2026-08-11"]),
-    ]);
+  it("repete só o mês quando o período atravessa a virada", () => {
+    expect(rotuloPeriodo("2026-08-31", "2026-09-02")).toBe(
+      "31 de agosto a 2 de setembro de 2026",
+    );
+  });
 
-    expect(mapa["2026-08-10"].map((m) => m.id)).toEqual(["a"]);
-    // Dia com duas marcações: a primeira é a que dá a cor de fundo da
-    // casa, então a ordem não pode ser embaralhada.
-    expect(mapa["2026-08-11"].map((m) => m.id)).toEqual(["a", "b"]);
-    expect(mapa["2026-08-12"]).toBeUndefined();
+  it("escreve as duas datas inteiras quando muda o ano", () => {
+    expect(rotuloPeriodo("2026-12-28", "2027-01-03")).toBe(
+      "28 de dezembro de 2026 a 3 de janeiro de 2027",
+    );
   });
 });
 
-describe("marcacoesDoMes", () => {
-  it("inclui a marcação que toca o mês, mesmo atravessando a virada", () => {
-    const atravessa = marcacao("a", ["2026-08-31", "2026-09-01"]);
-    const outra = marcacao("b", ["2026-10-05"]);
-
-    expect(marcacoesDoMes([atravessa, outra], { ano: 2026, mes: 8 }).map((m) => m.id)).toEqual(["a"]);
-    expect(marcacoesDoMes([atravessa, outra], { ano: 2026, mes: 9 }).map((m) => m.id)).toEqual(["a"]);
-    expect(marcacoesDoMes([atravessa, outra], { ano: 2026, mes: 10 }).map((m) => m.id)).toEqual(["b"]);
+describe("diasNoPeriodo", () => {
+  it("conta as duas pontas", () => {
+    expect(diasNoPeriodo("2026-08-12", "2026-08-12")).toBe(1);
+    expect(diasNoPeriodo("2026-08-12", "2026-08-16")).toBe(5);
   });
 
-  it("não confunde meses de anos diferentes", () => {
-    const lista = [marcacao("a", ["2027-08-10"])];
-    expect(marcacoesDoMes(lista, { ano: 2026, mes: 8 })).toEqual([]);
+  it("atravessa mês e ano", () => {
+    expect(diasNoPeriodo("2026-08-31", "2026-09-02")).toBe(3);
+    expect(diasNoPeriodo("2026-12-31", "2027-01-01")).toBe(2);
+  });
+
+  it("conhece fevereiro em ano bissexto e em ano comum", () => {
+    expect(diasNoPeriodo("2026-02-28", "2026-03-01")).toBe(2);
+    expect(diasNoPeriodo("2028-02-28", "2028-03-01")).toBe(3);
   });
 });
 
-describe("rótulos", () => {
-  it("nomeia o mês e o dia em pt-BR", () => {
-    expect(rotuloMes({ ano: 2026, mes: 8 })).toBe("Agosto de 2026");
-    expect(rotuloDiaCurto("2026-08-01")).toBe("1 de agosto");
-    expect(rotuloDiaCurto("2026-03-15")).toBe("15 de março");
+describe("estadoDoPeriodo", () => {
+  it("separa o que vem, o que corre e o que passou", () => {
+    expect(estadoDoPeriodo("2026-08-12", "2026-08-16", "2026-08-11")).toBe("futuro");
+    expect(estadoDoPeriodo("2026-08-12", "2026-08-16", "2026-08-14")).toBe("andamento");
+    expect(estadoDoPeriodo("2026-08-12", "2026-08-16", "2026-08-17")).toBe("encerrado");
+  });
+
+  it("inclui as duas pontas — o primeiro e o último dia estão em andamento", () => {
+    // Ponta inclusiva dos dois lados, como o prazo de submissão: um
+    // período "de 12 a 16" que já constasse como encerrado no dia 16
+    // enganaria quem ainda tem o dia inteiro pela frente.
+    expect(estadoDoPeriodo("2026-08-12", "2026-08-16", "2026-08-12")).toBe("andamento");
+    expect(estadoDoPeriodo("2026-08-12", "2026-08-16", "2026-08-16")).toBe("andamento");
+  });
+
+  it("trata término vazio como data única", () => {
+    expect(estadoDoPeriodo("2026-08-12", "", "2026-08-12")).toBe("andamento");
+    expect(estadoDoPeriodo("2026-08-12", "", "2026-08-13")).toBe("encerrado");
+  });
+
+  it("compara por ano antes de mês e dia", () => {
+    // Comparação de string só funciona porque a data é zero-padded e vem
+    // do maior para o menor. Se alguém trocar o formato, isto quebra.
+    expect(estadoDoPeriodo("2027-01-05", "2027-01-05", "2026-12-31")).toBe("futuro");
   });
 });
 

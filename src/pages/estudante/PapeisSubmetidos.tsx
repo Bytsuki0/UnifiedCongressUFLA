@@ -50,7 +50,7 @@ const PapeisSubmetidos = () => {
         <div className="dashboard-header-row">
           <div>
             <div className="page-overline">MINHAS SUBMISSÕES</div>
-            <h1 className="page-title" style={{ fontSize: "var(--fs-h1)" }}>Papéis Submetidos</h1>
+            <h1 className="page-title" style={{ fontSize: "var(--fs-h1)" }}>Resumos Submetidos</h1>
             <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
               Todos os trabalhos que você enviou ao congresso, com o andamento de cada um.
             </p>

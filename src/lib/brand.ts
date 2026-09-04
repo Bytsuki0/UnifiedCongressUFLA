@@ -14,7 +14,7 @@ export const APP_MARK = "CONGRESSO UNIFICADO";
 export const APP_SHORT = "ICTIN";
 
 /** Descritivo curto usado como segunda linha do logotipo e no <meta>. */
-export const APP_TAGLINE = "ICTIN · Submissões Científicas";
+export const APP_TAGLINE = "ICTIN · Submissões";
 
 /** Descrição usada nas meta tags (e nos previews de link). */
 export const APP_DESCRIPTION =

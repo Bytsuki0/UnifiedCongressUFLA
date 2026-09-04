@@ -1,14 +1,17 @@
-import type { MarcacaoCronograma, MesCronograma } from "@/services/cronogramaService";
-
 /**
- * Aritmética de calendário para o cronograma.
+ * Datas do cronograma.
+ *
+ * O cronograma é uma LISTA de períodos: cada item tem uma data de início
+ * e uma de término. O que este arquivo faz é transformar essas duas
+ * strings num rótulo em pt-BR e dizer se o período já passou, está
+ * acontecendo ou ainda vem.
  *
  * ⚠ Tudo aqui trabalha com a string 'AAAA-MM-DD', nunca com `Date`.
- * `new Date("2026-08-01")` é interpretado como meia-noite UTC; no fuso
- * de Lavras (UTC-3) isso é 31/07 às 21h, e o dia 1 do calendário sairia
- * pintado na casa do dia 31. Somar dias com `Date` tem o mesmo problema
- * ao voltar para string. Os cálculos abaixo usam `Date.UTC`, que é
- * estável, e só formatam de volta em UTC.
+ * `new Date("2026-08-01")` é interpretado como meia-noite UTC; no fuso de
+ * Lavras (UTC-3) isso é 31/07 às 21h, e o item apareceria começando um
+ * dia antes do que a organização cadastrou. Como a string é de tamanho
+ * fixo e zero-padded, comparar duas delas com `<` e `>` JÁ é comparação
+ * cronológica — não há aritmética de data para fazer.
  */
 
 export const NOMES_MESES = [
@@ -16,74 +19,76 @@ export const NOMES_MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ] as const;
 
-/** Iniciais na ordem em que a grade desenha (domingo primeiro). */
-export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
-
 /** 'AAAA-MM-DD' a partir de ano/mês/dia. */
 export const chaveDia = (ano: number, mes: number, dia: number): string =>
   `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 
-/** Chave do mês, para casar aba com marcação. */
-export const chaveMes = (m: MesCronograma): string => `${m.ano}-${String(m.mes).padStart(2, "0")}`;
+/** As três partes de 'AAAA-MM-DD', como números. */
+const partes = (chave: string): [number, number, number] => {
+  const [ano, mes, dia] = String(chave ?? "").split("-").map(Number);
+  return [ano, mes, dia];
+};
 
-/** Rótulo humano: "Agosto de 2026". */
-export const rotuloMes = (m: MesCronograma): string => `${NOMES_MESES[m.mes - 1]} de ${m.ano}`;
-
-/** "12 de agosto" — para listar os dias de uma marcação. */
-export function rotuloDiaCurto(chave: string): string {
-  const [, mes, dia] = chave.split("-").map(Number);
-  return `${dia} de ${NOMES_MESES[mes - 1].toLowerCase()}`;
-}
-
-/** Quantos dias tem o mês. Dia 0 do mês seguinte é o último deste. */
-export const diasNoMes = (ano: number, mes: number): number =>
-  new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-
-/** Dia da semana do dia 1 (0 = domingo), para saber quantas casas pular. */
-export const primeiroDiaSemana = (ano: number, mes: number): number =>
-  new Date(Date.UTC(ano, mes - 1, 1)).getUTCDay();
-
-/**
- * As casas da grade: `null` nos vazios antes do dia 1 e depois do
- * último, para que a semana feche em 7 colunas.
- */
-export function gradeDoMes(ano: number, mes: number): (number | null)[] {
-  const total = diasNoMes(ano, mes);
-  const vazios = primeiroDiaSemana(ano, mes);
-  const casas: (number | null)[] = Array(vazios).fill(null);
-  for (let d = 1; d <= total; d++) casas.push(d);
-  while (casas.length % 7 !== 0) casas.push(null);
-  return casas;
+/** "12 de agosto de 2026". */
+export function rotuloDia(chave: string): string {
+  const [ano, mes, dia] = partes(chave);
+  if (!ano || !mes || !dia) return "";
+  return `${dia} de ${NOMES_MESES[mes - 1].toLowerCase()} de ${ano}`;
 }
 
 /**
- * Índice dia -> marcações daquele dia, na ordem em que vieram do
- * servidor (a mais antiga primeiro; é ela que dá a cor de fundo).
+ * O período de um item, sem repetir o que os dois extremos têm em comum:
+ *
+ *   mesmo dia      "12 de agosto de 2026"
+ *   mesmo mês      "12 a 16 de agosto de 2026"
+ *   mesmo ano      "31 de agosto a 2 de setembro de 2026"
+ *   anos distintos "28 de dezembro de 2026 a 3 de janeiro de 2027"
+ *
+ * Repetir mês e ano nos dois lados ("12 de agosto de 2026 a 16 de agosto
+ * de 2026") é o que faz uma lista de datas virar um paredão ilegível.
  */
-export function marcacoesPorDia(
-  marcacoes: MarcacaoCronograma[],
-): Record<string, MarcacaoCronograma[]> {
-  const mapa: Record<string, MarcacaoCronograma[]> = {};
-  for (const m of marcacoes) {
-    for (const dia of m.dias) (mapa[dia] ??= []).push(m);
+export function rotuloPeriodo(inicio: string, fim: string): string {
+  if (!fim || fim === inicio) return rotuloDia(inicio);
+
+  const [anoI, mesI, diaI] = partes(inicio);
+  const [anoF, mesF] = partes(fim);
+  if (!anoI || !mesI || !diaI || !anoF || !mesF) return rotuloDia(inicio);
+
+  if (anoI !== anoF) return `${rotuloDia(inicio)} a ${rotuloDia(fim)}`;
+  if (mesI !== mesF) {
+    return `${diaI} de ${NOMES_MESES[mesI - 1].toLowerCase()} a ${rotuloDia(fim)}`;
   }
-  return mapa;
+  return `${diaI} a ${rotuloDia(fim)}`;
 }
 
-/** As marcações que tocam um mês — a legenda embaixo do calendário. */
-export function marcacoesDoMes(
-  marcacoes: MarcacaoCronograma[],
-  { ano, mes }: MesCronograma,
-): MarcacaoCronograma[] {
-  const prefixo = `${ano}-${String(mes).padStart(2, "0")}-`;
-  return marcacoes.filter((m) => m.dias.some((d) => d.startsWith(prefixo)));
+/** Quantos dias o período cobre, contando as duas pontas. */
+export function diasNoPeriodo(inicio: string, fim: string): number {
+  const [aI, mI, dI] = partes(inicio);
+  const [aF, mF, dF] = partes(fim || inicio);
+  if (!aI || !aF) return 0;
+  const umDia = 86_400_000;
+  return Math.round((Date.UTC(aF, mF - 1, dF) - Date.UTC(aI, mI - 1, dI)) / umDia) + 1;
+}
+
+/**
+ * Em que pé o período está. String, e não um par de booleanos: o
+ * `tsconfig.app.json` roda com `strict: false`, e sem `strictNullChecks`
+ * o TypeScript não estreita união por discriminante booleano.
+ */
+export type EstadoPeriodo = "futuro" | "andamento" | "encerrado";
+
+export function estadoDoPeriodo(inicio: string, fim: string, hoje: string): EstadoPeriodo {
+  const termino = fim || inicio;
+  if (hoje < inicio) return "futuro";
+  if (hoje > termino) return "encerrado";
+  return "andamento";
 }
 
 /**
  * Hoje, segundo o RELÓGIO DO NAVEGADOR — e é aceitável que seja.
  * Diferente do prazo de submissão, que vem do servidor porque um
- * computador adiantado reabriria o envio, aqui o pior caso de um
- * relógio errado é a borda de "hoje" na casa vizinha. Nada de
+ * computador adiantado reabriria o envio, aqui o pior caso de um relógio
+ * errado é o selo "em andamento" aparecer um dia antes ou depois. Nada de
  * autorização depende disto.
  */
 export function hojeLocal(): string {
@@ -92,11 +97,11 @@ export function hojeLocal(): string {
 }
 
 /**
- * Paleta sugerida para as marcações. São as cores do próprio design
- * system (`--qc-*` e as semânticas), em HEX porque a coluna `cor` do
- * banco guarda hex e o CHECK da migration recusa qualquer outra coisa —
- * um `var(--qc-blue)` gravado ali não passaria, e no `style` de um
- * <div> ele também não resolveria contra a paleta certa em toda tela.
+ * Paleta sugerida para os itens. São as cores do próprio design system
+ * (`--qc-*` e as semânticas), em HEX porque a coluna `cor` do banco
+ * guarda hex e o CHECK da migration recusa qualquer outra coisa — um
+ * `var(--qc-blue)` gravado ali não passaria, e no `style` de um <span>
+ * ele também não resolveria contra a paleta certa em toda tela.
  */
 export const CORES_SUGERIDAS: ReadonlyArray<{ hex: string; nome: string }> = [
   { hex: "#2563EB", nome: "Azul" },
@@ -112,7 +117,7 @@ export const CORES_SUGERIDAS: ReadonlyArray<{ hex: string; nome: string }> = [
 /**
  * Preto ou branco por cima da cor escolhida, pela luminância relativa.
  * A organização escolhe cor livre no seletor; sem isto, "Âmbar" ganha
- * texto branco e o nome do evento some dentro da própria etiqueta.
+ * texto branco e a data some dentro da própria etiqueta.
  */
 export function corDoTexto(hex: string): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());

@@ -355,34 +355,13 @@ export type Database = {
           },
         ]
       }
-      cronograma_dias: {
-        Row: {
-          dia: string
-          evento_id: string
-        }
-        Insert: {
-          dia: string
-          evento_id: string
-        }
-        Update: {
-          dia?: string
-          evento_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cronograma_dias_evento_id_fkey"
-            columns: ["evento_id"]
-            isOneToOne: false
-            referencedRelation: "cronograma_eventos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cronograma_eventos: {
         Row: {
           cor: string
           criado_em: string
           criado_por: string | null
+          data_fim: string
+          data_inicio: string
           descricao: string
           id: string
           titulo: string
@@ -391,6 +370,8 @@ export type Database = {
           cor: string
           criado_em?: string
           criado_por?: string | null
+          data_fim: string
+          data_inicio: string
           descricao?: string
           id?: string
           titulo: string
@@ -399,27 +380,11 @@ export type Database = {
           cor?: string
           criado_em?: string
           criado_por?: string | null
+          data_fim?: string
+          data_inicio?: string
           descricao?: string
           id?: string
           titulo?: string
-        }
-        Relationships: []
-      }
-      cronograma_meses: {
-        Row: {
-          ano: number
-          criado_em: string
-          mes: number
-        }
-        Insert: {
-          ano: number
-          criado_em?: string
-          mes: number
-        }
-        Update: {
-          ano?: number
-          criado_em?: string
-          mes?: number
         }
         Relationships: []
       }
@@ -1064,21 +1029,15 @@ export type Database = {
           token: string
         }[]
       }
-      cronograma_publico_dias: {
+      cronograma_publico: {
         Args: never
         Returns: {
           cor: string
+          data_fim: string
+          data_inicio: string
           descricao: string
-          dia: string
-          evento_id: string
+          id: string
           titulo: string
-        }[]
-      }
-      cronograma_publico_meses: {
-        Args: never
-        Returns: {
-          ano: number
-          mes: number
         }[]
       }
       data_local: { Args: never; Returns: string }
@@ -1197,16 +1156,6 @@ export type Database = {
         Args: { _comentario: string; _decisao: string; _trabalho_id: string }
         Returns: string
       }
-      salvar_marcacao_cronograma: {
-        Args: {
-          p_cor: string
-          p_descricao: string
-          p_dias: string[]
-          p_id: string
-          p_titulo: string
-        }
-        Returns: string
-      }
       submissoes_abertas: { Args: never; Returns: boolean }
       verify_and_mark_certificate: {
         Args: { _code: string }
@@ -1252,12 +1201,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1281,11 +1230,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1306,11 +1255,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1331,11 +1280,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1348,11 +1297,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

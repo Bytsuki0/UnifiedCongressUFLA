@@ -137,9 +137,9 @@ const App = () => (
             <Route path="/cadastro" element={<Cadastro />} />
             {/* Cronograma: pública e SEM sessão de propósito — é a
                 informação que o visitante procura antes de decidir se
-                vai se cadastrar. A landing traz o mesmo calendário numa
+                vai se cadastrar. A landing traz a mesma lista numa
                 seção; esta rota é o destino da aba CRONOGRAMA. Os dados
-                vêm das RPCs `cronograma_publico_*`, abertas a `anon`. */}
+                vêm da RPC `cronograma_publico()`, aberta a `anon`. */}
             <Route path="/cronograma" element={<CronogramaPublico />} />
             {/* Rotas antigas de cadastro (pré-cadastro / professor) foram
                 unificadas em /cadastro. */}
@@ -197,8 +197,8 @@ const App = () => (
                     de envio único: depois dela nem editar/:id volta. */}
                 <Route path="reenvio/:id" element={<EstudanteReenvio />} />
                 <Route path="templates" element={<EstudanteTemplates />} />
-                {/* Mesmo calendário de /cronograma, para quem já entrou
-                    não ter de sair do portal para conferir um prazo. */}
+                {/* Mesma lista de /cronograma, para quem já entrou não
+                    ter de sair do portal para conferir um prazo. */}
                 <Route path="cronograma" element={<EstudanteCronograma />} />
               </Route>
             </Route>

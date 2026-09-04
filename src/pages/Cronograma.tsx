@@ -1,24 +1,23 @@
 import { Link } from "react-router-dom";
 import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
 import { RodapePublico } from "@/components/publico/RodapePublico";
-import { CalendarioCronograma } from "@/components/cronograma/CalendarioCronograma";
+import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
 import { useCronograma } from "@/hooks/use-cronograma";
 
 /**
  * Cronograma — página pública, aberta ANTES do login.
  *
- * A landing já traz o mesmo calendário numa seção; esta página existe
- * para quem chega pelo item CRONOGRAMA da barra superior ou por um link
- * direto, e para dar ao calendário a tela inteira quando há vários
- * meses publicados.
+ * A landing já traz a mesma lista numa seção; esta página existe para
+ * quem chega pelo item CRONOGRAMA da barra superior ou por um link
+ * direto, e para dar às datas a tela inteira.
  *
  * Diferente da landing, aqui a seção NÃO some quando não há nada
  * publicado: quem clicou em "Cronograma" pediu esta informação e merece
  * a resposta "ainda não foi publicado" em vez de uma página em branco.
- * Quem cuida dessa mensagem é o próprio <CalendarioCronograma>.
+ * Quem cuida dessa mensagem é a própria <ListaCronograma>.
  */
 const Cronograma = () => {
-  const { cronograma, carregando } = useCronograma();
+  const { itens, carregando } = useCronograma();
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff", minHeight: "100vh" }}>
@@ -29,15 +28,10 @@ const Cronograma = () => {
           <div className="section-overline">DATAS IMPORTANTES</div>
           <h1 className="section-title">Cronograma do congresso.</h1>
           <p className="section-description">
-            Prazos de submissão, avaliação e realização do evento. Clique em um dia marcado para
-            ver o que acontece nele.
+            Prazos de submissão, avaliação e realização do evento, em ordem cronológica.
           </p>
 
-          <CalendarioCronograma
-            meses={cronograma.meses}
-            marcacoes={cronograma.marcacoes}
-            carregando={carregando}
-          />
+          <ListaCronograma itens={itens} carregando={carregando} />
 
           <div className="cronograma-rodape-acoes">
             <Link to="/cadastro" className="btn btn-primary">CADASTRAR-SE</Link>

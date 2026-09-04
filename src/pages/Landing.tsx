@@ -4,13 +4,13 @@ import { APP_NAME } from "@/lib/brand";
 import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
 import { CarrosselTemplates } from "@/components/publico/CarrosselTemplates";
 import { RodapePublico } from "@/components/publico/RodapePublico";
-import { CalendarioCronograma } from "@/components/cronograma/CalendarioCronograma";
+import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
 import { useCronograma } from "@/hooks/use-cronograma";
 import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 
 const Landing = () => {
   const { arquivos } = useArquivosDownload("estudante");
-  const { cronograma, carregando } = useCronograma();
+  const { itens, carregando } = useCronograma();
 
   // O efeito de sombra da barra superior mudou de dono: mora em
   // <CabecalhoPublico>, que /cronograma também usa. Aqui ficou só a
@@ -28,7 +28,7 @@ const Landing = () => {
     // volta, e o observer é montado uma vez. Sem reobservar, os blocos
     // `.reveal` de lá ficariam parados em opacity 0 — invisíveis para
     // sempre. Quem já revelou mantém a classe.
-  }, [cronograma]);
+  }, [itens]);
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff" }}>
@@ -38,7 +38,7 @@ const Landing = () => {
         <div className="hero-inner">
           <div className="hero-text">
             <span className="hero-overline">UNIVERSIDADE FEDERAL DE LAVRAS · ICTIN</span>
-            <h1 className="hero-title">O congresso unificado do nosso campus Paraiso.</h1>
+            <h1 className="hero-title">O Congresso unificado - Campus paraiso.</h1>
             <p className="hero-description">
               Sistema oficial do {APP_NAME}.
             </p>
@@ -69,22 +69,21 @@ const Landing = () => {
       </section>
 
       {/* Cronograma — some inteiro quando a organização ainda não
-          publicou mês nenhum. Um calendário vazio na página inicial diria
+          publicou nada. Uma lista de datas vazia na página inicial diria
           menos que nada: sugeriria que o congresso não tem datas. */}
-      {!carregando && cronograma.meses.length > 0 && (
+      {!carregando && itens.length > 0 && (
         <section className="cronograma-section" id="cronograma">
           <div className="cronograma-inner">
             <div className="reveal">
-              <div className="section-overline">📅 DATAS IMPORTANTES</div>
+              <div className="section-overline">DATAS IMPORTANTES</div>
               <h2 className="section-title">Cronograma do congresso.</h2>
               <p className="section-description">
-                Prazos de submissão, avaliação e realização do evento. Clique em um dia marcado
-                para ver o que acontece nele.
+                Prazos de submissão, avaliação e realização do evento, em ordem cronológica.
               </p>
             </div>
 
             <div className="reveal">
-              <CalendarioCronograma meses={cronograma.meses} marcacoes={cronograma.marcacoes} />
+              <ListaCronograma itens={itens} />
             </div>
           </div>
         </section>

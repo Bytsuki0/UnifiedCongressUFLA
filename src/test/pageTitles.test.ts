@@ -36,7 +36,7 @@ describe("títulos de página", () => {
     ["/estudante/editar/abc-123", "Editar submissão"],
     ["/estudante/reenvio/abc-123", "Reenviar trabalho"],
     ["/estudante/trabalho/abc-123", "Resultado da avaliação"],
-    ["/estudante/papeis-submetidos", "Papéis submetidos"],
+    ["/estudante/papeis-submetidos", "Resumos submetidos"],
     ["/confirmar-email", "Confirmar e-mail"],
     ["/verifique-email", "Confirme seu e-mail"],
   ])("%s -> %s", (caminho, esperado) => {
