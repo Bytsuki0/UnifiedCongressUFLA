@@ -1,14 +1,14 @@
-# Congresso Unificado ICTIN — UFLA
+# Congresso Unificado ICTIN UFLA
 
 Plataforma de submissão e avaliação de trabalhos do congresso do ICTIN
-(Universidade Federal de Lavras). Autores da UFLA ou de fora — submetem
+(Universidade Federal de Lavras). Autores da UFLA ou de fora submetem
 trabalhos, revisores emitem pareceres, os co-chairs gerenciam categorias,
 atribuições e rankings, e o admin cuida de papéis, prazos e auditoria.
 
 Produção: **<https://ciuflaictin.com.br>** (Cloudflare Workers).
 
 > A área do evento (`/congresso`: inscrição, minicursos, certificados,
-> programação) está **congelada** — fora do escopo atual, visível só para o
+> programação) está **congelada** fora do escopo atual, visível só para o
 > admin. Ver [Área congelada](#área-congelada).
 
 ---
@@ -29,7 +29,7 @@ Produção: **<https://ciuflaictin.com.br>** (Cloudflare Workers).
 | Hospedagem | Cloudflare Workers (static assets) via Wrangler |
 
 **Não há backend próprio.** Toda a regra de negócio e a autorização vivem no
-Postgres do Supabase — políticas de RLS e funções RPC, versionadas em
+Postgres do Supabase políticas de RLS e funções RPC, versionadas em
 `supabase/migrations/`. O frontend fala direto com o Supabase pela chave
 anônima.
 
@@ -65,35 +65,35 @@ Nunca para autorização ou acesso a dado que o RLS já cobre.
 - **Distribuição de revisores** **não acontece sozinha**. Um co-chair (ou admin)
   clica em "Recomendar distribuição" em `/co-chairs/atribuicoes`;
   `recomendar_distribuicao` devolve uma proposta **sem gravar nada**, a pessoa
-  altera o que quiser trabalho a trabalho, e só o "Confirmar" grava — por
+  altera o que quiser trabalho a trabalho, e só o "Confirmar" grava por
   `confirmar_distribuicao`, numa transação em que um par recusado aborta o lote
   inteiro. O pool sai de `user_roles`, excluindo autor, orientador e coautores,
   que é como conflito de interesse é barrado (por trigger, não só na tela).
-  A carga é equilibrada com **meta de 4 trabalhos por revisor** — meta, não
+  A carga é equilibrada com **meta de 4 trabalhos por revisor** meta, não
   teto: o pool esgotado faz o número passar de 4 em vez de deixar trabalho com
   menos de 3 revisores. Por isso **editar um trabalho não reabre autoria nem
   categoria**, mesmo dentro do prazo: a distribuição pode já ter sido
   confirmada, e mudá-las a invalidaria em silêncio.
 - **Parecer editorial** (`/co-chairs/parecer-editorial`): a decisão final **não sai
   sozinha**. Com os 3 pareceres o trabalho vai para `aguardando_parecer_editorial`
-  e entra na fila; um co-chair abre a análise — onde vê os pareceres **com o nome
-  de quem assinou**, além de autor, orientador, coautores, PDF e vídeo — e registra
+  e entra na fila; um co-chair abre a análise onde vê os pareceres **com o nome
+  de quem assinou**, além de autor, orientador, coautores, PDF e vídeo e registra
   a decisão com um comentário obrigatório, que fica em `decisoes_editoriais`. A moda
   dos votos (`decisao_consolidada`) continua sendo calculada, mas como **sugestão**.
   Rever a decisão vale enquanto o autor não agiu; cada mudança fica no histórico.
 - **Quatro desfechos**: `aprovado`, `aprovado com correções`, `reprovado` e
   **`reenviar`**. Nos três primeiros nada muda. No `reenviar`, o autor reedita o
-  trabalho **inteiro** — inclusive autoria e categoria, o único lugar onde isso
-  abre — e o trabalho volta a `pendente` numa **rodada nova**, para receber 3
+  trabalho **inteiro** inclusive autoria e categoria, o único lugar onde isso
+  abre e o trabalho volta a `pendente` numa **rodada nova**, para receber 3
   revisores de novo. É envio único: depois dele o trabalho não é mais editável.
   Os pareceres e as associações da rodada anterior não são apagados, ficam
   carimbados com a rodada e continuam legíveis na análise editorial.
 - **Correção**: no desfecho "aprovado com correções" o autor reenvia pela RPC
-  `enviar_correcao`, que atravessa o prazo de propósito — e aprova no ato, sem
+  `enviar_correcao`, que atravessa o prazo de propósito e aprova no ato, sem
   nova rodada de revisão. É a diferença deliberada para o `reenviar`.
 - **Notas e comentários** aparecem em `/estudante/trabalho/:id` em **qualquer**
   desfecho, sem identificação do revisor e só **depois do parecer editorial**
-  (`pareceres_do_meu_trabalho`) — nunca na janela entre o 3º parecer e a decisão,
+  (`pareceres_do_meu_trabalho`) nunca na janela entre o 3º parecer e a decisão,
   em que os vereditos existem mas a organização ainda pode contrariá-los.
 
 ---
@@ -107,18 +107,18 @@ RLS**. A rota inicial de cada papel sai de `src/lib/portais.ts`, nunca de um
 
 | Rota | Portal | Papéis |
 |---|---|---|
-| `/`, `/login`, `/cadastro` | Público — cadastro unificado (inclui participantes externos) | — |
-| `/confirmar-email`, `/esqueci-senha`, `/redefinir-senha` | Fluxos de conta abertos por link de e-mail, sem sessão | — |
+| `/`, `/login`, `/cadastro` | Público cadastro unificado (inclui participantes externos) | |
+| `/confirmar-email`, `/esqueci-senha`, `/redefinir-senha` | Fluxos de conta abertos por link de e-mail, sem sessão | |
 | `/verifique-email` | Sala de espera de quem ainda não confirmou o e-mail | todos |
 | `/estudante` | Autor: submete, edita no prazo, acompanha notas e corrige | **todos**, inclusive `externo` |
 | `/revisor` | Pareceres e avaliações | `professor`, `avaliador`, `admin` |
 | `/admin` | Auditoria, conflitos, papéis, usuários, configurações, notificações | `admin` |
 | `/co-chairs` | Trabalhos, categorias, atribuições, rankings | `avaliador`, `admin` |
-| `/congresso` | Área do evento — **congelada** | `admin` |
+| `/congresso` | Área do evento **congelada** | `admin` |
 
 **`externo` tem a mesma alçada de autor que `estudante`**: quem é de fora da
 UFLA também submete trabalho e cai em `/estudante` no login. Isso não exigiu
-migration — o Portal do Estudante é gateado por **dono**
+migration o Portal do Estudante é gateado por **dono**
 (`owner_id = auth.uid()`, pasta `auth.uid()/` no bucket), nunca por papel.
 
 O Portal Admin tem uma URL por seção (`/admin/papeis`, `/admin/conflitos`,
@@ -130,8 +130,8 @@ O Portal Admin tem uma URL por seção (`/admin/papeis`, `/admin/conflitos`,
 
 `/congresso` (inscrição, minicursos, certificados, programação e o
 `/congresso/admin`) saiu do escopo e não é desenvolvida até segunda ordem.
-Todo o prefixo está atrás de `allowedRoles={["admin"]}` — inclusive o que era
-público — e `portalDoPapel` não devolve `/congresso` para papel nenhum. O
+Todo o prefixo está atrás de `allowedRoles={["admin"]}` inclusive o que era
+público e `portalDoPapel` não devolve `/congresso` para papel nenhum. O
 código **não é apagado**: ainda há telas que podem migrar para outros portais
 (duas já migraram: papéis e usuários, hoje em `/admin`).
 
@@ -145,7 +145,7 @@ código **não é apagado**: ainda há telas que podem migrar para outros portai
   "não sei" e **não bloqueia** ninguém.
 - **Esqueci minha senha**: fluxo anônimo pela Edge Function `redefinir-senha`,
   com token de uso único.
-- Um e-mail só fica ocupado depois de confirmado — conta não confirmada é
+- Um e-mail só fica ocupado depois de confirmado conta não confirmada é
   liberável (`liberar_email_nao_confirmado`), senão qualquer um trancaria o
   e-mail alheio para sempre.
 - Sinal precoce de envio quebrado:
@@ -160,17 +160,17 @@ Editados em `/admin/configuracoes`, gravados na tabela `configuracoes`
 
 - A trava do prazo mora no **trigger `protect_trabalhos_fields`**, não numa
   policy: policy recusada devolve uma mensagem ilegível ao autor; o trigger
-  devolve a frase certa. Os dois são servidor — o cliente não escapa.
+  devolve a frase certa. Os dois são servidor o cliente não escapa.
 - **Data vazia = sem prazo.** Fechar por omissão derrubaria todo o envio no
   instante em que a migration subisse.
 - O prazo é comparado em **`America/Sao_Paulo`**, com as duas pontas
-  inclusivas — em UTC, "até dia 31" fecharia às 21h do dia 30.
+  inclusivas em UTC, "até dia 31" fecharia às 21h do dia 30.
 - `aberto` vem do servidor, nunca recalculado no cliente a partir das datas
   (relógio de navegador adiantado reabriria o prazo na tela). Falha de rede
   devolve `aberto: true`.
 - ⚠ Só o **prazo** tem regra de servidor. `max_coautores`,
   `parecer_min_caracteres` e `alerta_horas` são gravados para o botão SALVAR
-  não mentir, mas não travam nada — usar um deles exige escrever a trava em
+  não mentir, mas não travam nada usar um deles exige escrever a trava em
   SQL junto.
 
 Na mesma tela ficam os **links de download** (modelos de artigo, normas,
@@ -191,20 +191,20 @@ src/
 ├── lib/                 # brand.ts, portais.ts, pageTitles.ts, pdfStorage.ts, …
 ├── pages/               # co-chairs/, estudante/, event/, revisor/ + públicas
 ├── services/            # queries e RPCs (avaliação, correção, revisores, …)
-├── test/                # Vitest — 17 arquivos, 187 testes
+├── test/                # Vitest 17 arquivos, 187 testes
 └── App.tsx              # mapa de rotas + providers
 
 supabase/
 ├── migrations/          # SQL aplicado em ordem por `npm run migrate`
 ├── functions/           # Edge Functions (Deno): enviar-email, redefinir-senha
-└── backups/             # snapshots do `npm run backup` (gitignored — tem PII)
+└── backups/             # snapshots do `npm run backup` (gitignored tem PII)
 
 scripts/                 # migrate, deploy, backup, checks de segurança, …
 deploy/                  # exemplos de nginx/apache (ver deploy/README.md)
 sql/rls-audit.sql        # consulta de auditoria das policies
 ```
 
-**Página não fala com o Supabase direto** — passa por `src/services/`. Essa
+**Página não fala com o Supabase direto** passa por `src/services/`. Essa
 regra é verificada por `npm run check:consolidacao`.
 
 ---
@@ -228,7 +228,7 @@ bundle:
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Settings → API → chave `anon`/publishable |
 | `VITE_SUPABASE_PDF_BUCKET` | nome do bucket dos PDFs (padrão: `Pdfs`) |
 
-> **Segredos nunca entram no `.env`** — nem no de desenvolvimento.
+> **Segredos nunca entram no `.env`** nem no de desenvolvimento.
 > `SUPABASE_ACCESS_TOKEN`, a chave `service_role`, a senha do banco e
 > `BREVO_API_KEY` são usados só por scripts de linha de comando, exportados
 > como variável de ambiente na hora do uso:
@@ -237,7 +237,7 @@ bundle:
 > $env:SUPABASE_ACCESS_TOKEN = "sbp_..."; npm run migrate
 > ```
 
-Os buckets de Storage são privados — PDFs saem por URL assinada
+Os buckets de Storage são privados PDFs saem por URL assinada
 (`src/lib/pdfStorage.ts`) e são exibidos em canvas por `react-pdf`
 (`src/components/PdfViewer.tsx`). Iframe com URL assinada dispara download;
 não usar.
@@ -257,12 +257,12 @@ npm run gen:types    # regenera src/integrations/supabase/types.ts
 
 O runner (`scripts/migrate.js`) executa os pendentes via Management API
 (o `service_role` **não** é usado), registra cada um em `public._migrations` e
-recarrega o cache de schema do PostgREST. É idempotente — já aplicados são
+recarrega o cache de schema do PostgREST. É idempotente já aplicados são
 pulados.
 
 **Regras:**
 
-- Nunca editar uma migration já aplicada — criar um arquivo novo.
+- Nunca editar uma migration já aplicada criar um arquivo novo.
 - Mudança de regra de negócio no servidor é migration (RPC/policy), não lógica
   no cliente.
 - Depois de **toda** migration aplicada, rodar `npm run gen:types`. Tipo
@@ -285,7 +285,7 @@ npm run check:seguranca               # as 5 travas, limpas E com canário plant
 npm run rls:probe                     # ataca o banco com a chave pública
 ```
 
-- ⚠ **`tsc` sem `-p tsconfig.app.json` não checa nada** — o `tsconfig.json` da
+- ⚠ **`tsc` sem `-p tsconfig.app.json` não checa nada** o `tsconfig.json` da
   raiz tem `files: []`. Um `npx tsc --noEmit` "limpo" é falso sossego.
 - ⚠ **`tsconfig.app.json` tem `strict: false`**: sem `strictNullChecks` o
   TypeScript não estreita união por discriminante booleano. Union nova
@@ -293,7 +293,7 @@ npm run rls:probe                     # ataca o banco com a chave pública
   `ok: boolean`.
 - `check:seguranca` roda cada verificação **duas vezes**: com a árvore limpa
   (tem de passar) e com uma vulnerabilidade plantada (tem de falhar). Trava que
-  nunca disparou não é trava conhecida — essa suíte já pegou três cegas neste
+  nunca disparou não é trava conhecida essa suíte já pegou três cegas neste
   projeto.
 
 ---
@@ -308,7 +308,7 @@ npm run deploy -- --preview   # publica e verifica a URL workers.dev
 
 `npm run deploy` é a **única forma suportada** de publicar (`deploy:raw` pula
 as travas). O alvo é Cloudflare Workers com static assets (Worker `ciufla`,
-`wrangler.jsonc`); o fallback de SPA vem de `assets.not_found_handling` —
+`wrangler.jsonc`); o fallback de SPA vem de `assets.not_found_handling`
 `public/_redirects` **não existe mais**, a regra catch-all é rejeitada pela API
 da Cloudflare.
 
@@ -336,18 +336,18 @@ npm run backup                       # banco (Management API) + Storage
 npm run backup:conferir -- <pasta>   # confere o backup
 ```
 
-Vai para `supabase/backups/` — **gitignored, contém PII e todos os PDFs**.
+Vai para `supabase/backups/` **gitignored, contém PII e todos os PDFs**.
 Exige `SUPABASE_ACCESS_TOKEN` e `SUPABASE_SERVICE_ROLE_KEY`.
 
 - O `restaurar.sql` gerado dá `TRUNCATE` antes de repovoar: as migrations
   semeiam `categorias`/`criterios` sem id explícito, e um restore por merge
   duplicava linha.
 - **`auth.users` fica fora do dump** (mora fora do schema `public`): restaurar
-  num projeto novo traz os dados, mas **não as contas** — e os donos ficam
+  num projeto novo traz os dados, mas **não as contas** e os donos ficam
   órfãos.
 - `backup:conferir` com Docker ligado **restaura de verdade** num Postgres
   descartável e confere as chaves estrangeiras. Sem Docker faz só a conferência
-  estrutural, que não prova restauração — contagem de linha certa já passou com
+  estrutural, que não prova restauração contagem de linha certa já passou com
   dado quebrado.
 
 ---
@@ -357,15 +357,15 @@ Exige `SUPABASE_ACCESS_TOKEN` e `SUPABASE_SERVICE_ROLE_KEY`.
 - **Marca**: todo texto de nome do sistema sai de `src/lib/brand.ts`
   (`APP_NAME`, `APP_SHORT`, `APP_MARK`, `SUPPORT_EMAIL`). Não hardcodar.
   Não renomear as chaves `nexus_*` do localStorage nem as variáveis CSS
-  `--nexus-*` — apagaria dados de usuários existentes.
+  `--nexus-*` apagaria dados de usuários existentes.
 - **Rota nova exige 3 edições**: `App.tsx`, entrada em `src/lib/pageTitles.ts`
-  (a ordem importa — padrões fixos como `trabalhos/novo` antes de
+  (a ordem importa padrões fixos como `trabalhos/novo` antes de
   `trabalhos/:id`; há teste) e, se autenticada, `public/robots.txt` + os
   configs de deploy (`vercel.json`, `public/_headers`, `deploy/*.example`).
 - Acesso ao Supabase **só** por `src/services/`.
 - Idioma da UI e dos comentários: pt-BR.
 - Build de produção é `npm run build` (nunca `build:dev`).
-- `vite_project/` é um scaffold antigo, fora do git — ignorar.
+- `vite_project/` é um scaffold antigo, fora do git ignorar.
 
 ---
 
@@ -395,4 +395,4 @@ Exige `SUPABASE_ACCESS_TOKEN` e `SUPABASE_SERVICE_ROLE_KEY`.
 Os que tocam produção (`migrate`, `deploy*`, `config:secrets`, `seed:admin`,
 `purge:contas`, `backup`) só devem ser rodados com intenção explícita.
 `purge:contas` é destrutivo e irreversível: apaga contas, dados derivados e os
-PDFs no Storage — `--apply` é o que executa; o padrão é simulação.
+PDFs no Storage `--apply` é o que executa; o padrão é simulação.
