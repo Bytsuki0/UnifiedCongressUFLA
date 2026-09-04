@@ -197,6 +197,44 @@ export type Database = {
         }
         Relationships: []
       }
+      categoria_anexos: {
+        Row: {
+          categoria_id: string
+          criado_em: string
+          descricao: string
+          id: string
+          ordem: number
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          categoria_id: string
+          criado_em?: string
+          descricao?: string
+          id?: string
+          ordem?: number
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          categoria_id?: string
+          criado_em?: string
+          descricao?: string
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categoria_anexos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias: {
         Row: {
           created_at: string
@@ -807,6 +845,54 @@ export type Database = {
         }
         Relationships: []
       }
+      trabalho_anexos: {
+        Row: {
+          anexo_id: string | null
+          criado_em: string
+          id: string
+          ordem: number
+          tipo: string
+          titulo: string
+          trabalho_id: string
+          valor: string
+        }
+        Insert: {
+          anexo_id?: string | null
+          criado_em?: string
+          id?: string
+          ordem?: number
+          tipo: string
+          titulo: string
+          trabalho_id: string
+          valor: string
+        }
+        Update: {
+          anexo_id?: string | null
+          criado_em?: string
+          id?: string
+          ordem?: number
+          tipo?: string
+          titulo?: string
+          trabalho_id?: string
+          valor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trabalho_anexos_anexo_id_fkey"
+            columns: ["anexo_id"]
+            isOneToOne: false
+            referencedRelation: "categoria_anexos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trabalho_anexos_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trabalho_revisores: {
         Row: {
           created_at: string
@@ -857,14 +943,11 @@ export type Database = {
           orientador_email: string | null
           owner_id: string | null
           palavras_chave: string[]
-          pdf_url: string | null
           reenviado_em: string | null
           resumo: string | null
           rodada: number
           status: string
-          tipo_resumo: string
           titulo: string
-          video_url: string | null
         }
         Insert: {
           autores: string
@@ -877,14 +960,11 @@ export type Database = {
           orientador_email?: string | null
           owner_id?: string | null
           palavras_chave?: string[]
-          pdf_url?: string | null
           reenviado_em?: string | null
           resumo?: string | null
           rodada?: number
           status?: string
-          tipo_resumo?: string
           titulo: string
-          video_url?: string | null
         }
         Update: {
           autores?: string
@@ -897,14 +977,11 @@ export type Database = {
           orientador_email?: string | null
           owner_id?: string | null
           palavras_chave?: string[]
-          pdf_url?: string | null
           reenviado_em?: string | null
           resumo?: string | null
           rodada?: number
           status?: string
-          tipo_resumo?: string
           titulo?: string
-          video_url?: string | null
         }
         Relationships: [
           {
@@ -967,6 +1044,10 @@ export type Database = {
           nome: string
           tipo: string
         }[]
+      }
+      aplicar_anexos: {
+        Args: { _anexos: Json; _trabalho_id: string }
+        Returns: string[]
       }
       aplicar_decisao: { Args: { _trabalho_id: string }; Returns: string }
       arquivos_download_publicos: {
@@ -1045,26 +1126,22 @@ export type Database = {
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
       editar_submissao: {
         Args: {
+          _anexos?: Json
           _palavras_chave: string[]
-          _pdf_url?: string
-          _tipo_resumo: string
           _titulo: string
           _trabalho_id: string
-          _video_url: string
         }
-        Returns: string
+        Returns: string[]
       }
       email_confirmado: { Args: never; Returns: boolean }
       enviar_correcao: {
         Args: {
+          _anexos?: Json
           _palavras_chave: string[]
-          _pdf_url?: string
-          _tipo_resumo: string
           _titulo: string
           _trabalho_id: string
-          _video_url: string
         }
-        Returns: string
+        Returns: string[]
       }
       exigir_email_confirmado: { Args: never; Returns: undefined }
       get_my_roles: { Args: never; Returns: string[] }
@@ -1139,21 +1216,31 @@ export type Database = {
       }
       reenviar_trabalho: {
         Args: {
+          _anexos?: Json
           _autores: string
           _categoria_id: string
           _coautores: Json
           _orientador_email: string
           _palavras_chave: string[]
-          _pdf_url?: string
-          _tipo_resumo: string
           _titulo: string
           _trabalho_id: string
-          _video_url: string
         }
-        Returns: string
+        Returns: string[]
       }
       registrar_parecer_editorial: {
         Args: { _comentario: string; _decisao: string; _trabalho_id: string }
+        Returns: string
+      }
+      submeter_trabalho: {
+        Args: {
+          _anexos: Json
+          _autores: string
+          _categoria_id: string
+          _coautores: Json
+          _orientador_email: string
+          _palavras_chave: string[]
+          _titulo: string
+        }
         Returns: string
       }
       submissoes_abertas: { Args: never; Returns: boolean }

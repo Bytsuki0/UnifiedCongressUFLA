@@ -3,42 +3,49 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterMeuTrabalho } from "@/services/trabalhosService";
-import { openPdf } from "@/lib/pdfStorage";
+import { listarAnexosDoTrabalho } from "@/services/anexosService";
 import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import {
   carregarPareceresDoTrabalho,
   enviarCorrecao,
   type ParecerAnonimo,
 } from "@/services/correcaoService";
+import { formatarPalavrasChave, parsePalavrasChave } from "@/lib/submissao";
 import {
-  formatarPalavrasChave,
-  parsePalavrasChave,
-  TIPO_RESUMO_PADRAO,
-} from "@/lib/submissao";
-import { idDoVideo } from "@/lib/youtube";
-import { AGUARDANDO_CORRECAO, MAX_PDF_BYTES, type Coautor, type Submission } from "./shared";
+  rascunhoInicial,
+  resumoDoPasso,
+  validarAnexos,
+  type AnexoDoTrabalho,
+  type RascunhoAnexos,
+} from "@/lib/anexos";
+import { CamposAnexos } from "@/components/estudante/CamposAnexos";
+import { AGUARDANDO_CORRECAO, useExigencias, type Coautor, type Submission } from "./shared";
 
 /**
- * Rodada de correção: aberta quando os pareceres consolidam em
- * "aprovado com correções" (2 votos nesse sentido, ou os 3 votos
- * diferentes entre si). O autor troca o PDF e ajusta título, tipo de
- * resumo, palavras-chave e vídeo;
- * orientador, coautores e categoria ficam travados — foram eles que
- * definiram os impedimentos e os critérios já aplicados.
+ * Rodada de correção: aberta quando a organização decide "aprovado com
+ * correções" em /co-chairs/parecer-editorial. O autor ajusta título e
+ * palavras-chave e reenvia os anexos que a categoria exige; orientador,
+ * coautores e categoria ficam travados — foram eles que definiram os
+ * impedimentos e os critérios já aplicados.
  */
 const Correcao = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
 
+  const { exigenciasDe, carregando: carregandoExigencias } = useExigencias();
+
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [atuais, setAtuais] = useState<AnexoDoTrabalho[]>([]);
+  const [anexos, setAnexos] = useState<RascunhoAnexos>({});
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+
+  // A categoria não muda na correção, então as exigências também não.
+  const exigencias = exigenciasDe(trabalho?.categoria_id);
 
   const carregar = useCallback(async () => {
     if (!id || !user) return;
@@ -61,7 +68,7 @@ const Correcao = () => {
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
-    setVideoUrl(sub.video_url ?? "");
+    setAtuais(await listarAnexosDoTrabalho(sub.id).catch(() => []));
 
     try {
       setPareceres(await carregarPareceresDoTrabalho(id));
@@ -76,9 +83,14 @@ const Correcao = () => {
     carregar();
   }, [carregar]);
 
-  const verPdf = async () => {
-    if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
-  };
+  // Links de vídeo pré-preenchidos; PDFs vazios, o que a RPC lê como
+  // "mantém o arquivo atual".
+  useEffect(() => {
+    if (exigencias.length === 0) return;
+    setAnexos((atual) =>
+      Object.keys(atual).length > 0 ? atual : rascunhoInicial(exigencias, atuais),
+    );
+  }, [exigencias, atuais]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -92,19 +104,10 @@ const Correcao = () => {
       toast.error("Informe ao menos uma palavra-chave.");
       return;
     }
-    if (!idDoVideo(videoUrl)) {
-      toast.error("Informe um link válido de vídeo do YouTube.");
+    const erroAnexos = validarAnexos({ exigencias, rascunho: anexos, atuais });
+    if (erroAnexos) {
+      toast.error(erroAnexos);
       return;
-    }
-    if (arquivo) {
-      if (arquivo.type !== "application/pdf") {
-        toast.error("O arquivo precisa estar em formato PDF.");
-        return;
-      }
-      if (arquivo.size > MAX_PDF_BYTES) {
-        toast.error("O PDF excede o limite de 10MB.");
-        return;
-      }
     }
 
     setEnviando(true);
@@ -114,9 +117,8 @@ const Correcao = () => {
         ownerId: user.id,
         titulo: titulo.trim(),
         palavrasChave,
-        videoUrl: videoUrl.trim(),
-        tipoResumo: TIPO_RESUMO_PADRAO,
-        arquivo,
+        exigencias,
+        anexos,
       });
       toast.success("Versão corrigida enviada. Seu trabalho está aprovado.");
       navigate("/estudante/papeis-submetidos");
@@ -126,7 +128,7 @@ const Correcao = () => {
     }
   }
 
-  if (loading) {
+  if (loading || carregandoExigencias) {
     return (
       <div className="section active">
         <div className="content-area">
@@ -201,7 +203,7 @@ const Correcao = () => {
               <div className="step-number">{pareceres.length > 0 ? "02" : "01"}</div>
               <div>
                 <div className="step-title">Informações do Trabalho</div>
-                <div className="step-subtitle">Título, palavras-chave e vídeo podem ser alterados</div>
+                <div className="step-subtitle">Título e palavras-chave podem ser alterados</div>
               </div>
             </div>
 
@@ -227,18 +229,6 @@ const Correcao = () => {
                 onChange={(e) => setPalavrasChaveTexto(e.target.value)}
               />
               <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="correcao-video">Vídeo de Apresentação (YouTube) *</label>
-              <input
-                type="url"
-                id="correcao-video"
-                className="form-input"
-                placeholder="https://www.youtube.com/watch?v=..."
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-              />
             </div>
           </div>
 
@@ -276,57 +266,23 @@ const Correcao = () => {
             </div>
           </div>
 
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">{pareceres.length > 0 ? "04" : "03"}</div>
-              <div>
-                <div className="step-title">Arquivo Corrigido</div>
-                <div className="step-subtitle">Opcional · Limite 10MB · o PDF novo substitui e apaga o anterior</div>
+          {exigencias.length > 0 && (
+            <div className="step-card">
+              <div className="step-card-header">
+                <div className="step-number">{pareceres.length > 0 ? "04" : "03"}</div>
+                <div>
+                  <div className="step-title">Arquivos e Vídeos Corrigidos</div>
+                  <div className="step-subtitle">{resumoDoPasso(exigencias)}</div>
+                </div>
               </div>
+              <CamposAnexos
+                exigencias={exigencias}
+                rascunho={anexos}
+                onMudar={setAnexos}
+                atuais={atuais}
+              />
             </div>
-
-            {trabalho?.pdf_url && (
-              <div className="import-row">
-                <div className="import-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
-                <div className="import-info">
-                  <div className="import-label">Versão atual</div>
-                  <div className="import-desc">Confira o arquivo que está registrado hoje</div>
-                </div>
-                <button type="button" className="btn btn-outline btn-sm" onClick={verPdf}>Ver PDF</button>
-              </div>
-            )}
-
-            <div
-              className="drop-zone"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setArquivo(f); }}
-            >
-              <div className="drop-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-              </div>
-              {arquivo ? (
-                <div style={{ color: "var(--color-success)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  {arquivo.name}
-                </div>
-              ) : (
-                <>
-                  <div className="drop-title">Arraste o PDF corrigido aqui</div>
-                  <div className="drop-subtitle">Sem arquivo novo, o PDF atual é mantido</div>
-                  <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
-                    Selecionar Arquivo
-                    <input type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) setArquivo(e.target.files[0]); }} />
-                  </label>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="form-footer">
             <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/papeis-submetidos")}>

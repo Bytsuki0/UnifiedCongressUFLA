@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
-import { Tags, Plus, Trash2, Save, X } from "lucide-react";
+import { Tags, Plus, Trash2, Save, X, FileText, Video } from "lucide-react";
 import {
+  atualizarAnexoCategoria,
   carregarCategorias,
+  criarAnexoCategoria,
   criarCategoria,
+  excluirAnexoCategoria,
   excluirCategoria,
   excluirCriterio,
   salvarCriterios,
   type CategoriaComCriterios,
   type Criterio,
 } from "@/services/categoriasService";
+import type { AnexoDaCategoria, TipoAnexo } from "@/lib/anexos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,12 +41,35 @@ import { toast } from "sonner";
 const emptyCriterios = (): Criterio[] =>
   Array.from({ length: 5 }, (_, i) => ({ ordem: i + 1, titulo: "" }));
 
+/**
+ * O rótulo padrão de cada tipo de anexo.
+ *
+ * ⚠ São DOIS botões de adicionar, um por tipo, e não um botão com um
+ * seletor de tipo — mesmo raciocínio de `ArquivosDownloadPanel`: num
+ * seletor, escolher errado é o padrão, e uma exigência de PDF criada
+ * como vídeo pede ao autor um link do YouTube no lugar do arquivo.
+ * `tipo` também não é editável depois (ver `atualizarAnexoCategoria`):
+ * trocá-lo numa exigência já cumprida deixaria PDFs pendurados numa
+ * exigência de vídeo.
+ */
+const PADRAO_DO_TIPO: Record<TipoAnexo, { titulo: string; descricao: string }> = {
+  pdf: {
+    titulo: "Trabalho completo",
+    descricao: "O arquivo do trabalho em PDF, até 10 MB.",
+  },
+  video: {
+    titulo: "Vídeo de apresentação",
+    descricao: "Link do vídeo no YouTube. Os avaliadores o assistem dentro do sistema.",
+  },
+};
+
 const Categorias = () => {
   const [categorias, setCategorias] = useState<CategoriaComCriterios[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<CategoriaComCriterios | null>(null);
+  const [anexoOcupado, setAnexoOcupado] = useState<string | null>(null);
 
   // Diálogo de nova categoria
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -121,6 +148,84 @@ const Categorias = () => {
     }
   };
 
+  // ----- anexos exigidos por uma categoria -----
+  // Gravam NA HORA, fora do botão "Salvar critérios" (que grava outra
+  // tabela). Um botão só para as duas coisas deixaria o co-chair sem
+  // saber o que foi gravado quando uma das duas falhasse.
+  const addAnexo = async (cat: CategoriaComCriterios, tipo: TipoAnexo) => {
+    setAnexoOcupado(cat.id);
+    try {
+      const criado = await criarAnexoCategoria({
+        categoriaId: cat.id,
+        tipo,
+        ...PADRAO_DO_TIPO[tipo],
+        ordem: cat.anexos.reduce((maior, a) => Math.max(maior, a.ordem), 0) + 1,
+      });
+      setCategorias((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, anexos: [...c.anexos, criado] } : c)),
+      );
+      toast.success("Anexo exigido adicionado.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao adicionar o anexo.");
+    } finally {
+      setAnexoOcupado(null);
+    }
+  };
+
+  const setAnexoCampo = (catId: string, anexoId: string, campos: Partial<AnexoDaCategoria>) =>
+    setCategorias((prev) =>
+      prev.map((c) =>
+        c.id === catId
+          ? { ...c, anexos: c.anexos.map((a) => (a.id === anexoId ? { ...a, ...campos } : a)) }
+          : c,
+      ),
+    );
+
+  const salvarAnexo = async (catId: string, anexo: AnexoDaCategoria) => {
+    if (!anexo.titulo.trim()) {
+      toast.error("O anexo precisa de um nome — é ele que vira a aba na tela do revisor.");
+      return;
+    }
+    setAnexoOcupado(anexo.id);
+    try {
+      await atualizarAnexoCategoria(anexo.id, {
+        titulo: anexo.titulo.trim(),
+        descricao: anexo.descricao.trim(),
+      });
+      toast.success("Anexo salvo.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar o anexo.");
+    } finally {
+      setAnexoOcupado(null);
+    }
+  };
+
+  const removerAnexo = async (cat: CategoriaComCriterios, anexo: AnexoDaCategoria) => {
+    const quantos = counts[cat.id] ?? 0;
+    const aviso =
+      `Remover "${anexo.titulo}" das exigências de ${cat.nome}?\n\n` +
+      "Os trabalhos já submetidos NÃO perdem o que enviaram — o arquivo continua " +
+      "visível para os revisores. Ele só é descartado se o autor salvar o trabalho " +
+      "de novo." +
+      (quantos > 0 ? `\n\n${quantos} trabalho(s) usam esta categoria.` : "");
+    if (!confirm(aviso)) return;
+
+    setAnexoOcupado(anexo.id);
+    try {
+      await excluirAnexoCategoria(anexo.id);
+      setCategorias((prev) =>
+        prev.map((c) =>
+          c.id === cat.id ? { ...c, anexos: c.anexos.filter((a) => a.id !== anexo.id) } : c,
+        ),
+      );
+      toast.success("Exigência removida.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao remover o anexo.");
+    } finally {
+      setAnexoOcupado(null);
+    }
+  };
+
   // ----- nova categoria -----
   const createCategoria = async () => {
     if (!newNome.trim()) {
@@ -129,9 +234,23 @@ const Categorias = () => {
     }
     setCreating(true);
     try {
-      const { criteriosComErro } = await criarCategoria(newNome, newCriterios);
+      const { criteriosComErro, anexosComErro } = await criarCategoria(
+        newNome,
+        newCriterios,
+        // Toda categoria nasce pedindo um PDF e um vídeo — o que o
+        // formulário exigia de todo mundo até 20260904. O co-chair ajusta
+        // no cartão da categoria (Extensão vira dois PDFs, e assim por
+        // diante).
+        [
+          { tipo: "pdf", ...PADRAO_DO_TIPO.pdf },
+          { tipo: "video", ...PADRAO_DO_TIPO.video },
+        ],
+      );
       if (criteriosComErro) {
         toast.error("Categoria criada, mas houve erro ao salvar os critérios.");
+      }
+      if (anexosComErro) {
+        toast.error("Categoria criada, mas houve erro ao salvar os anexos exigidos.");
       }
       toast.success("Categoria criada");
       setDialogOpen(false);
@@ -194,7 +313,9 @@ const Categorias = () => {
                 <div>
                   <h2 className="text-lg font-semibold">{cat.nome}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {counts[cat.id] ?? 0} trabalho(s) · {cat.criterios.length} critério(s)
+                    {counts[cat.id] ?? 0} trabalho(s) · {cat.criterios.length} critério(s) ·{" "}
+                    {cat.anexos.filter((a) => a.tipo === "pdf").length} PDF(s) ·{" "}
+                    {cat.anexos.filter((a) => a.tipo === "video").length} vídeo(s)
                   </p>
                 </div>
                 <Button
@@ -240,6 +361,95 @@ const Categorias = () => {
                     {savingId === cat.id ? "Salvando..." : "Salvar critérios"}
                   </Button>
                 </div>
+
+                {/* ---- O que esta categoria exige da submissão ---- */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Anexos exigidos na submissão
+                    </Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Cada linha vira um campo no formulário do autor e uma aba na tela do
+                      revisor. Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
+                    </p>
+                  </div>
+
+                  {cat.anexos.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum anexo exigido — quem submeter nesta categoria envia só os dados do
+                      trabalho.
+                    </p>
+                  ) : (
+                    cat.anexos.map((anexo) => (
+                      <div key={anexo.id} className="space-y-2 rounded-md border border-border p-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-secondary text-secondary-foreground"
+                            title={anexo.tipo === "pdf" ? "Arquivo PDF" : "Link de vídeo"}
+                          >
+                            {anexo.tipo === "pdf" ? (
+                              <FileText className="h-4 w-4" />
+                            ) : (
+                              <Video className="h-4 w-4" />
+                            )}
+                          </span>
+                          <Input
+                            value={anexo.titulo}
+                            placeholder={anexo.tipo === "pdf" ? "Nome do arquivo" : "Nome do vídeo"}
+                            onChange={(e) =>
+                              setAnexoCampo(cat.id, anexo.id, { titulo: e.target.value })
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            disabled={anexoOcupado === anexo.id}
+                            onClick={() => removerAnexo(cat, anexo)}
+                            aria-label={`Remover ${anexo.titulo}`}
+                          >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={anexo.descricao}
+                          placeholder="Explique o que enviar aqui (opcional)"
+                          onChange={(e) =>
+                            setAnexoCampo(cat.id, anexo.id, { descricao: e.target.value })
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={anexoOcupado === anexo.id}
+                          onClick={() => salvarAnexo(cat.id, anexo)}
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {anexoOcupado === anexo.id ? "Salvando..." : "Salvar anexo"}
+                        </Button>
+                      </div>
+                    ))
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={anexoOcupado === cat.id}
+                      onClick={() => addAnexo(cat, "pdf")}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Exigir um PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={anexoOcupado === cat.id}
+                      onClick={() => addAnexo(cat, "video")}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Exigir um vídeo
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -252,7 +462,8 @@ const Categorias = () => {
           <DialogHeader>
             <DialogTitle>Nova categoria</DialogTitle>
             <DialogDescription>
-              Defina o nome e os 5 critérios de análise iniciais (editáveis depois).
+              Defina o nome e os 5 critérios de análise iniciais (editáveis depois). A categoria
+              nasce pedindo um PDF e um vídeo na submissão — ajuste isso no cartão dela.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

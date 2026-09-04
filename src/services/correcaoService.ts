@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import { PDF_BUCKET } from "@/lib/pdfStorage";
-import type { TipoResumo } from "@/lib/submissao";
+import type { AnexoDaCategoria, RascunhoAnexos } from "@/lib/anexos";
+import {
+  caminhosDevolvidos,
+  descartarDoStorage,
+  prepararAnexos,
+} from "@/services/anexosService";
 import type { ParecerItem, ResultadoParecer } from "@/lib/types";
 
 /**
@@ -32,52 +36,45 @@ export type EnviarCorrecaoInput = {
   ownerId: string;
   titulo: string;
   palavrasChave: string[];
-  videoUrl: string;
-  tipoResumo: TipoResumo;
-  /** Novo PDF. Quando ausente, o arquivo atual é mantido. */
-  arquivo?: File | null;
+  /** O que a categoria do trabalho exige. */
+  exigencias: AnexoDaCategoria[];
+  /** O que o autor preencheu. PDF sem arquivo novo = manter o atual. */
+  anexos: RascunhoAnexos;
 };
 
 /**
- * Envia a versão corrigida: sobe o PDF novo (se houver), grava os campos
- * editáveis e o PDF pela RPC e só então apaga o arquivo antigo.
+ * Envia a versão corrigida: sobe os PDFs novos (se houver), grava os
+ * campos editáveis e os anexos pela RPC e só então apaga os arquivos
+ * substituídos.
  *
- * A ordem importa: se a gravação falhar, o PDF antigo continua sendo o
- * que a tabela aponta. O que sobra no Storage é o upload novo, órfão —
- * preferível a um trabalho sem arquivo.
+ * A ordem importa: se a gravação falhar, os PDFs antigos continuam sendo
+ * o que a tabela aponta. O que sobra no Storage são os uploads novos, e
+ * eles saem no `catch` — preferível a um trabalho sem arquivo.
  *
  * Orientador, coautores e categoria não são enviados: a RPC não os
- * aceita e o trigger do banco os mantém imutáveis.
+ * aceita e o trigger do banco os mantém imutáveis. A categoria fica de
+ * fora inclusive porque é ela que define QUAIS anexos são exigidos —
+ * trocá-la aqui invalidaria a lista que o autor acabou de preencher.
  */
 export async function enviarCorrecao(input: EnviarCorrecaoInput): Promise<void> {
-  let caminhoNovo: string | null = null;
-
-  if (input.arquivo) {
-    const nomeSeguro = input.arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    caminhoNovo = `${input.ownerId}/${Date.now()}-${nomeSeguro}`;
-    const { error: uploadError } = await supabase.storage
-      .from(PDF_BUCKET)
-      .upload(caminhoNovo, input.arquivo, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
-    if (uploadError) throw new Error("Não foi possível enviar o novo PDF.");
-  }
+  const { payload, enviados } = await prepararAnexos({
+    exigencias: input.exigencias,
+    rascunho: input.anexos,
+    ownerId: input.ownerId,
+  });
 
   const { data, error } = await supabase.rpc("enviar_correcao", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
     _palavras_chave: input.palavrasChave,
-    _video_url: input.videoUrl,
-    _tipo_resumo: input.tipoResumo,
-    _pdf_url: caminhoNovo,
+    _anexos: payload,
   });
-  if (error) throw new Error(error.message ?? "Não foi possível enviar a correção.");
-
-  // A RPC devolve o caminho do arquivo substituído — o antigo pode sair
-  // do Storage. Falha aqui não invalida o envio: o registro já está certo.
-  const caminhoAntigo = typeof data === "string" ? data : null;
-  if (caminhoAntigo && !/^https?:\/\//i.test(caminhoAntigo)) {
-    await supabase.storage.from(PDF_BUCKET).remove([caminhoAntigo]);
+  if (error) {
+    await descartarDoStorage(enviados);
+    throw new Error(error.message ?? "Não foi possível enviar a correção.");
   }
+
+  // A RPC devolve os caminhos que deixaram de ser referenciados. Falha
+  // aqui não invalida o envio: o registro já está certo.
+  await descartarDoStorage(caminhosDevolvidos(data));
 }

@@ -2,27 +2,35 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { submeterTrabalho } from "@/services/trabalhosService";
-import { parsePalavrasChave, TIPO_RESUMO_PADRAO } from "@/lib/submissao";
-import { idDoVideo } from "@/lib/youtube";
+import { parsePalavrasChave } from "@/lib/submissao";
+import { resumoDoPasso, validarAnexos, type RascunhoAnexos } from "@/lib/anexos";
+import { CamposAnexos } from "@/components/estudante/CamposAnexos";
 import { toast } from "sonner";
-import { MAX_PDF_BYTES, formatarData, usePrazo, useTrabalhos } from "./shared";
+import { formatarData, usePrazo, useExigencias, useTrabalhos } from "./shared";
 
 const NovaSubmissao = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { categorias } = useTrabalhos();
   const { prazo, carregando: carregandoPrazo, aberto, fase } = usePrazo();
+  const { exigenciasDe } = useExigencias();
 
   const [form, setForm] = useState({
     titulo: "", categoria: "", orientador: "",
     // Digitadas como texto separado por vírgula; viram lista só no envio.
-    palavrasChave: "", videoUrl: "",
+    palavrasChave: "",
   });
   const [coauthors, setCoauthors] = useState([{ nome: "", email: "" }]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // O que o autor preencheu para cada anexo exigido, indexado pelo id da
+  // exigência. Trocar de categoria não precisa limpar nada: as chaves de
+  // uma categoria simplesmente deixam de ser lidas.
+  const [anexos, setAnexos] = useState<RascunhoAnexos>({});
   const [submitting, setSubmitting] = useState(false);
 
   const palavrasChave = parsePalavrasChave(form.palavrasChave);
+  // Os campos de anexo só existem depois de a categoria ser escolhida —
+  // é ela que diz quantos PDFs e quantos vídeos o trabalho precisa.
+  const exigencias = exigenciasDe(form.categoria);
 
   const handleSubmitWork = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,20 +42,11 @@ const NovaSubmissao = () => {
       toast.error("Informe ao menos uma palavra-chave.");
       return;
     }
-    if (!idDoVideo(form.videoUrl)) {
-      toast.error("Informe um link válido de vídeo do YouTube.");
-      return;
-    }
-    if (!selectedFile) {
-      toast.error("Anexe o PDF do trabalho.");
-      return;
-    }
-    if (selectedFile.type !== "application/pdf") {
-      toast.error("O arquivo precisa estar em formato PDF.");
-      return;
-    }
-    if (selectedFile.size > MAX_PDF_BYTES) {
-      toast.error("O PDF excede o limite de 10MB.");
+    // Espelha `aplicar_anexos`: o servidor recusa de qualquer forma, isto
+    // só evita mandar um formulário que já se sabe incompleto.
+    const erroAnexos = validarAnexos({ exigencias, rascunho: anexos });
+    if (erroAnexos) {
+      toast.error(erroAnexos);
       return;
     }
     if (!user) {
@@ -68,14 +67,13 @@ const NovaSubmissao = () => {
       await submeterTrabalho({
         titulo: form.titulo,
         palavrasChave,
-        videoUrl: form.videoUrl.trim(),
-        tipoResumo: TIPO_RESUMO_PADRAO,
         categoriaId: form.categoria,
         autores,
         orientadorEmail: form.orientador.trim() || null,
         coautores,
-        arquivo: selectedFile,
         ownerId: user.id,
+        exigencias,
+        anexos,
       });
       toast.success("Trabalho submetido com sucesso!");
       navigate("/estudante/papeis-submetidos");
@@ -187,17 +185,14 @@ const NovaSubmissao = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="video-url">Vídeo de Apresentação (YouTube) *</label>
-              <input type="url" id="video-url" className="form-input" placeholder="https://www.youtube.com/watch?v=..." value={form.videoUrl} onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))} />
-              <div className="form-hint">Cole o endereço do vídeo. Os avaliadores o assistem dentro do sistema.</div>
-            </div>
-
-            <div className="form-group">
               <label className="form-label" htmlFor="categoria">Categoria *</label>
               <select id="categoria" className="form-select" value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
                 <option value="">Selecione a categoria</option>
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
+              <div className="form-hint">
+                É a categoria que define quais arquivos e vídeos o trabalho precisa enviar.
+              </div>
             </div>
           </div>
 
@@ -234,38 +229,22 @@ const NovaSubmissao = () => {
             </div>
           </div>
 
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">03</div>
-              <div>
-                <div className="step-title">Arquivo Final</div>
-                <div className="step-subtitle">Anexe o PDF do trabalho · Limite 10MB</div>
-              </div>
-            </div>
-            <div className="drop-zone" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setSelectedFile(f); }}>
-              <div className="drop-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-              </div>
-              {selectedFile ? (
-                <div style={{ color: "var(--color-success)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  {selectedFile.name}
+          {/* O passo dos anexos só existe quando a categoria pede alguma
+              coisa: uma categoria sem exigência não deve mostrar uma área
+              de upload vazia, e antes de escolher a categoria não há o que
+              pedir. */}
+          {form.categoria && exigencias.length > 0 && (
+            <div className="step-card">
+              <div className="step-card-header">
+                <div className="step-number">03</div>
+                <div>
+                  <div className="step-title">Arquivos e Vídeos</div>
+                  <div className="step-subtitle">{resumoDoPasso(exigencias)}</div>
                 </div>
-              ) : (
-                <>
-                  <div className="drop-title">Arraste seu PDF aqui</div>
-                  <div className="drop-subtitle">ou clique para selecionar do computador</div>
-                  <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
-                    Selecionar Arquivo
-                    <input type="file" accept=".pdf" style={{ display: "none" }} onChange={e => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); }} />
-                  </label>
-                </>
-              )}
+              </div>
+              <CamposAnexos exigencias={exigencias} rascunho={anexos} onMudar={setAnexos} />
             </div>
-          </div>
+          )}
 
           <div className="form-footer">
             <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Enviando..." : "Enviar Submissão"}</button>

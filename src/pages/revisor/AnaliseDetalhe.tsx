@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PdfViewer } from "@/components/PdfViewer";
-import { VideoViewer } from "@/components/VideoViewer";
+import { AbasDeAnexos, AcoesDoAnexo, CorpoDoAnexo } from "@/components/AnexosDoTrabalho";
+import { useAnexoAtivo } from "@/hooks/use-anexo-ativo";
 import { toast } from "sonner";
 import {
   Criterio,
@@ -19,7 +19,6 @@ import {
   salvarParecer,
   espelharParecerEmAvaliacao,
 } from "@/services/revisorService";
-import { resolvePdfUrl } from "@/lib/pdfStorage";
 import { NOTA_OPCOES, TRABALHO_STATUS_LABEL } from "./shared";
 
 const AnaliseDetalhe = () => {
@@ -28,8 +27,6 @@ const AnaliseDetalhe = () => {
   const { user } = useAuth();
 
   const [assoc, setAssoc] = useState<AssociacaoComTrabalho | null>(null);
-  // URL assinada e temporária do PDF (o bucket é privado — SEC-05).
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<Record<string, string>>({});
   const [criterios, setCriterios] = useState<Criterio[]>([]);
   const [resultado, setResultado] = useState<ResultadoParecer | "">("");
@@ -37,9 +34,14 @@ const AnaliseDetalhe = () => {
   const [comentarioGeral, setComentarioGeral] = useState("");
   const [jaAvaliado, setJaAvaliado] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Qual dos dois anexos ocupa o painel de leitura. Começa no PDF: é ele
-  // que o parecer avalia; o vídeo é complemento.
-  const [visor, setVisor] = useState<"pdf" | "video">("pdf");
+
+  // As abas de leitura saem do que o trabalho ENTREGOU, não do que a
+  // categoria exige hoje: a organização pode ter mudado as exigências
+  // depois da submissão, e o revisor tem de ver o que existe. A ordem é a
+  // que a organização definiu, então a primeira aba é a primeira
+  // exigência — normalmente o arquivo principal.
+  const anexos = assoc?.trabalho?.anexos ?? [];
+  const { indice, setIndice, ativo, url } = useAnexoAtivo(anexos);
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -54,7 +56,6 @@ const AnaliseDetalhe = () => {
         return;
       }
       setAssoc(a);
-      setPdfUrl(await resolvePdfUrl(trab.pdf_url));
       const crits = trab.categoria_id ? await listarCriterios(trab.categoria_id) : [];
       setCriterios(crits);
       const parecer = user?.email ? await obterParecer(trab.id, user.email) : null;
@@ -76,28 +77,6 @@ const AnaliseDetalhe = () => {
   useEffect(() => {
     carregar();
   }, [carregar]);
-
-  // Download apenas por clique explícito: busca o arquivo e salva localmente,
-  // garantindo o download mesmo quando o navegador está configurado para abrir PDFs.
-  async function baixarPdf() {
-    const trab = assoc?.trabalho;
-    if (!trab || !pdfUrl) return;
-    const nome = `${(trab.titulo || "trabalho").replace(/[^a-zA-Z0-9._-]+/g, "_")}.pdf`;
-    try {
-      const resp = await fetch(pdfUrl);
-      const blob = await resp.blob();
-      const obj = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = obj;
-      a.download = nome;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(obj);
-    } catch {
-      window.open(pdfUrl, "_blank", "noopener,noreferrer");
-    }
-  }
 
   function setNota(critId: string, nota: string) {
     setNotas((r) => ({ ...r, [critId]: { ...(r[critId] ?? { nota: "", comentario: "" }), nota } }));
@@ -146,7 +125,6 @@ const AnaliseDetalhe = () => {
     }
   }
 
-  const videoUrl = assoc?.trabalho?.video_url ?? null;
   const palavrasChave = assoc?.trabalho?.palavras_chave ?? [];
 
   return (
@@ -162,66 +140,20 @@ const AnaliseDetalhe = () => {
             : "—"}
         </span>
 
-        {/* Alternador do painel de leitura. Só aparece quando há vídeo:
-            sem ele o seletor teria uma opção morta. */}
-        {videoUrl && (
-          <div className="profile-select-group" style={{ marginBottom: 0, maxWidth: 260 }}>
-            <label className="profile-select-btn">
-              <input type="radio" name="visor" value="pdf" checked={visor === "pdf"} onChange={() => setVisor("pdf")} />
-              <span className="profile-select-text">PDF</span>
-            </label>
-            <label className="profile-select-btn">
-              <input type="radio" name="visor" value="video" checked={visor === "video"} onChange={() => setVisor("video")} />
-              <span className="profile-select-text">Vídeo</span>
-            </label>
-          </div>
-        )}
+        {/* Abas dos anexos entregues. Somem quando há um anexo só —
+            uma aba sozinha não é escolha. */}
+        <AbasDeAnexos anexos={anexos} indice={indice} onEscolher={setIndice} />
 
-        {visor === "pdf" && pdfUrl && (
-          <span style={{ display: "inline-flex", gap: "var(--space-2)" }}>
-            <button type="button" className="btn btn-primary btn-sm" onClick={baixarPdf}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              BAIXAR PDF
-            </button>
-            <a className="btn btn-outline btn-sm" href={pdfUrl} target="_blank" rel="noopener noreferrer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              ABRIR EM NOVA ABA
-            </a>
-          </span>
-        )}
-        {visor === "video" && videoUrl && (
-          <a className="btn btn-outline btn-sm" href={videoUrl} target="_blank" rel="noopener noreferrer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            ABRIR NO YOUTUBE
-          </a>
-        )}
+        <AcoesDoAnexo anexo={ativo} url={url} nomeBase={assoc?.trabalho?.titulo} />
       </div>
 
       <div className="avaliacao-layout">
         <div className="pdf-viewer">
-          {visor === "video" ? (
-            videoUrl ? (
-              <VideoViewer url={videoUrl} />
-            ) : (
-              <>
-                <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>
-                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                </svg>
-                <div className="pdf-viewer-filename">VÍDEO NÃO ANEXADO</div>
-                <div className="pdf-viewer-description">Este trabalho não possui vídeo de apresentação.</div>
-              </>
-            )
-          ) : pdfUrl ? (
-            <PdfViewer url={pdfUrl} />
-          ) : (
-            <>
-              <svg className="pdf-viewer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 64, height: 64, color: "var(--gray-400)" }}>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-              <div className="pdf-viewer-filename">PDF NÃO DISPONÍVEL</div>
-              <div className="pdf-viewer-description">Este trabalho não possui arquivo PDF anexado.</div>
-            </>
-          )}
+          <CorpoDoAnexo
+            anexo={ativo}
+            url={url}
+            vazio="A categoria deste trabalho não exigia arquivo nem vídeo."
+          />
         </div>
 
         <div className="review-panel">

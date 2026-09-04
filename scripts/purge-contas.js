@@ -231,6 +231,15 @@ function montarInventario({ porEmail, porDono }) {
     trabalhos: `
       SELECT * FROM public.trabalhos
       WHERE ${porDono("owner_id")} ORDER BY created_at`,
+    // Os anexos saem por ON DELETE CASCADE junto com o trabalho, então
+    // não têm passo de remoção próprio — mas precisam entrar no BACKUP:
+    // é neles que moram os caminhos dos PDFs no Storage desde
+    // 20260904120000, e sem eles o backup não diz a que arquivo cada
+    // linha correspondia.
+    trabalho_anexos: `
+      SELECT ta.* FROM public.trabalho_anexos ta
+      JOIN public.trabalhos t ON t.id = ta.trabalho_id
+      WHERE ${porDono("t.owner_id")} ORDER BY ta.criado_em`,
     avaliadores: `
       SELECT * FROM public.avaliadores
       WHERE ${porEmail("email")} ORDER BY email`,

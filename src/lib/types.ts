@@ -4,9 +4,11 @@ import type { Tables } from "@/integrations/supabase/types";
  * Tipos de linha derivados do schema gerado (`npm run gen:types`).
  *
  * Antes eram redigitados à mão aqui e tinham saído de sincronia com o
- * banco — `Trabalho` não declarava status/owner_id/coautores/pdf_url e
- * dava categoria_id como não-nulo, sendo que a coluna aceita NULL.
- * Derivar do gerado faz o TypeScript acusar a divergência na próxima vez.
+ * banco — `Trabalho` não declarava status/owner_id/coautores e dava
+ * categoria_id como não-nulo, sendo que a coluna aceita NULL. Derivar do
+ * gerado faz o TypeScript acusar a divergência na próxima vez — foi o que
+ * apontou, uma a uma, as telas que liam `pdf_url` quando a 20260904120000
+ * moveu os anexos para tabela própria.
  */
 export type Avaliador = Tables<"avaliadores">;
 export type Categoria = Tables<"categorias">;

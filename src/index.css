@@ -1281,6 +1281,60 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   box-shadow: var(--shadow-sm);
 }
 
+/* ---- Abas dos anexos do trabalho (AnexosDoTrabalho.tsx) ---- */
+/* Mesma linguagem do .profile-select-group, com duas diferenças que a
+   lista variável exige: os itens NÃO dividem a largura em partes iguais
+   (os títulos vêm da organização e têm comprimentos muito diferentes) e a
+   barra QUEBRA em várias linhas — uma categoria com quatro anexos não
+   pode espremer os rótulos até virarem reticências. */
+.anexo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--gray-100);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.anexo-tab {
+  flex: 0 1 auto;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.anexo-tab input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.anexo-tab-text {
+  display: block;
+  padding: 8px 12px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-black);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-label);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.anexo-tab input:checked + .anexo-tab-text {
+  background: var(--color-primary);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Foco visível pelo teclado: o input real é invisível, então o anel tem
+   de aparecer no texto. */
+.anexo-tab input:focus-visible + .anexo-tab-text {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* ---- Página inicial pública (Landing.tsx) ---- */
 .landing-header {
   position: fixed;

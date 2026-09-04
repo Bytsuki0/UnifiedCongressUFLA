@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { listarTrabalhosDoAutorComCategorias } from "@/services/trabalhosService";
+import { listarAnexosPorCategoria } from "@/services/categoriasService";
 import { carregarPrazoSubmissoes, type PrazoSubmissoes } from "@/services/configuracoesService";
 import { useAuth } from "@/contexts/AuthContext";
+import type { AnexoDaCategoria } from "@/lib/anexos";
 
 // Tipos e helpers compartilhados pelas páginas do Portal do Estudante.
 
@@ -18,8 +20,6 @@ export type Submission = {
    */
   resumo?: string | null;
   palavras_chave?: string[] | null;
-  video_url?: string | null;
-  tipo_resumo?: string | null;
   autores: string;
   categoria_id: string | null;
   status: string;
@@ -27,7 +27,6 @@ export type Submission = {
   created_at: string;
   orientador_email?: string | null;
   coautores?: Coautor[] | null;
-  pdf_url?: string | null;
   correcoes_enviadas_em?: string | null;
   /** Rodada corrente de avaliação. Sobe a cada reenvio ("resubmeter"). */
   rodada?: number;
@@ -38,8 +37,9 @@ export type Submission = {
 export type Categoria = { id: string; nome: string };
 
 // O bucket de PDFs (privado) e o helper de URL assinada vivem em
-// "@/lib/pdfStorage".
-export const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
+// "@/lib/pdfStorage"; o limite de tamanho, em "@/lib/anexos" (é lá que a
+// validação dos anexos o aplica).
+export { MAX_PDF_BYTES } from "@/lib/anexos";
 
 export const statusLabel: Record<string, string> = {
   pendente: "Recebido",
@@ -200,6 +200,40 @@ export function usePrazo() {
   }, []);
 
   return { prazo, carregando, aberto: prazo?.aberto ?? null, fase: fasePrazo(prazo) };
+}
+
+/**
+ * O que cada categoria EXIGE da submissão, indexado por categoria.
+ *
+ * As quatro telas do autor precisam disso para montar os campos de
+ * anexo. Carrega tudo de uma vez — a tabela tem dezenas de linhas — para
+ * que trocar a categoria no formulário não pisque um "carregando" no
+ * meio do preenchimento.
+ *
+ * Falha de rede devolve mapa vazio, e a consequência é benigna: o passo
+ * de anexos não aparece e o servidor recusa a submissão incompleta com a
+ * frase certa. O contrário — travar o formulário inteiro — seria pior.
+ */
+export function useExigencias() {
+  const [porCategoria, setPorCategoria] = useState<Record<string, AnexoDaCategoria[]>>({});
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    listarAnexosPorCategoria()
+      .then((mapa) => { if (vivo) setPorCategoria(mapa); })
+      .catch(() => { if (vivo) setPorCategoria({}); })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
+  }, []);
+
+  const exigenciasDe = useCallback(
+    (categoriaId: string | null | undefined): AnexoDaCategoria[] =>
+      categoriaId ? (porCategoria[categoriaId] ?? []) : [],
+    [porCategoria],
+  );
+
+  return { porCategoria, carregando, exigenciasDe };
 }
 
 /**

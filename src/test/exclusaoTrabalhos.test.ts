@@ -5,17 +5,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  *
  * O que este arquivo trava:
  *
- * 1. **A ordem.** A linha sai primeiro, o PDF depois. `pareceres`,
- *    `avaliacoes` e `trabalho_revisores` acompanham por ON DELETE
- *    CASCADE, mas o blob do Storage NÃO sai por SQL. Na ordem inversa,
- *    um DELETE recusado deixaria um trabalho vivo apontando para um
- *    arquivo que não existe mais; nesta, o pior caso é um órfão.
+ * 1. **A ordem.** A linha sai primeiro, os PDFs depois. `pareceres`,
+ *    `avaliacoes`, `trabalho_revisores` e `trabalho_anexos` acompanham
+ *    por ON DELETE CASCADE, mas o blob do Storage NÃO sai por SQL. Na
+ *    ordem inversa, um DELETE recusado deixaria um trabalho vivo
+ *    apontando para arquivos que não existem mais; nesta, o pior caso é
+ *    um órfão.
+ *
+ *    ⚠ Desde 20260904 os caminhos vêm de `trabalho_anexos`, e a leitura
+ *    prévia deixou de ser conveniência: as linhas de anexo somem no
+ *    CASCADE, então depois do DELETE não há mais como saber o que apagar.
  *
  * 2. **DELETE recusado não encosta no Storage.** É o corolário de (1) e
  *    o caso que o RLS produz de verdade: quem não é `is_event_staff()`
  *    leva recusa na linha e não pode levar o PDF junto.
  *
- * 3. **URL legada de outro bucket não vira `remove()`.** `pdf_url` guarda
+ * 3. **URL legada de outro bucket não vira `remove()`.** `valor` guarda
  *    o caminho no formato novo, mas linhas antigas guardam a URL pública
  *    inteira, de quando o bucket ainda era público. Parsear e apagar às
  *    cegas apagaria o objeto errado, em outro bucket.
@@ -48,6 +53,8 @@ function cadeia() {
     maybeSingle: () => entregar(),
     then: (ok: (v: unknown) => unknown, err?: (e: unknown) => unknown) => entregar().then(ok, err),
   };
+  // `caminhosDosAnexos` encadeia select.in.eq; o DELETE encadeia
+  // delete.eq / delete.in.select.
   for (const metodo of ["select", "eq", "in", "delete"]) {
     obj[metodo] = () => {
       passos.push(metodo);
@@ -85,20 +92,46 @@ beforeEach(() => {
 describe("excluirTrabalho", () => {
   it("apaga a linha antes do PDF", async () => {
     mocks.respostas = [
-      { data: { pdf_url: "abc-123/1754000000000-artigo.pdf" }, error: null },
+      {
+        data: [{ trabalho_id: "t1", valor: "abc-123/1754000000000-artigo.pdf" }],
+        error: null,
+      },
       { data: null, error: null },
     ];
 
     await excluirTrabalho("t1");
 
-    expect(mocks.ordem).toEqual(["select.eq", "delete.eq", "storage.remove"]);
+    expect(mocks.ordem).toEqual(["select.in.eq", "delete.eq", "storage.remove"]);
     expect(mocks.remove).toHaveBeenCalledWith(["abc-123/1754000000000-artigo.pdf"]);
+  });
+
+  /**
+   * Um trabalho pode ter vários PDFs agora (a categoria decide quantos).
+   * Todos saem na MESMA chamada — uma por arquivo multiplicaria os
+   * requests e deixaria a limpeza pela metade se uma delas falhasse.
+   */
+  it("apaga todos os PDFs do trabalho numa chamada só", async () => {
+    mocks.respostas = [
+      {
+        data: [
+          { trabalho_id: "t1", valor: "u1/relatorio.pdf" },
+          { trabalho_id: "t1", valor: "u1/plano.pdf" },
+        ],
+        error: null,
+      },
+      { data: null, error: null },
+    ];
+
+    await excluirTrabalho("t1");
+
+    expect(mocks.remove).toHaveBeenCalledTimes(1);
+    expect(mocks.remove).toHaveBeenCalledWith(["u1/relatorio.pdf", "u1/plano.pdf"]);
   });
 
   // Invariante 2: o RLS recusou a linha — o arquivo fica onde está.
   it("não toca no Storage quando o banco recusa o DELETE", async () => {
     mocks.respostas = [
-      { data: { pdf_url: "abc-123/artigo.pdf" }, error: null },
+      { data: [{ trabalho_id: "t1", valor: "abc-123/artigo.pdf" }], error: null },
       { data: null, error: { message: "row-level security" } },
     ];
 
@@ -106,12 +139,13 @@ describe("excluirTrabalho", () => {
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 
+  // Categoria sem exigência de PDF — legítimo desde 20260904.
   it("apaga a linha mesmo sem PDF associado", async () => {
-    mocks.respostas = [{ data: { pdf_url: null }, error: null }, { data: null, error: null }];
+    mocks.respostas = [{ data: [], error: null }, { data: null, error: null }];
 
     await excluirTrabalho("t1");
 
-    expect(mocks.ordem).toEqual(["select.eq", "delete.eq"]);
+    expect(mocks.ordem).toEqual(["select.in.eq", "delete.eq"]);
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 
@@ -129,7 +163,10 @@ describe("excluirTrabalho", () => {
     ],
     ["URL fora do Storage", "https://exemplo.org/arquivo.pdf", null],
   ])("%s", async (_caso, pdfUrl, esperado) => {
-    mocks.respostas = [{ data: { pdf_url: pdfUrl }, error: null }, { data: null, error: null }];
+    mocks.respostas = [
+      { data: [{ trabalho_id: "t1", valor: pdfUrl }], error: null },
+      { data: null, error: null },
+    ];
 
     await excluirTrabalho("t1");
 
@@ -143,9 +180,9 @@ describe("excluirTrabalhos", () => {
     mocks.respostas = [
       {
         data: [
-          { id: "t1", pdf_url: "u1/a.pdf" },
-          { id: "t2", pdf_url: "u2/b.pdf" },
-          { id: "t3", pdf_url: "u3/c.pdf" },
+          { trabalho_id: "t1", valor: "u1/a.pdf" },
+          { trabalho_id: "t2", valor: "u2/b.pdf" },
+          { trabalho_id: "t3", valor: "u3/c.pdf" },
         ],
         error: null,
       },
@@ -166,7 +203,7 @@ describe("excluirTrabalhos", () => {
 
   it("erro no DELETE em lote não toca no Storage", async () => {
     mocks.respostas = [
-      { data: [{ id: "t1", pdf_url: "u1/a.pdf" }], error: null },
+      { data: [{ trabalho_id: "t1", valor: "u1/a.pdf" }], error: null },
       { data: null, error: { message: "boom" } },
     ];
 

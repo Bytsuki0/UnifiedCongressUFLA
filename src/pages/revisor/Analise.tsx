@@ -9,7 +9,6 @@ import {
   listarResultadosDoRevisor,
   listarTrabalhosAssociados,
 } from "@/services/revisorService";
-import { openPdf } from "@/lib/pdfStorage";
 import {
   RESULTADO_BADGE,
   RESULTADO_LABEL,
@@ -82,7 +81,7 @@ const Analise = () => {
                   <th>TÍTULO</th>
                   <th>CATEGORIA</th>
                   <th>STATUS</th>
-                  <th>PDF</th>
+                  <th>ANEXOS</th>
                   <th>SEU PARECER</th>
                   <th>AÇÃO</th>
                 </tr>
@@ -96,7 +95,11 @@ const Analise = () => {
                       <td style={{ fontWeight: "var(--fw-semibold)" }}>{t?.titulo ?? "Trabalho removido"}</td>
                       <td>{t?.categoria_id ? (categorias[t.categoria_id] ?? "—") : "—"}</td>
                       <td>{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
-                      <td>{t?.pdf_url ? <button type="button" onClick={async () => { if (!(await openPdf(t.pdf_url))) toast.error("Não foi possível abrir o PDF."); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
+                      {/* Só a CONTAGEM, não os links: os anexos abrem na
+                          tela de análise, onde a leitura acontece com o
+                          formulário do parecer ao lado. Um "Ver PDF" aqui
+                          teria de virar N botões, um por anexo. */}
+                      <td>{t && t.anexos.length > 0 ? `${t.anexos.length} anexo(s)` : "—"}</td>
                       <td>{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
                       <td>
                         <button className="btn btn-primary btn-sm" disabled={!t} onClick={() => navigate(`/revisor/analise/${a.id}`)}>

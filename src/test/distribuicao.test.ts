@@ -12,12 +12,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * a `distribuir_revisores` em `submeterTrabalho` reabriria a distribuição
  * automática sem que ninguém percebesse na tela, porque a chamada antiga
  * era best-effort e engolia o próprio erro.
+ *
+ * ⚠ Desde 20260904 a submissão em si É uma RPC (`submeter_trabalho`, que
+ * grava o trabalho e os anexos numa transação só), então "não chamou RPC
+ * nenhuma" deixou de servir como asserção. O que o teste trava agora é o
+ * NOME: nenhuma das chamadas pode ser `distribuir_revisores`.
  */
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   insert: vi.fn(),
   upload: vi.fn(),
+  remove: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -28,7 +34,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         select: () => ({ single: mocks.insert }),
       }),
     }),
-    storage: { from: () => ({ upload: mocks.upload }) },
+    storage: { from: () => ({ upload: mocks.upload, remove: mocks.remove }) },
   },
 }));
 
@@ -45,28 +51,101 @@ beforeEach(() => {
   mocks.rpc.mockReset();
   mocks.insert.mockReset();
   mocks.upload.mockReset();
+  mocks.remove.mockReset();
 });
 
 describe("submeterTrabalho", () => {
+  const EXIGENCIAS = [
+    { id: "a1", categoria_id: "c1", tipo: "pdf" as const, titulo: "Trabalho", descricao: "", ordem: 1 },
+    { id: "a2", categoria_id: "c1", tipo: "video" as const, titulo: "Vídeo", descricao: "", ordem: 2 },
+  ];
+
   it("NÃO distribui revisores — o trabalho nasce sem nenhum", async () => {
     mocks.upload.mockResolvedValue({ error: null });
-    mocks.insert.mockResolvedValue({ data: { id: "t1" }, error: null });
+    mocks.rpc.mockResolvedValue({ data: "t1", error: null });
 
     const id = await submeterTrabalho({
       ownerId: "u1",
       titulo: "Um trabalho",
       palavrasChave: ["a"],
-      videoUrl: "https://youtu.be/x",
-      tipoResumo: "simples",
       categoriaId: "c1",
       autores: "Alguém",
       orientadorEmail: "orientador@ufla.br",
       coautores: [],
-      arquivo: new File(["conteudo"], "trabalho.pdf", { type: "application/pdf" }),
+      exigencias: EXIGENCIAS,
+      anexos: {
+        a1: { arquivo: new File(["conteudo"], "trabalho.pdf", { type: "application/pdf" }) },
+        a2: { url: "https://youtu.be/dQw4w9WgXcQ" },
+      },
     });
 
     expect(id).toBe("t1");
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    const nomes = mocks.rpc.mock.calls.map(([nome]) => nome);
+    expect(nomes).toEqual(["submeter_trabalho"]);
+    expect(nomes).not.toContain("distribuir_revisores");
+  });
+
+  /**
+   * Os anexos vão para o servidor como (anexo_id, valor), com o PDF já
+   * subido e o vídeo como link. O `tipo` e o `titulo` NÃO vão: quem os
+   * resolve é `aplicar_anexos`, a partir de `categoria_anexos` — mesma
+   * regra de `confirmar_distribuicao`, em que o cliente informa a escolha
+   * e nunca os atributos dela.
+   */
+  it("manda os anexos como (anexo_id, valor), sem tipo nem título", async () => {
+    mocks.upload.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ data: "t1", error: null });
+
+    await submeterTrabalho({
+      ownerId: "u1",
+      titulo: "T",
+      palavrasChave: ["a"],
+      categoriaId: "c1",
+      autores: "Alguém",
+      orientadorEmail: null,
+      coautores: [],
+      exigencias: EXIGENCIAS,
+      anexos: {
+        a1: { arquivo: new File(["x"], "arq.pdf", { type: "application/pdf" }) },
+        a2: { url: "https://youtu.be/dQw4w9WgXcQ" },
+      },
+    });
+
+    const [, args] = mocks.rpc.mock.calls[0];
+    expect(args._anexos).toHaveLength(2);
+    expect(Object.keys(args._anexos[0]).sort()).toEqual(["anexo_id", "valor"]);
+    // O PDF sobe para a pasta do próprio autor — a mesma regra que a
+    // policy de Storage e `aplicar_anexos` conferem no servidor.
+    expect(args._anexos[0].valor.startsWith("u1/")).toBe(true);
+    expect(args._anexos[1]).toEqual({ anexo_id: "a2", valor: "https://youtu.be/dQw4w9WgXcQ" });
+  });
+
+  /**
+   * A RPC recusou: o trabalho não existe, e o PDF que acabou de subir não
+   * é referenciado por nada. Antes de 20260904 a submissão era um insert
+   * e o upload órfão ficava para sempre; com N arquivos por trabalho, cada
+   * tentativa recusada deixaria N.
+   */
+  it("apaga os uploads da tentativa quando a RPC recusa", async () => {
+    mocks.upload.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "O prazo de submissão está encerrado." } });
+
+    await expect(
+      submeterTrabalho({
+        ownerId: "u1",
+        titulo: "T",
+        palavrasChave: ["a"],
+        categoriaId: "c1",
+        autores: "Alguém",
+        orientadorEmail: null,
+        coautores: [],
+        exigencias: [EXIGENCIAS[0]],
+        anexos: { a1: { arquivo: new File(["x"], "arq.pdf", { type: "application/pdf" }) } },
+      }),
+    ).rejects.toThrow("O prazo de submissão está encerrado.");
+
+    expect(mocks.remove).toHaveBeenCalledTimes(1);
+    expect(mocks.remove.mock.calls[0][0][0].startsWith("u1/")).toBe(true);
   });
 });
 

@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { ordenarAnexos, type AnexoDoTrabalho } from "@/lib/anexos";
+import { COLUNAS_ANEXO } from "@/services/anexosService";
 import {
   Criterio,
   MAX_REVISORES_POR_TRABALHO,
@@ -90,11 +92,19 @@ export type TrabalhoAssociado = {
   titulo: string;
   categoria_id: string | null;
   status: string;
-  pdf_url: string | null;
-  video_url: string | null;
   palavras_chave: string[] | null;
   /** Rodada CORRENTE do trabalho. Não identifica ninguém; ver `daRodadaCorrente`. */
   rodada: number;
+  /**
+   * O que o trabalho entregou — é o que vira as abas de leitura. Vem
+   * embarcado de `trabalho_anexos`, cuja policy de SELECT espelha a de
+   * `trabalhos` (dono, revisor associado, organização).
+   *
+   * Não identifica o autor mais do que `pdf_url` já identificava: o
+   * caminho do PDF sempre começou pela pasta `<owner_id>/`. Trocar isso
+   * é mudar o layout do bucket, não esta consulta.
+   */
+  anexos: AnexoDoTrabalho[];
 };
 
 /**
@@ -103,7 +113,7 @@ export type TrabalhoAssociado = {
  * aqui sem pensar reabre o buraco da avaliação às cegas.
  */
 const COLUNAS_VISIVEIS =
-  "id, titulo, categoria_id, status, pdf_url, video_url, palavras_chave, rodada";
+  `id, titulo, categoria_id, status, palavras_chave, rodada, anexos:trabalho_anexos(${COLUNAS_ANEXO})`;
 
 export type AssociacaoComTrabalho = TrabalhoRevisor & {
   trabalho: TrabalhoAssociado | null;
@@ -121,6 +131,18 @@ export type AssociacaoComTrabalho = TrabalhoRevisor & {
 export const daRodadaCorrente = (a: AssociacaoComTrabalho): boolean =>
   a.trabalho != null && a.rodada === a.trabalho.rodada;
 
+/**
+ * Reordena os anexos embarcados pelo PostgREST.
+ *
+ * A relação aninhada volta na ordem do banco, não na que a organização
+ * definiu — e é essa ordem que decide qual aba abre primeiro na tela do
+ * revisor.
+ */
+function comAnexosEmOrdem(a: AssociacaoComTrabalho): AssociacaoComTrabalho {
+  if (!a.trabalho) return a;
+  return { ...a, trabalho: { ...a.trabalho, anexos: ordenarAnexos(a.trabalho.anexos ?? []) } };
+}
+
 /** Lista os trabalhos associados a um revisor (por e-mail), na rodada corrente. */
 export async function listarTrabalhosAssociados(
   email: string,
@@ -131,7 +153,9 @@ export async function listarTrabalhosAssociados(
     .eq("revisor_email", email)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as unknown as AssociacaoComTrabalho[]).filter(daRodadaCorrente);
+  return ((data ?? []) as unknown as AssociacaoComTrabalho[])
+    .map(comAnexosEmOrdem)
+    .filter(daRodadaCorrente);
 }
 
 /**
@@ -152,7 +176,8 @@ export async function obterAssociacao(
     .maybeSingle();
   if (error) throw error;
   const assoc = (data as unknown as AssociacaoComTrabalho) ?? null;
-  return assoc && daRodadaCorrente(assoc) ? assoc : null;
+  if (!assoc || !daRodadaCorrente(assoc)) return null;
+  return comAnexosEmOrdem(assoc);
 }
 
 /** Critérios de avaliação de uma categoria, em ordem. */

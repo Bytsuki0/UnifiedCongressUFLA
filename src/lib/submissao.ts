@@ -9,21 +9,15 @@
  * de palavras-chave" evita que as telas discordem sobre o separador.
  */
 
-export type TipoResumo = "simples" | "estendido";
-
-/**
- * O tipo de resumo saiu do formulário — a organização deixou de pedir
- * essa distinção ao autor, e com ela saíram os rótulos e as telas que
- * mostravam o valor.
+/*
+ * O tipo de resumo ("simples" | "estendido") saiu daqui em 20260904.
  *
- * A constante fica porque a coluna `trabalhos.tipo_resumo` continua
- * `NOT NULL` com `CHECK (tipo_resumo IN ('simples','estendido'))`, e as
- * RPCs de escrita (`editar_submissao`, `enviar_correcao`,
- * `reenviar_trabalho`) continuam exigindo `_tipo_resumo`. Toda escrita
- * manda este valor. Apagar a constante exige migration mexendo no CHECK
- * e na assinatura das três RPCs — não é edição de cliente.
+ * O radio já não existia em tela nenhuma desde antes, mas a constante
+ * `TIPO_RESUMO_PADRAO` sobrevivia porque a coluna `trabalhos.tipo_resumo`
+ * era NOT NULL com CHECK e as três RPCs de escrita exigiam
+ * `_tipo_resumo`. A migration 20260904120000 dropou a coluna e reescreveu
+ * as três assinaturas, então não há mais nada a alimentar.
  */
-export const TIPO_RESUMO_PADRAO: TipoResumo = "simples";
 
 /**
  * Texto digitado -> lista de termos.

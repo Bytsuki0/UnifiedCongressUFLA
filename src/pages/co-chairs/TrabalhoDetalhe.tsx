@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { obterCategoria, obterTrabalho } from "@/services/trabalhosService";
+import { listarAnexosDoTrabalho } from "@/services/anexosService";
+import type { AnexoDoTrabalho } from "@/lib/anexos";
+import { openPdf } from "@/lib/pdfStorage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +15,7 @@ const TrabalhoDetalhe = () => {
   const { id } = useParams();
   const [trabalho, setTrabalho] = useState<Trabalho | null>(null);
   const [categoria, setCategoria] = useState<Categoria | null>(null);
+  const [anexos, setAnexos] = useState<AnexoDoTrabalho[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -22,6 +26,7 @@ const TrabalhoDetalhe = () => {
         return;
       }
       setTrabalho(data);
+      setAnexos(await listarAnexosDoTrabalho(data.id).catch(() => []));
       if (data.categoria_id) {
         setCategoria(await obterCategoria(data.categoria_id).catch(() => null));
       }
@@ -72,12 +77,42 @@ const TrabalhoDetalhe = () => {
               </div>
             </div>
           )}
-          {trabalho.video_url && (
+          {anexos.length > 0 && (
             <div>
-              <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Vídeo de apresentação</h3>
-              <a className="break-all text-primary underline" href={trabalho.video_url} target="_blank" rel="noopener noreferrer">
-                {trabalho.video_url}
-              </a>
+              <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
+                Anexos entregues
+              </h3>
+              <ul className="space-y-1 text-sm">
+                {anexos.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{a.titulo}</span>
+                    {a.tipo === "video" ? (
+                      <a
+                        className="break-all text-primary underline"
+                        href={a.valor}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {a.valor}
+                      </a>
+                    ) : (
+                      /* O bucket é privado: o caminho gravado só abre por
+                         URL assinada, gerada no clique. */
+                      <button
+                        type="button"
+                        className="text-primary underline"
+                        onClick={async () => {
+                          if (!(await openPdf(a.valor))) {
+                            toast.error("Não foi possível abrir o PDF.");
+                          }
+                        }}
+                      >
+                        Ver PDF
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {/* Opcional desde 20260819120000: o formulário do estudante não

@@ -3,18 +3,21 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { editarSubmissao, obterMeuTrabalho } from "@/services/trabalhosService";
-import { openPdf } from "@/lib/pdfStorage";
+import { listarAnexosDoTrabalho } from "@/services/anexosService";
+import { formatarPalavrasChave, parsePalavrasChave } from "@/lib/submissao";
 import {
-  formatarPalavrasChave,
-  parsePalavrasChave,
-  TIPO_RESUMO_PADRAO,
-} from "@/lib/submissao";
-import { idDoVideo } from "@/lib/youtube";
+  rascunhoInicial,
+  resumoDoPasso,
+  validarAnexos,
+  type AnexoDoTrabalho,
+  type RascunhoAnexos,
+} from "@/lib/anexos";
+import { CamposAnexos } from "@/components/estudante/CamposAnexos";
 import {
-  MAX_PDF_BYTES,
   PENDENTE,
   formatarData,
   usePrazo,
+  useExigencias,
   type Coautor,
   type Submission,
 } from "./shared";
@@ -26,14 +29,18 @@ import {
  * "aprovado com correções" e ignora o prazo; esta abre com 'pendente' e
  * só dentro da janela de submissão.
  *
- * Mesmo conjunto de campos das duas — título, palavras-chave, vídeo e
- * PDF. Autoria e
- * categoria ficam travadas mesmo com o prazo aberto, e não por descuido:
- * a distribuição de revisores sai do orientador e dos coautores (é assim
- * que o conflito de interesse é barrado) e os critérios do parecer saem
- * da categoria. Um co-chair pode já ter confirmado a distribuição deste
- * trabalho a qualquer momento — trocar autoria depois invalidaria em
- * silêncio a checagem de conflito que escolheu aqueles revisores.
+ * Mesmo conjunto de campos das duas — título, palavras-chave e os anexos
+ * que a categoria exige. Autoria e categoria ficam travadas mesmo com o
+ * prazo aberto, e não por descuido: a distribuição de revisores sai do
+ * orientador e dos coautores (é assim que o conflito de interesse é
+ * barrado) e os critérios do parecer saem da categoria. Um co-chair pode
+ * já ter confirmado a distribuição deste trabalho a qualquer momento —
+ * trocar autoria depois invalidaria em silêncio a checagem de conflito
+ * que escolheu aqueles revisores.
+ *
+ * ⚠ A categoria travada é o que garante que as EXIGÊNCIAS de anexo não
+ * mudam no meio da edição: trocá-la trocaria os campos do formulário.
+ * Só o reenvio (`Reenvio.tsx`) abre esse caminho.
  *
  * Quem recusa de fato é a RPC `editar_submissao`. Esta tela só evita que
  * a pessoa preencha um formulário que o banco vai rejeitar.
@@ -43,14 +50,18 @@ const EditarSubmissao = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { prazo, carregando: carregandoPrazo, aberto, fase } = usePrazo();
+  const { exigenciasDe, carregando: carregandoExigencias } = useExigencias();
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [atuais, setAtuais] = useState<AnexoDoTrabalho[]>([]);
+  const [anexos, setAnexos] = useState<RascunhoAnexos>({});
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // A categoria não muda nesta tela, então as exigências também não.
+  const exigencias = exigenciasDe(trabalho?.categoria_id);
 
   const carregar = useCallback(async () => {
     if (!id || !user) return;
@@ -68,15 +79,21 @@ const EditarSubmissao = () => {
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
-    setVideoUrl(sub.video_url ?? "");
+    setAtuais(await listarAnexosDoTrabalho(sub.id).catch(() => []));
     setLoading(false);
   }, [id, user, navigate]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const verPdf = async () => {
-    if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
-  };
+  // Os links de vídeo nascem preenchidos com o que está gravado; os PDFs
+  // nascem vazios, o que a RPC lê como "mantém o arquivo atual". Só roda
+  // quando as duas cargas terminam — antes disso não há o que preencher.
+  useEffect(() => {
+    if (exigencias.length === 0) return;
+    setAnexos((atual) =>
+      Object.keys(atual).length > 0 ? atual : rascunhoInicial(exigencias, atuais),
+    );
+  }, [exigencias, atuais]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,19 +107,10 @@ const EditarSubmissao = () => {
       toast.error("Informe ao menos uma palavra-chave.");
       return;
     }
-    if (!idDoVideo(videoUrl)) {
-      toast.error("Informe um link válido de vídeo do YouTube.");
+    const erroAnexos = validarAnexos({ exigencias, rascunho: anexos, atuais });
+    if (erroAnexos) {
+      toast.error(erroAnexos);
       return;
-    }
-    if (arquivo) {
-      if (arquivo.type !== "application/pdf") {
-        toast.error("O arquivo precisa estar em formato PDF.");
-        return;
-      }
-      if (arquivo.size > MAX_PDF_BYTES) {
-        toast.error("O PDF excede o limite de 10MB.");
-        return;
-      }
     }
 
     setSalvando(true);
@@ -112,9 +120,8 @@ const EditarSubmissao = () => {
         ownerId: user.id,
         titulo: titulo.trim(),
         palavrasChave,
-        videoUrl: videoUrl.trim(),
-        tipoResumo: TIPO_RESUMO_PADRAO,
-        arquivo,
+        exigencias,
+        anexos,
       });
       toast.success("Alterações salvas.");
       navigate("/estudante/papeis-submetidos");
@@ -124,7 +131,7 @@ const EditarSubmissao = () => {
     }
   }
 
-  if (loading || carregandoPrazo) {
+  if (loading || carregandoPrazo || carregandoExigencias) {
     return (
       <div className="section active">
         <div className="content-area">
@@ -238,7 +245,7 @@ const EditarSubmissao = () => {
               <div className="step-number">01</div>
               <div>
                 <div className="step-title">Informações do Trabalho</div>
-                <div className="step-subtitle">Título, palavras-chave e vídeo podem ser alterados</div>
+                <div className="step-subtitle">Título e palavras-chave podem ser alterados</div>
               </div>
             </div>
 
@@ -264,18 +271,6 @@ const EditarSubmissao = () => {
                 onChange={(e) => setPalavrasChaveTexto(e.target.value)}
               />
               <div className="form-hint">Separe os termos por vírgula ou ponto e vírgula.</div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="editar-video">Vídeo de Apresentação (YouTube) *</label>
-              <input
-                type="url"
-                id="editar-video"
-                className="form-input"
-                placeholder="https://www.youtube.com/watch?v=..."
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-              />
             </div>
           </div>
 
@@ -313,57 +308,23 @@ const EditarSubmissao = () => {
             </div>
           </div>
 
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">03</div>
-              <div>
-                <div className="step-title">Arquivo</div>
-                <div className="step-subtitle">Opcional · Limite 10MB · o PDF novo substitui e apaga o anterior</div>
+          {exigencias.length > 0 && (
+            <div className="step-card">
+              <div className="step-card-header">
+                <div className="step-number">03</div>
+                <div>
+                  <div className="step-title">Arquivos e Vídeos</div>
+                  <div className="step-subtitle">{resumoDoPasso(exigencias)}</div>
+                </div>
               </div>
+              <CamposAnexos
+                exigencias={exigencias}
+                rascunho={anexos}
+                onMudar={setAnexos}
+                atuais={atuais}
+              />
             </div>
-
-            {trabalho?.pdf_url && (
-              <div className="import-row">
-                <div className="import-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
-                <div className="import-info">
-                  <div className="import-label">Versão atual</div>
-                  <div className="import-desc">Confira o arquivo que está registrado hoje</div>
-                </div>
-                <button type="button" className="btn btn-outline btn-sm" onClick={verPdf}>Ver PDF</button>
-              </div>
-            )}
-
-            <div
-              className="drop-zone"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setArquivo(f); }}
-            >
-              <div className="drop-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-              </div>
-              {arquivo ? (
-                <div style={{ color: "var(--color-success)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  {arquivo.name}
-                </div>
-              ) : (
-                <>
-                  <div className="drop-title">Arraste o PDF novo aqui</div>
-                  <div className="drop-subtitle">Sem arquivo novo, o PDF atual é mantido</div>
-                  <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
-                    Selecionar Arquivo
-                    <input type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) setArquivo(e.target.files[0]); }} />
-                  </label>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="form-footer">
             <button type="button" className="btn btn-outline" onClick={() => navigate("/estudante/papeis-submetidos")}>

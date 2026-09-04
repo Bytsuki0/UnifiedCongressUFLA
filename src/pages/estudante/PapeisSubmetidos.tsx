@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { openPdf } from "@/lib/pdfStorage";
+import { anexosPorTrabalho } from "@/services/anexosService";
+import type { AnexoDoTrabalho } from "@/lib/anexos";
 import {
   AGUARDANDO_CORRECAO,
   AGUARDANDO_REENVIO,
@@ -37,12 +38,19 @@ const PapeisSubmetidos = () => {
   const ativas = trabalhos.filter(t => estaAtiva(t.status));
   const aguardandoCorrecao = trabalhos.filter(t => t.status === AGUARDANDO_CORRECAO);
 
-  // O bucket de PDFs é privado: o acesso é por URL assinada, resolvida no
-  // momento do clique.
-  const verPdf = async (stored: string) => {
-    const ok = await openPdf(stored);
-    if (!ok) toast.error("Não foi possível abrir o PDF.");
-  };
+  // Quantos anexos cada trabalho entregou. Uma consulta só para a lista
+  // inteira, não uma por linha. Falha de rede devolve mapa vazio e a
+  // coluna mostra "—": a lista continua servindo para o que ela existe,
+  // que é acompanhar o andamento.
+  const [anexos, setAnexos] = useState<Record<string, AnexoDoTrabalho[]>>({});
+  useEffect(() => {
+    let vivo = true;
+    if (trabalhos.length === 0) return;
+    anexosPorTrabalho(trabalhos.map(t => t.id))
+      .then(mapa => { if (vivo) setAnexos(mapa); })
+      .catch(() => { if (vivo) setAnexos({}); });
+    return () => { vivo = false; };
+  }, [trabalhos]);
 
   return (
     <div className="section active">
@@ -166,7 +174,7 @@ const PapeisSubmetidos = () => {
                   <th>CATEGORIA</th>
                   <th>STATUS</th>
                   <th>DATA</th>
-                  <th>ARQUIVO</th>
+                  <th>ANEXOS</th>
                   <th>AÇÕES</th>
                 </tr>
               </thead>
@@ -190,7 +198,10 @@ const PapeisSubmetidos = () => {
                     <td>{catNome(t.categoria_id)}</td>
                     <td><span className={statusBadge(t.status)}>{statusLabel[t.status] ?? t.status}</span></td>
                     <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
-                    <td>{t.pdf_url ? <button type="button" onClick={() => verPdf(t.pdf_url!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--color-primary)", fontWeight: "var(--fw-semibold)" }}>Ver PDF</button> : "—"}</td>
+                    {/* Contagem, não link: um trabalho pode ter vários
+                        anexos agora, e os arquivos abrem na tela do
+                        trabalho, que é onde eles têm nome e contexto. */}
+                    <td>{(anexos[t.id]?.length ?? 0) > 0 ? `${anexos[t.id].length} anexo(s)` : "—"}</td>
                     <td>
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {/* Notas e comentários: para TODO desfecho, não só

@@ -165,13 +165,14 @@ describe("reenviarTrabalho", () => {
       ownerId: "u1",
       titulo: "Título novo",
       palavrasChave: ["a", "b"],
-      videoUrl: "https://youtu.be/dQw4w9WgXcQ",
-      tipoResumo: "estendido",
       autores: "Ana, Bruno",
       orientadorEmail: "orientador@ufla.br",
       coautores: [{ nome: "Bruno", email: "bruno@ufla.br" }],
       categoriaId: "c2",
-      arquivo: null,
+      exigencias: [
+        { id: "a1", categoria_id: "c2", tipo: "pdf", titulo: "Trabalho", descricao: "", ordem: 1 },
+      ],
+      anexos: {},
     });
 
     const [nome, args] = mocks.rpc.mock.calls[0];
@@ -180,13 +181,14 @@ describe("reenviarTrabalho", () => {
     expect(args._categoria_id).toBe("c2");
     expect(args._orientador_email).toBe("orientador@ufla.br");
     expect(args._coautores).toEqual([{ nome: "Bruno", email: "bruno@ufla.br" }]);
-    // Sem arquivo novo, o PDF atual é mantido.
-    expect(args._pdf_url).toBeNull();
+    // Sem arquivo novo, `valor: null` diz à RPC para manter o que está
+    // gravado — é o que preserva o comportamento do `_pdf_url` ausente.
+    expect(args._anexos).toEqual([{ anexo_id: "a1", valor: null }]);
   });
 
   // Mesma ordem de `enviarCorrecao`: sobe, grava, e só então apaga. Se a
-  // gravação falha, a tabela ainda aponta para o PDF velho — um upload
-  // órfão é melhor do que um trabalho sem arquivo.
+  // gravação falha, a tabela ainda aponta para o PDF velho — o que sai é
+  // só o upload desta tentativa, que não é referenciado por nada.
   it("não apaga o PDF antigo quando a gravação falha", async () => {
     mocks.upload.mockResolvedValue({ error: null });
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "Acesso negado." } });
@@ -197,17 +199,22 @@ describe("reenviarTrabalho", () => {
         ownerId: "u1",
         titulo: "T",
         palavrasChave: ["a"],
-        videoUrl: "https://youtu.be/dQw4w9WgXcQ",
-        tipoResumo: "simples",
         autores: "Ana",
         orientadorEmail: null,
         coautores: [],
         categoriaId: "c1",
-        arquivo: new File(["x"], "novo.pdf", { type: "application/pdf" }),
+        exigencias: [
+          { id: "a1", categoria_id: "c1", tipo: "pdf", titulo: "Trabalho", descricao: "", ordem: 1 },
+        ],
+        anexos: { a1: { arquivo: new File(["x"], "novo.pdf", { type: "application/pdf" }) } },
       }),
     ).rejects.toThrow("Acesso negado.");
 
     expect(mocks.upload).toHaveBeenCalled();
-    expect(mocks.remove).not.toHaveBeenCalled();
+    // Só o arquivo recém-subido sai; o antigo (que a RPC devolveria em
+    // caso de sucesso) não é tocado, porque a RPC nem chegou a gravar.
+    const apagados = mocks.remove.mock.calls.flatMap(([lista]) => lista as string[]);
+    expect(apagados).toHaveLength(1);
+    expect(apagados[0].startsWith("u1/")).toBe(true);
   });
 });

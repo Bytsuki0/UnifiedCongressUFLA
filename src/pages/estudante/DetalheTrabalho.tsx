@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterMeuTrabalho } from "@/services/trabalhosService";
+import { listarAnexosDoTrabalho } from "@/services/anexosService";
+import type { AnexoDoTrabalho } from "@/lib/anexos";
 import { carregarPareceresDoTrabalho, type ParecerAnonimo } from "@/services/correcaoService";
 import {
   carregarDecisaoEditorial,
@@ -84,6 +86,7 @@ const DetalheTrabalho = () => {
   const { user } = useAuth();
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
+  const [anexos, setAnexos] = useState<AnexoDoTrabalho[]>([]);
   const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
   const [decisao, setDecisao] = useState<DecisaoDoAutor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,7 @@ const DetalheTrabalho = () => {
       ...data,
       coautores: Array.isArray(data.coautores) ? (data.coautores as Coautor[]) : [],
     } as Submission);
+    setAnexos(await listarAnexosDoTrabalho(id).catch(() => []));
 
     try {
       setPareceres(await carregarPareceresDoTrabalho(id));
@@ -121,8 +125,8 @@ const DetalheTrabalho = () => {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const verPdf = async () => {
-    if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
+  const verPdf = async (caminho: string) => {
+    if (!(await openPdf(caminho))) toast.error("Não foi possível abrir o PDF.");
   };
 
   if (loading) {
@@ -200,35 +204,43 @@ const DetalheTrabalho = () => {
             </div>
           )}
 
-          {trabalho.video_url && (
-            <div className="import-row">
+          {/* O que foi entregue, na ordem que a categoria definiu. A
+              lista sai de `trabalho_anexos` — o que ESTE trabalho mandou —
+              e não das exigências de hoje: se a organização mudou o que
+              pede depois da submissão, o autor continua vendo o que
+              enviou. */}
+          {anexos.map((anexo) => (
+            <div className="import-row" key={anexo.id}>
               <div className="import-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                </svg>
+                {anexo.tipo === "video" ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                )}
               </div>
               <div className="import-info">
-                <div className="import-label">Vídeo de apresentação</div>
-                <div className="import-desc">O link que os avaliadores assistem</div>
+                <div className="import-label">{anexo.titulo}</div>
+                <div className="import-desc">
+                  {anexo.tipo === "video"
+                    ? "O link que os avaliadores assistem"
+                    : "A versão que está no sistema hoje"}
+                </div>
               </div>
-              <a className="btn btn-outline btn-sm" href={trabalho.video_url} target="_blank" rel="noopener noreferrer">Ver vídeo</a>
+              {anexo.tipo === "video" ? (
+                <a className="btn btn-outline btn-sm" href={anexo.valor} target="_blank" rel="noopener noreferrer">
+                  Ver vídeo
+                </a>
+              ) : (
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => verPdf(anexo.valor)}>
+                  Ver PDF
+                </button>
+              )}
             </div>
-          )}
-
-          {trabalho.pdf_url && (
-            <div className="import-row">
-              <div className="import-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                </svg>
-              </div>
-              <div className="import-info">
-                <div className="import-label">Arquivo registrado</div>
-                <div className="import-desc">A versão que está no sistema hoje</div>
-              </div>
-              <button type="button" className="btn btn-outline btn-sm" onClick={verPdf}>Ver PDF</button>
-            </div>
-          )}
+          ))}
         </div>
 
         {/* A decisão da organização vem ANTES dos pareceres: é ela que

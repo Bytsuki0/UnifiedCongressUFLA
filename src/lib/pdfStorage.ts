@@ -10,7 +10,8 @@ export { PDF_BUCKET };
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1h
 
 /**
- * Resolve o valor salvo em trabalhos.pdf_url para uma URL temporária
+ * Resolve o valor salvo em `trabalho_anexos.valor` (era
+ * `trabalhos.pdf_url` até 20260904120000) para uma URL temporária
  * assinada. Aceita tanto o formato novo (caminho do objeto dentro do
  * bucket, ex.: "<user_id>/arquivo.pdf") quanto URLs públicas legadas
  * geradas antes do bucket ficar privado.

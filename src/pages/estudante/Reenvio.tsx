@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterMeuTrabalho } from "@/services/trabalhosService";
-import { openPdf } from "@/lib/pdfStorage";
+import { listarAnexosDoTrabalho } from "@/services/anexosService";
 import { PareceresRecebidos } from "@/components/estudante/PareceresRecebidos";
 import {
   carregarPareceresDoTrabalho,
@@ -14,15 +14,18 @@ import {
   reenviarTrabalho,
   type DecisaoDoAutor,
 } from "@/services/parecerEditorialService";
+import { formatarPalavrasChave, parsePalavrasChave } from "@/lib/submissao";
 import {
-  formatarPalavrasChave,
-  parsePalavrasChave,
-  TIPO_RESUMO_PADRAO,
-} from "@/lib/submissao";
-import { idDoVideo } from "@/lib/youtube";
+  rascunhoInicial,
+  resumoDoPasso,
+  validarAnexos,
+  type AnexoDoTrabalho,
+  type RascunhoAnexos,
+} from "@/lib/anexos";
+import { CamposAnexos } from "@/components/estudante/CamposAnexos";
 import {
   AGUARDANDO_REENVIO,
-  MAX_PDF_BYTES,
+  useExigencias,
   useTrabalhos,
   type Coautor,
   type Submission,
@@ -47,6 +50,7 @@ const Reenvio = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { categorias } = useTrabalhos();
+  const { exigenciasDe, carregando: carregandoExigencias } = useExigencias();
 
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [pareceres, setPareceres] = useState<ParecerAnonimo[]>([]);
@@ -54,15 +58,21 @@ const Reenvio = () => {
 
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [orientador, setOrientador] = useState("");
   const [coautores, setCoautores] = useState<Coautor[]>([{ nome: "", email: "" }]);
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [atuais, setAtuais] = useState<AnexoDoTrabalho[]>([]);
+  const [anexos, setAnexos] = useState<RascunhoAnexos>({});
 
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+
+  // ⚠ Esta é a única tela do autor em que a CATEGORIA muda — e trocar a
+  // categoria troca as exigências. Por isso as exigências saem da
+  // categoria ESCOLHIDA NO FORMULÁRIO, não da que está gravada: o autor
+  // tem de ver na hora os campos da categoria nova.
+  const exigencias = exigenciasDe(categoriaId);
 
   const carregar = useCallback(async () => {
     if (!id || !user) return;
@@ -79,10 +89,10 @@ const Reenvio = () => {
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
-    setVideoUrl(sub.video_url ?? "");
     setCategoriaId(sub.categoria_id ?? "");
     setOrientador(sub.orientador_email ?? "");
     setCoautores(lista.length > 0 ? lista : [{ nome: "", email: "" }]);
+    setAtuais(await listarAnexosDoTrabalho(sub.id).catch(() => []));
 
     try {
       setPareceres(await carregarPareceresDoTrabalho(id));
@@ -101,9 +111,14 @@ const Reenvio = () => {
     carregar();
   }, [carregar]);
 
-  const verPdf = async () => {
-    if (!(await openPdf(trabalho?.pdf_url))) toast.error("Não foi possível abrir o PDF.");
-  };
+  // Pré-preenche os links de vídeo com o que está gravado. Depende de
+  // `exigencias`, então roda de novo quando o autor troca a categoria —
+  // aí `atuais` não casa com as exigências novas e os campos nascem
+  // vazios, que é o correto: são outros anexos.
+  useEffect(() => {
+    if (exigencias.length === 0) return;
+    setAnexos(rascunhoInicial(exigencias, atuais));
+  }, [exigencias, atuais]);
 
   const setCoautor = (i: number, campo: keyof Coautor, valor: string) =>
     setCoautores((anterior) =>
@@ -125,19 +140,18 @@ const Reenvio = () => {
       toast.error("Informe ao menos uma palavra-chave.");
       return;
     }
-    if (!idDoVideo(videoUrl)) {
-      toast.error("Informe um link válido de vídeo do YouTube.");
+    // `atuais` só vale como "já entreguei isto" enquanto a categoria for a
+    // mesma: trocada a categoria, as exigências são outras e nada do que
+    // está gravado as cumpre.
+    const mesmaCategoria = categoriaId === (trabalho?.categoria_id ?? "");
+    const erroAnexos = validarAnexos({
+      exigencias,
+      rascunho: anexos,
+      atuais: mesmaCategoria ? atuais : [],
+    });
+    if (erroAnexos) {
+      toast.error(erroAnexos);
       return;
-    }
-    if (arquivo) {
-      if (arquivo.type !== "application/pdf") {
-        toast.error("O arquivo precisa estar em formato PDF.");
-        return;
-      }
-      if (arquivo.size > MAX_PDF_BYTES) {
-        toast.error("O PDF excede o limite de 10MB.");
-        return;
-      }
     }
     setConfirmando(true);
   }
@@ -159,13 +173,12 @@ const Reenvio = () => {
         ownerId: user.id,
         titulo: titulo.trim(),
         palavrasChave: parsePalavrasChave(palavrasChaveTexto),
-        videoUrl: videoUrl.trim(),
-        tipoResumo: TIPO_RESUMO_PADRAO,
         autores,
         orientadorEmail: orientador.trim() || null,
         coautores: limpos,
         categoriaId,
-        arquivo,
+        exigencias,
+        anexos,
       });
       toast.success("Trabalho reenviado. Ele voltou para a fila de avaliação.");
       navigate("/estudante/papeis-submetidos");
@@ -176,7 +189,7 @@ const Reenvio = () => {
     }
   }
 
-  if (loading) {
+  if (loading || carregandoExigencias) {
     return (
       <div className="section active">
         <div className="content-area">
@@ -305,11 +318,6 @@ const Reenvio = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="reenvio-video">Vídeo de Apresentação (YouTube) *</label>
-              <input type="url" id="reenvio-video" className="form-input" placeholder="https://www.youtube.com/watch?v=..." value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
-            </div>
-
-            <div className="form-group">
               <label className="form-label" htmlFor="reenvio-categoria">Categoria *</label>
               <select id="reenvio-categoria" className="form-select" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required>
                 <option value="">Selecione a categoria</option>
@@ -318,7 +326,8 @@ const Reenvio = () => {
                 ))}
               </select>
               <div className="form-hint">
-                A categoria define os critérios pelos quais o trabalho será avaliado na rodada nova.
+                A categoria define os critérios da avaliação e quais arquivos e vídeos o trabalho
+                precisa enviar. Trocá-la troca os campos abaixo.
               </div>
             </div>
           </div>
@@ -362,57 +371,23 @@ const Reenvio = () => {
             </div>
           </div>
 
-          <div className="step-card">
-            <div className="step-card-header">
-              <div className="step-number">{passo(++etapa)}</div>
-              <div>
-                <div className="step-title">Arquivo</div>
-                <div className="step-subtitle">Opcional · Limite 10MB · o PDF novo substitui e apaga o anterior</div>
+          {exigencias.length > 0 && (
+            <div className="step-card">
+              <div className="step-card-header">
+                <div className="step-number">{passo(++etapa)}</div>
+                <div>
+                  <div className="step-title">Arquivos e Vídeos</div>
+                  <div className="step-subtitle">{resumoDoPasso(exigencias)}</div>
+                </div>
               </div>
+              <CamposAnexos
+                exigencias={exigencias}
+                rascunho={anexos}
+                onMudar={setAnexos}
+                atuais={categoriaId === (trabalho?.categoria_id ?? "") ? atuais : []}
+              />
             </div>
-
-            {trabalho?.pdf_url && (
-              <div className="import-row">
-                <div className="import-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
-                <div className="import-info">
-                  <div className="import-label">Versão atual</div>
-                  <div className="import-desc">Confira o arquivo que está registrado hoje</div>
-                </div>
-                <button type="button" className="btn btn-outline btn-sm" onClick={verPdf}>Ver PDF</button>
-              </div>
-            )}
-
-            <div
-              className="drop-zone"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setArquivo(f); }}
-            >
-              <div className="drop-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48 }}>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-              </div>
-              {arquivo ? (
-                <div style={{ color: "var(--color-success)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  {arquivo.name}
-                </div>
-              ) : (
-                <>
-                  <div className="drop-title">Arraste o PDF aqui</div>
-                  <div className="drop-subtitle">Sem arquivo novo, o PDF atual é mantido</div>
-                  <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
-                    Selecionar Arquivo
-                    <input type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => { if (e.target.files?.[0]) setArquivo(e.target.files[0]); }} />
-                  </label>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
           {confirmando ? (
             <div className="alert alert-warning" style={{ marginBottom: "var(--space-4)" }}>

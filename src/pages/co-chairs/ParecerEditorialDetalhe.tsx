@@ -12,9 +12,8 @@ import {
   registrarParecerEditorial,
 } from "@/services/parecerEditorialService";
 import { ParecerCompleto } from "@/components/co-chairs/ParecerCompleto";
-import { PdfViewer } from "@/components/PdfViewer";
-import { VideoViewer } from "@/components/VideoViewer";
-import { resolvePdfUrl } from "@/lib/pdfStorage";
+import { AbasDeAnexos, AcoesDoAnexo, CorpoDoAnexo } from "@/components/AnexosDoTrabalho";
+import { useAnexoAtivo } from "@/hooks/use-anexo-ativo";
 import { RESULTADO_OPTIONS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,12 +56,15 @@ const ParecerEditorialDetalhe = () => {
   const navigate = useNavigate();
 
   const [analise, setAnalise] = useState<AnaliseEditorial | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [visor, setVisor] = useState<"pdf" | "video">("pdf");
   const [decisao, setDecisao] = useState<DecisaoEditorial | "">("");
   const [comentario, setComentario] = useState("");
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // Mesma regra da tela do revisor: as abas saem do que foi ENTREGUE, não
+  // do que a categoria exige hoje.
+  const anexos = analise?.anexos ?? [];
+  const { indice, setIndice, ativo, url } = useAnexoAtivo(anexos);
 
   const carregar = useCallback(async () => {
     if (!id) return;
@@ -75,7 +77,6 @@ const ParecerEditorialDetalhe = () => {
         return;
       }
       setAnalise(dados);
-      setPdfUrl(await resolvePdfUrl(dados.trabalho.pdf_url));
       // Rever uma decisão abre o formulário com o que já está registrado:
       // o co-chair corrige o que quer, não redigita tudo.
       if (dados.decisao) {
@@ -189,25 +190,15 @@ const ParecerEditorialDetalhe = () => {
         </CardContent>
       </Card>
 
-      {/* ---- Conteúdo submetido: PDF e vídeo ---- */}
+      {/* ---- Conteúdo submetido: o que a categoria exigia ---- */}
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Conteúdo submetido</CardTitle>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={visor === "pdf" ? "default" : "outline"}
-              onClick={() => setVisor("pdf")}
-            >
-              PDF
-            </Button>
-            <Button
-              size="sm"
-              variant={visor === "video" ? "default" : "outline"}
-              onClick={() => setVisor("video")}
-            >
-              Vídeo
-            </Button>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+          <CardTitle className="text-base">
+            Conteúdo submetido{anexos.length > 0 ? ` (${anexos.length})` : ""}
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <AbasDeAnexos anexos={anexos} indice={indice} onEscolher={setIndice} />
+            <AcoesDoAnexo anexo={ativo} url={url} nomeBase={trabalho.titulo} />
           </div>
         </CardHeader>
         <CardContent>
@@ -215,21 +206,11 @@ const ParecerEditorialDetalhe = () => {
               se posicionam por `inset: 0` dentro dele. Ver o contrato em
               components/PdfViewer.tsx. */}
           <div className="pdf-viewer" style={{ position: "relative", minHeight: 520 }}>
-            {visor === "video" ? (
-              trabalho.video_url ? (
-                <VideoViewer url={trabalho.video_url} />
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  Este trabalho não possui vídeo de apresentação.
-                </span>
-              )
-            ) : pdfUrl ? (
-              <PdfViewer url={pdfUrl} />
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                Este trabalho não possui arquivo PDF anexado.
-              </span>
-            )}
+            <CorpoDoAnexo
+              anexo={ativo}
+              url={url}
+              vazio="A categoria deste trabalho não exigia arquivo nem vídeo."
+            />
           </div>
         </CardContent>
       </Card>

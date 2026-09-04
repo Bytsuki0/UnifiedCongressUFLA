@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import { PDF_BUCKET } from "@/lib/pdfStorage";
-import type { TipoResumo } from "@/lib/submissao";
+import type { AnexoDaCategoria, AnexoDoTrabalho, RascunhoAnexos } from "@/lib/anexos";
+import {
+  caminhosDevolvidos,
+  descartarDoStorage,
+  listarAnexosDoTrabalho,
+  prepararAnexos,
+} from "@/services/anexosService";
 import type {
   Categoria,
   Criterio,
@@ -37,7 +42,7 @@ export const DECISAO_OPTIONS: { value: DecisaoEditorial; label: string; ajuda: s
     value: "aprovado_correcoes",
     label: "Aprovado com correções",
     ajuda:
-      "O autor reenvia o PDF com ajustes (título, palavras-chave, vídeo e arquivo) e o trabalho passa a aprovado. Não volta para revisão.",
+      "O autor reenvia os anexos com ajustes (título, palavras-chave e o que a categoria exige) e o trabalho passa a aprovado. Não volta para revisão.",
   },
   {
     value: "resubmeter",
@@ -175,6 +180,12 @@ export type AnaliseEditorial = {
   decisao: DecisaoRegistrada | null;
   /** Todas as decisões do trabalho, mais recente primeiro (histórico). */
   historico: DecisaoRegistrada[];
+  /**
+   * O que o trabalho ENTREGOU — é daqui que saem as abas de leitura, e
+   * não de `categoria_anexos`: a tela tem de mostrar o que foi submetido,
+   * mesmo que a organização já tenha mudado o que exige.
+   */
+  anexos: AnexoDoTrabalho[];
   /** O autor já cumpriu a decisão: ela não pode mais ser alterada. */
   travada: boolean;
 };
@@ -198,7 +209,7 @@ export async function carregarAnaliseEditorial(
   if (error) throw error;
   if (!trabalho) return null;
 
-  const [pa, rv, de, cat, sug] = await Promise.all([
+  const [pa, rv, de, cat, sug, anexos] = await Promise.all([
     supabase
       .from("pareceres")
       .select("*")
@@ -219,6 +230,7 @@ export async function carregarAnaliseEditorial(
       ? supabase.from("categorias").select("*").eq("id", trabalho.categoria_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabase.rpc("decisao_consolidada", { _trabalho_id: trabalhoId }),
+    listarAnexosDoTrabalho(trabalhoId),
   ]);
   if (pa.error || rv.error || de.error) throw pa.error ?? rv.error ?? de.error;
 
@@ -248,6 +260,7 @@ export async function carregarAnaliseEditorial(
     sugestao: (sug.data as string) ?? null,
     decisao: daRodada[0] ?? null,
     historico,
+    anexos,
     // Mesma regra do servidor (`registrar_parecer_editorial`): rever a
     // decisão só vale enquanto o autor não agiu. Aqui é cortesia — quem
     // recusa é a RPC.
@@ -302,60 +315,55 @@ export type ReenviarTrabalhoInput = {
   ownerId: string;
   titulo: string;
   palavrasChave: string[];
-  videoUrl: string;
-  tipoResumo: TipoResumo;
   autores: string;
   orientadorEmail: string | null;
   coautores: { nome?: string; email?: string }[];
   categoriaId: string;
-  /** Novo PDF. Quando ausente, o arquivo atual é mantido. */
-  arquivo?: File | null;
+  /** O que a categoria ESCOLHIDA AGORA exige — pode não ser a de antes. */
+  exigencias: AnexoDaCategoria[];
+  /** O que o autor preencheu. PDF sem arquivo novo = manter o atual. */
+  anexos: RascunhoAnexos;
 };
 
 /**
  * Reenvio do trabalho após a decisão "resubmeter".
  *
- * Mesma ordem de operações de `enviarCorrecao` — sobe o PDF novo, grava
- * pela RPC e só então apaga o antigo — porque a razão é a mesma: se a
- * gravação falhar, a tabela continua apontando para o arquivo velho e o
- * que sobra é um upload órfão, melhor do que um trabalho sem PDF.
+ * Mesma ordem de operações de `enviarCorrecao` — sobe os PDFs novos,
+ * grava pela RPC e só então apaga os antigos — porque a razão é a mesma:
+ * se a gravação falhar, a tabela continua apontando para os arquivos
+ * velhos e o que sobra é upload órfão, melhor do que um trabalho sem PDF.
  *
  * A diferença para `enviarCorrecao` é o que vai no corpo: aqui seguem
  * também AUTORIA e CATEGORIA. É a única escrita do autor que as abre, e
  * é segura porque a distribuição da rodada nova acontece depois, sobre os
  * conflitos novos.
+ *
+ * ⚠ Trocar a categoria troca as EXIGÊNCIAS. Os anexos da categoria antiga
+ * saem, e seus PDFs voltam na lista de órfãos — por isso `exigencias` tem
+ * de ser a da categoria escolhida no formulário, não a do trabalho como
+ * ele está gravado.
  */
 export async function reenviarTrabalho(input: ReenviarTrabalhoInput): Promise<void> {
-  let caminhoNovo: string | null = null;
-
-  if (input.arquivo) {
-    const nomeSeguro = input.arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    caminhoNovo = `${input.ownerId}/${Date.now()}-${nomeSeguro}`;
-    const { error: uploadError } = await supabase.storage
-      .from(PDF_BUCKET)
-      .upload(caminhoNovo, input.arquivo, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
-    if (uploadError) throw new Error("Não foi possível enviar o novo PDF.");
-  }
+  const { payload, enviados } = await prepararAnexos({
+    exigencias: input.exigencias,
+    rascunho: input.anexos,
+    ownerId: input.ownerId,
+  });
 
   const { data, error } = await supabase.rpc("reenviar_trabalho", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
     _palavras_chave: input.palavrasChave,
-    _video_url: input.videoUrl,
-    _tipo_resumo: input.tipoResumo,
     _autores: input.autores,
     _orientador_email: input.orientadorEmail,
     _coautores: input.coautores,
     _categoria_id: input.categoriaId,
-    _pdf_url: caminhoNovo,
+    _anexos: payload,
   });
-  if (error) throw new Error(error.message ?? "Não foi possível reenviar o trabalho.");
-
-  const caminhoAntigo = typeof data === "string" ? data : null;
-  if (caminhoAntigo && !/^https?:\/\//i.test(caminhoAntigo)) {
-    await supabase.storage.from(PDF_BUCKET).remove([caminhoAntigo]);
+  if (error) {
+    await descartarDoStorage(enviados);
+    throw new Error(error.message ?? "Não foi possível reenviar o trabalho.");
   }
+
+  await descartarDoStorage(caminhosDevolvidos(data));
 }

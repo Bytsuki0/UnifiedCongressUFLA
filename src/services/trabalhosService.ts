@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PDF_BUCKET } from "@/lib/config";
-import type { TipoResumo } from "@/lib/submissao";
+import type { AnexoDaCategoria, RascunhoAnexos } from "@/lib/anexos";
+import {
+  caminhosDevolvidos,
+  descartarDoStorage,
+  prepararAnexos,
+} from "@/services/anexosService";
 import type { Trabalho, Categoria } from "@/lib/types";
 
 /**
@@ -21,16 +26,15 @@ export type NovoTrabalho = {
   titulo: string;
   /** Termos livres, na ordem em que o autor os digitou. */
   palavrasChave: string[];
-  /** Link do vídeo de apresentação no YouTube. */
-  videoUrl: string;
-  tipoResumo: TipoResumo;
   categoriaId: string;
   autores: string;
   orientadorEmail: string | null;
   coautores: Coautor[];
-  /** PDF já validado (application/pdf, ≤ 10 MB) pelo chamador. */
-  arquivo: File;
   ownerId: string;
+  /** O que a categoria escolhida exige. Pode ser lista vazia. */
+  exigencias: AnexoDaCategoria[];
+  /** O que o autor preencheu para cada exigência. */
+  anexos: RascunhoAnexos;
 };
 
 /** Lista todos os trabalhos — a RLS decide quantos de fato voltam. */
@@ -151,7 +155,7 @@ export async function atualizarTrabalho(
 
 /**
  * Caminho do objeto dentro do bucket de PDFs, a partir do que está
- * gravado em `pdf_url`.
+ * gravado em `trabalho_anexos.valor`.
  *
  * O formato novo já é o caminho (`<owner_id>/arquivo.pdf`), mas linhas
  * antigas guardam a URL pública inteira, de quando o bucket ainda era
@@ -168,29 +172,55 @@ function caminhoNoBucket(pdfUrl: string | null | undefined): string | null {
 }
 
 /**
- * Exclui um trabalho e o PDF que veio com ele.
+ * Os caminhos de PDF dos trabalhos indicados, LIDOS ANTES do DELETE.
+ *
+ * A ordem é obrigatória: `trabalho_anexos` sai por ON DELETE CASCADE
+ * junto com o trabalho, então depois do DELETE não há mais o que
+ * consultar. Antes desta tabela o caminho vinha da própria linha de
+ * `trabalhos`, e a leitura prévia era só conveniência; agora é a única
+ * chance de saber quais blobs apagar.
+ */
+async function caminhosDosAnexos(ids: string[]): Promise<Map<string, string[]>> {
+  const porTrabalho = new Map<string, string[]>();
+  if (ids.length === 0) return porTrabalho;
+
+  const { data } = await supabase
+    .from("trabalho_anexos")
+    .select("trabalho_id, valor")
+    .in("trabalho_id", ids)
+    .eq("tipo", "pdf");
+
+  for (const linha of data ?? []) {
+    const caminho = caminhoNoBucket(linha.valor);
+    if (caminho) {
+      const lista = porTrabalho.get(linha.trabalho_id) ?? [];
+      lista.push(caminho);
+      porTrabalho.set(linha.trabalho_id, lista);
+    }
+  }
+  return porTrabalho;
+}
+
+/**
+ * Exclui um trabalho e os PDFs que vieram com ele.
  *
  * A linha sai primeiro porque é ela a autoridade: `pareceres`,
- * `avaliacoes` e `trabalho_revisores` acompanham por ON DELETE CASCADE.
- * O blob do Storage **não** sai por SQL — exige esta segunda chamada. Na
- * ordem inversa, um erro no DELETE deixaria um trabalho apontando para
- * um arquivo que não existe mais; nesta, o pior caso é um arquivo órfão.
+ * `avaliacoes`, `trabalho_revisores` e `trabalho_anexos` acompanham por
+ * ON DELETE CASCADE. O blob do Storage **não** sai por SQL — exige esta
+ * segunda chamada. Na ordem inversa, um erro no DELETE deixaria um
+ * trabalho apontando para arquivos que não existem mais; nesta, o pior
+ * caso é um arquivo órfão.
  *
  * Quem autoriza é o RLS (`trabalhos delete` e `pdfs owner delete` já
  * liberam a organização), nunca a interface que chama.
  */
 export async function excluirTrabalho(id: string): Promise<void> {
-  const { data: alvo } = await supabase
-    .from("trabalhos")
-    .select("pdf_url")
-    .eq("id", id)
-    .maybeSingle();
+  const caminhos = (await caminhosDosAnexos([id])).get(id) ?? [];
 
   const { error } = await supabase.from("trabalhos").delete().eq("id", id);
   if (error) throw error;
 
-  const caminho = caminhoNoBucket(alvo?.pdf_url);
-  if (caminho) await supabase.storage.from(PDF_BUCKET).remove([caminho]);
+  if (caminhos.length > 0) await supabase.storage.from(PDF_BUCKET).remove(caminhos);
 }
 
 /**
@@ -204,10 +234,7 @@ export async function excluirTrabalho(id: string): Promise<void> {
 export async function excluirTrabalhos(ids: string[]): Promise<number> {
   if (ids.length === 0) return 0;
 
-  const { data: alvos } = await supabase
-    .from("trabalhos")
-    .select("id, pdf_url")
-    .in("id", ids);
+  const porTrabalho = await caminhosDosAnexos(ids);
 
   const { data: apagados, error } = await supabase
     .from("trabalhos")
@@ -216,19 +243,25 @@ export async function excluirTrabalhos(ids: string[]): Promise<number> {
     .select("id");
   if (error) throw error;
 
+  // Só os PDFs dos trabalhos que de fato saíram: o RLS recusa em
+  // silêncio, e apagar o arquivo de um trabalho que continua vivo o
+  // deixaria sem anexo.
   const saiu = new Set((apagados ?? []).map((t) => t.id));
-  const caminhos = (alvos ?? [])
-    .filter((a) => saiu.has(a.id))
-    .map((a) => caminhoNoBucket(a.pdf_url))
-    .filter((c): c is string => c !== null);
+  const caminhos = [...saiu].flatMap((id) => porTrabalho.get(id) ?? []);
   if (caminhos.length > 0) await supabase.storage.from(PDF_BUCKET).remove(caminhos);
 
   return saiu.size;
 }
 
 /**
- * Submissão do autor: sobe o PDF para a pasta do próprio usuário (exigida
- * pela policy do Storage) e grava o trabalho. Só isso.
+ * Submissão do autor: sobe os PDFs para a pasta do próprio usuário
+ * (exigida pela policy do Storage) e grava o trabalho com os anexos.
+ *
+ * ⚠ É uma RPC, e não mais um `.insert()`, desde 20260904. Com o trabalho
+ * numa tabela e os anexos em outra, dois requests significariam "criou o
+ * trabalho, perdeu os arquivos"; a RPC é uma transação só. Se ela
+ * recusar, os uploads desta tentativa são apagados — nada aponta para
+ * eles.
  *
  * ⚠ O trabalho nasce SEM revisores, e é de propósito. Até 20260820 esta
  * função chamava `distribuir_revisores` logo depois do INSERT, então o
@@ -240,38 +273,28 @@ export async function excluirTrabalhos(ids: string[]): Promise<number> {
  * autor consegue se atribuir revisores.
  */
 export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
-  const nomeSeguro = input.arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const caminho = `${input.ownerId}/${Date.now()}-${nomeSeguro}`;
+  const { payload, enviados } = await prepararAnexos({
+    exigencias: input.exigencias,
+    rascunho: input.anexos,
+    ownerId: input.ownerId,
+  });
 
-  const { error: erroUpload } = await supabase.storage
-    .from(PDF_BUCKET)
-    .upload(caminho, input.arquivo, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-  if (erroUpload) throw new Error("Erro ao enviar o PDF. Tente novamente.");
+  const { data, error } = await supabase.rpc("submeter_trabalho", {
+    _titulo: input.titulo,
+    _palavras_chave: input.palavrasChave,
+    _categoria_id: input.categoriaId,
+    _autores: input.autores,
+    _orientador_email: input.orientadorEmail,
+    _coautores: input.coautores,
+    _anexos: payload,
+  });
 
-  const { data: novo, error } = await supabase
-    .from("trabalhos")
-    .insert({
-      titulo: input.titulo,
-      palavras_chave: input.palavrasChave,
-      video_url: input.videoUrl,
-      tipo_resumo: input.tipoResumo,
-      categoria_id: input.categoriaId,
-      autores: input.autores,
-      orientador_email: input.orientadorEmail,
-      coautores: input.coautores,
-      pdf_url: caminho,
-      data_submissao: new Date().toISOString().split("T")[0],
-      status: "pendente",
-    })
-    .select("id")
-    .single();
+  if (error || !data) {
+    await descartarDoStorage(enviados);
+    throw new Error(error?.message ?? "Erro ao submeter trabalho. Tente novamente.");
+  }
 
-  if (error || !novo) throw new Error("Erro ao submeter trabalho. Tente novamente.");
-
-  return novo.id;
+  return data as string;
 }
 
 export type EditarSubmissaoInput = {
@@ -279,54 +302,45 @@ export type EditarSubmissaoInput = {
   ownerId: string;
   titulo: string;
   palavrasChave: string[];
-  videoUrl: string;
-  tipoResumo: TipoResumo;
-  /** Novo PDF. Quando ausente, o arquivo atual é mantido. */
-  arquivo?: File | null;
+  /** O que a categoria do trabalho exige. */
+  exigencias: AnexoDaCategoria[];
+  /** O que o autor preencheu. PDF sem arquivo novo = manter o atual. */
+  anexos: RascunhoAnexos;
 };
 
 /**
  * Edição da submissão pelo próprio autor, antes de a avaliação começar.
  *
  * Espelha `enviarCorrecao` (correcaoService) de propósito — mesma ordem
- * de operações, mesmo contrato: sobe o PDF novo, grava pela RPC e só
- * então apaga o antigo. Se a gravação falhar, a tabela continua
- * apontando para o arquivo velho e o que sobra é um upload órfão, que é
+ * de operações, mesmo contrato: sobe os PDFs novos, grava pela RPC e só
+ * então apaga os antigos. Se a gravação falhar, a tabela continua
+ * apontando para os arquivos velhos e o que sobra é upload órfão, que é
  * melhor do que um trabalho sem PDF.
  *
  * Quem recusa fora do prazo, fora do status 'pendente' ou de dono
  * errado é a RPC `editar_submissao`, não esta função.
  */
 export async function editarSubmissao(input: EditarSubmissaoInput): Promise<void> {
-  let caminhoNovo: string | null = null;
-
-  if (input.arquivo) {
-    const nomeSeguro = input.arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    caminhoNovo = `${input.ownerId}/${Date.now()}-${nomeSeguro}`;
-    const { error: erroUpload } = await supabase.storage
-      .from(PDF_BUCKET)
-      .upload(caminhoNovo, input.arquivo, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
-    if (erroUpload) throw new Error("Não foi possível enviar o novo PDF.");
-  }
+  const { payload, enviados } = await prepararAnexos({
+    exigencias: input.exigencias,
+    rascunho: input.anexos,
+    ownerId: input.ownerId,
+  });
 
   const { data, error } = await supabase.rpc("editar_submissao", {
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
     _palavras_chave: input.palavrasChave,
-    _video_url: input.videoUrl,
-    _tipo_resumo: input.tipoResumo,
-    _pdf_url: caminhoNovo ?? undefined,
+    _anexos: payload,
   });
-  if (error) throw new Error(error.message ?? "Não foi possível salvar as alterações.");
-
-  // A RPC devolve o caminho do arquivo substituído. Falha ao apagar não
-  // invalida a edição: o registro já está certo.
-  if (typeof data === "string" && data && !/^https?:\/\//i.test(data)) {
-    await supabase.storage.from(PDF_BUCKET).remove([data]);
+  if (error) {
+    await descartarDoStorage(enviados);
+    throw new Error(error.message ?? "Não foi possível salvar as alterações.");
   }
+
+  // A RPC devolve os caminhos que deixaram de ser referenciados. Falha ao
+  // apagar não invalida a edição: o registro já está certo.
+  await descartarDoStorage(caminhosDevolvidos(data));
 }
 
 /**

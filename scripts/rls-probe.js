@@ -87,6 +87,7 @@ const TABELAS = {
   attendances: "negada",
   avaliacoes: "negada",
   avaliadores: "negada",
+  categoria_anexos: "negada",
   categorias: "negada",
   certificates: "negada",
   congress_registrations: "negada",
@@ -104,6 +105,7 @@ const TABELAS = {
   rate_limits: "negada",
   schedule: "publica",
   tokens_email: "negada",
+  trabalho_anexos: "negada",
   trabalho_revisores: "negada",
   trabalhos: "negada",
   user_roles: "negada",
@@ -149,14 +151,32 @@ const RPCS_NEGADAS = [
       _trabalho_id: "00000000-0000-0000-0000-000000000000",
       _titulo: "sonda",
       _palavras_chave: ["sonda"],
-      _video_url: "https://youtu.be/dQw4w9WgXcQ",
-      _tipo_resumo: "simples",
       _autores: "sonda",
       _orientador_email: null,
       _coautores: [],
       _categoria_id: "00000000-0000-0000-0000-000000000000",
-      _pdf_url: null,
+      _anexos: [],
     },
+  ],
+  // Anexos por categoria (migration 20260904120000). `submeter_trabalho`
+  // e `aplicar_anexos` nasceram junto com as duas tabelas de anexo: a
+  // primeira exige sessão do autor, a segunda é INTERNA — nem
+  // `authenticated` a executa, só as quatro RPCs SECURITY DEFINER.
+  [
+    "submeter_trabalho",
+    {
+      _titulo: "sonda",
+      _palavras_chave: ["sonda"],
+      _categoria_id: "00000000-0000-0000-0000-000000000000",
+      _autores: "sonda",
+      _orientador_email: null,
+      _coautores: [],
+      _anexos: [],
+    },
+  ],
+  [
+    "aplicar_anexos",
+    { _trabalho_id: "00000000-0000-0000-0000-000000000000", _anexos: [] },
   ],
   // Prazo de submissão (migration 20260813120000). Os nomes de argumento
   // aqui são os REAIS da assinatura: com nome errado o PostgREST devolve
@@ -165,13 +185,28 @@ const RPCS_NEGADAS = [
   ["submissoes_abertas", {}],
   ["prazo_submissoes", {}],
   ["data_local", {}],
+  // ⚠ Os nomes abaixo tinham ficado para trás: a sonda chamava
+  // `editar_submissao` com `_resumo`/`_pdf_url`, assinatura que a
+  // 20260819120000 já havia substituído. O PostgREST devolvia PGRST202
+  // ("função não encontrada") e a sonda anotava "negada" sem ter testado
+  // permissão nenhuma — exatamente a cegueira contra a qual o comentário
+  // acima adverte. Assinatura atual: 20260904120000.
   [
     "editar_submissao",
     {
       _trabalho_id: "00000000-0000-0000-0000-000000000000",
       _titulo: "sonda",
-      _resumo: "sonda",
-      _pdf_url: null,
+      _palavras_chave: ["sonda"],
+      _anexos: [],
+    },
+  ],
+  [
+    "enviar_correcao",
+    {
+      _trabalho_id: "00000000-0000-0000-0000-000000000000",
+      _titulo: "sonda",
+      _palavras_chave: ["sonda"],
+      _anexos: [],
     },
   ],
 ];
