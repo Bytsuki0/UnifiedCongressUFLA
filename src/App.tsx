@@ -36,6 +36,8 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import CronogramaPublico from "./pages/Cronograma";
+import AnaisPublico from "./pages/Anais";
+import PitchesPublico from "./pages/Pitches";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
 import VerifiqueEmail from "./pages/VerifiqueEmail";
 import EsqueciSenha from "./pages/EsqueciSenha";
@@ -74,6 +76,8 @@ import TrabalhoForm from "./pages/co-chairs/TrabalhoForm";
 import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
 import Categorias from "./pages/co-chairs/Categorias";
 import CoChairsCronograma from "./pages/co-chairs/Cronograma";
+import CoChairsAnais from "./pages/co-chairs/Anais";
+import CoChairsPitches from "./pages/co-chairs/Pitches";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
@@ -141,6 +145,16 @@ const App = () => (
                 seção; esta rota é o destino da aba CRONOGRAMA. Os dados
                 vêm da RPC `cronograma_publico()`, aberta a `anon`. */}
             <Route path="/cronograma" element={<CronogramaPublico />} />
+            {/* Anais e Pitches: as outras duas rotas públicas que
+                servem CONTEÚDO. Anais são as publicações do congresso;
+                Pitches é a vitrine de vídeos — os dos trabalhos
+                aprovados desta edição entram sozinhos (RPC
+                `pitches_publicos()`, aberta a `anon`), os das edições
+                anteriores a organização cadastra em /co-chairs/pitches.
+                Como o cronograma, as duas ficam FORA do "noindex": é o
+                que um interessado procura antes de se cadastrar. */}
+            <Route path="/anais" element={<AnaisPublico />} />
+            <Route path="/pitches" element={<PitchesPublico />} />
             {/* Rotas antigas de cadastro (pré-cadastro / professor) foram
                 unificadas em /cadastro. */}
             <Route path="/pre-cadastro" element={<Navigate to="/cadastro" replace />} />
@@ -240,6 +254,8 @@ const App = () => (
                 <Route path="trabalhos/:id/editar" element={<TrabalhoForm />} />
                 <Route path="categorias" element={<Categorias />} />
                 <Route path="cronograma" element={<CoChairsCronograma />} />
+                <Route path="anais" element={<CoChairsAnais />} />
+                <Route path="pitches" element={<CoChairsPitches />} />
                 <Route path="atribuicoes" element={<Atribuicoes />} />
                 <Route path="parecer-editorial" element={<ParecerEditorial />} />
                 <Route path="parecer-editorial/:id" element={<ParecerEditorialDetalhe />} />

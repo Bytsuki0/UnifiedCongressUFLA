@@ -85,6 +85,22 @@ const Layout = () => {
               Cronograma
             </NavLink>
 
+            <NavLink to="/co-chairs/anais" title="Anais do Congresso" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              Anais do Congresso
+            </NavLink>
+
+            <NavLink to="/co-chairs/pitches" title="Pitches" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="m10 9 5 3-5 3z"/>
+              </svg>
+              Pitches
+            </NavLink>
+
             <NavLink to="/co-chairs/atribuicoes" title="Atribuições" className={({ isActive }) => navItem(isActive)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>

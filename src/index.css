@@ -2452,6 +2452,272 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
 
 .cronograma-rodape-acoes { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 12px; }
 
+/* ---- Anais do Congresso (landing e /anais) ----
+   Uma lista de publicações: título, a referência de onde/quando saiu, e
+   o botão que leva ao volume. O cartão é um bloco inteiro, e não um
+   título com um link solto no fim, porque a referência é o que a pessoa
+   lê para decidir se é o volume que procura — ela precisa estar do lado
+   do botão. Reaproveita `.cronograma-inner` e `.cronograma-aviso`: é a
+   mesma coluna de leitura e a mesma frase de lista vazia. */
+.anais-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.anais-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  padding: 20px 24px;
+  transition: box-shadow var(--transition-fast);
+}
+
+.anais-item:hover { box-shadow: var(--shadow-card); }
+
+/* `min-width: 0` para o texto poder quebrar: sem isso uma referência
+   longa empurra o botão para fora do cartão em vez de quebrar linha. */
+.anais-item-texto { min-width: 0; flex: 1 1 320px; }
+
+.anais-item-titulo {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.anais-item-ref {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--lh-normal);
+}
+
+/* ---- Pitches (landing e /pitches) ----
+   Dois vídeos por linha, seis linhas por página. A grade é `repeat(2,
+   1fr)` fixo e não `auto-fill`: o número de colunas é parte do formato
+   pedido (2 x 6 = os 12 de uma página), e com `auto-fill` uma janela
+   larga caberia três por linha e a página deixaria de ter doze.
+
+   O cartão mostra MINIATURA e só troca pelo <iframe> no clique — ver
+   `CartaoPitch`. Doze players do YouTube carregados de uma vez é o que
+   esta tela existe para não fazer. */
+.pitches-section {
+  padding: 80px 40px;
+  background: var(--gray-50);
+}
+
+.pitches-inner { max-width: 1000px; margin: 0 auto; }
+
+.pitches-grade {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.pitch-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  /* O canto do cartão recorta a miniatura, que é quadrada. */
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.pitch-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+/* `aspect-ratio` reserva a altura ANTES de a imagem chegar: sem isso a
+   grade inteira pula para baixo conforme as doze miniaturas carregam. */
+.pitch-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.pitch-iframe { width: 100%; height: 100%; border: none; display: block; }
+
+.pitch-play {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* `object-fit: cover` porque a miniatura hqdefault do YouTube é 4:3 e o
+   cartão é 16:9 — sem isso sobram duas faixas pretas em cima e embaixo. */
+.pitch-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.pitch-play-icone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.pitch-play-icone svg { width: 28px; height: 28px; margin-left: 2px; }
+
+.pitch-play:hover .pitch-play-icone,
+.pitch-play:focus-visible .pitch-play-icone {
+  background: var(--color-primary);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* Link que o banco aceitou (é do domínio do YouTube) mas de que não sai
+   um id de vídeo — canal ou playlist. O cartão fica no ar, avisando. */
+.pitch-thumb-vazia {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: var(--qc-gray-light);
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+
+.pitch-corpo { padding: 16px 20px 20px; }
+
+.pitch-selos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+.pitch-selo {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+/* O selo de edição antiga usa cinza, não a cor da marca: ele diz "isto é
+   de outro ano", e a cor da marca é do que está acontecendo agora. */
+.pitch-selo-arquivo {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.pitch-titulo {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  line-height: var(--lh-normal);
+}
+
+.pitch-autores {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+}
+
+.pitch-desc {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--lh-normal);
+}
+
+.pitches-contagem {
+  margin: 24px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* ---- Paginação (rodapé da vitrine de pitches) ----
+   Estilo da busca do Google: anterior, uma janela de números em volta da
+   página atual, próxima. A regra da janela é `janelaDePaginas`, em
+   src/lib/pitches.ts — aqui só o desenho. */
+.paginacao {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.paginacao-numeros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.paginacao-numero,
+.paginacao-seta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--color-text);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-label);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.paginacao-seta svg { width: 16px; height: 16px; }
+
+.paginacao-numero:hover:not(.ativo),
+.paginacao-seta:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* A página atual não é um botão a clicar: fica preenchida e sem cursor
+   de mão, para o clique ir para onde muda alguma coisa. */
+.paginacao-numero.ativo {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--white);
+  cursor: default;
+}
+
+.paginacao-seta:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.paginacao-elipse {
+  padding: 0 4px;
+  color: var(--color-text-muted);
+  font-weight: var(--fw-bold);
+}
+
+
 /* ---- Responsivo ----
    1024px: grades de 4 colunas viram 2; o split do login vira empilhado.
     768px: o menu lateral sai da tela e só volta com a classe .open.
@@ -2483,6 +2749,14 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
   .cronograma-section { padding: 48px 20px; }
   .cronograma-pagina { padding: 96px 20px 48px; }
   .cronograma-item { padding: 14px 16px; }
+  .pitches-section { padding: 48px 20px; }
+  /* Dois videos lado a lado num celular sao dois videos ilegiveis. */
+  .pitches-grade { grid-template-columns: 1fr; }
+  .anais-item { padding: 16px; }
+  /* Os textos das setas somem: com ANTERIOR e PROXIMA por extenso a
+     paginacao quebra em duas linhas antes de os numeros caberem. */
+  .paginacao-seta { font-size: 0; min-width: 40px; padding: 0; }
+  .paginacao-seta svg { width: 18px; height: 18px; }
 }
 
 /* ============================================================

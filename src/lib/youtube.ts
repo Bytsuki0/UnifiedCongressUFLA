@@ -47,3 +47,21 @@ export function urlDeEmbed(url: string | null | undefined): string | null {
   const id = idDoVideo(url);
   return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : null;
 }
+
+/**
+ * Miniatura do vídeo, ou null quando o link não vale.
+ *
+ * Existe por causa da vitrine de pitches: doze `<iframe>` do YouTube numa
+ * página só carregam doze players (e doze conjuntos de cookies e
+ * requisições de terceiro) antes de o visitante clicar em nada. A grade
+ * mostra a MINIATURA, que é uma imagem, e só troca pelo player quando
+ * alguém dá play — o padrão "lite embed".
+ *
+ * `hqdefault` existe para todo vídeo. `maxresdefault` é maior mas nem
+ * sempre foi gerado, e a falha dele é uma imagem cinza de 120px — quebra
+ * a grade em silêncio, que é pior do que uma miniatura menor.
+ */
+export function urlDaMiniatura(url: string | null | undefined): string | null {
+  const id = idDoVideo(url);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}

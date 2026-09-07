@@ -11,8 +11,9 @@ import { APP_MARK, APP_TAGLINE } from "@/lib/brand";
  * `#landing-header`. Duas cópias divergiriam no primeiro item de menu
  * novo, então o efeito veio junto e o id ficou local ao componente.
  *
- * A aba CRONOGRAMA é a única navegação de conteúdo daqui: o resto do
- * sistema exige login.
+ * CRONOGRAMA, ANAIS e PITCHES são a navegação de conteúdo daqui — as
+ * três rotas públicas que mostram algo em vez de pedir login. O resto do
+ * sistema exige sessão.
  */
 export const CabecalhoPublico = () => {
   useEffect(() => {
@@ -51,6 +52,18 @@ export const CabecalhoPublico = () => {
           className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
         >
           CRONOGRAMA
+        </NavLink>
+        <NavLink
+          to="/anais"
+          className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
+        >
+          ANAIS
+        </NavLink>
+        <NavLink
+          to="/pitches"
+          className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
+        >
+          PITCHES
         </NavLink>
         <Link to="/login" className="btn btn-ghost">ENTRAR</Link>
         <Link to="/cadastro" className="btn btn-primary">CADASTRAR-SE</Link>

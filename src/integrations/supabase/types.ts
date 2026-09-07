@@ -53,6 +53,36 @@ export type Database = {
         }
         Relationships: []
       }
+      anais: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          descricao: string
+          id: string
+          ordem: number
+          titulo: string
+          url: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          id?: string
+          ordem?: number
+          titulo: string
+          url: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+          url?: string
+        }
+        Relationships: []
+      }
       arquivos_download: {
         Row: {
           criado_em: string
@@ -683,6 +713,39 @@ export type Database = {
           },
         ]
       }
+      pitches_historico: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          descricao: string
+          edicao: string
+          id: string
+          ordem: number
+          titulo: string
+          video_url: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          edicao?: string
+          id?: string
+          ordem?: number
+          titulo: string
+          video_url: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          descricao?: string
+          edicao?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
       professores: {
         Row: {
           created_at: string | null
@@ -1045,6 +1108,15 @@ export type Database = {
           tipo: string
         }[]
       }
+      anais_publicos: {
+        Args: never
+        Returns: {
+          descricao: string
+          id: string
+          titulo: string
+          url: string
+        }[]
+      }
       aplicar_anexos: {
         Args: { _anexos: Json; _trabalho_id: string }
         Returns: string[]
@@ -1186,6 +1258,19 @@ export type Database = {
           ordem: number
           resultado: string
           rodada: number
+        }[]
+      }
+      pitches_publicos: {
+        Args: never
+        Returns: {
+          autores: string
+          categoria: string
+          descricao: string
+          edicao: string
+          id: string
+          origem: string
+          titulo: string
+          video_url: string
         }[]
       }
       pool_revisores: {

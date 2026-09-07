@@ -5,12 +5,28 @@ import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
 import { CarrosselTemplates } from "@/components/publico/CarrosselTemplates";
 import { RodapePublico } from "@/components/publico/RodapePublico";
 import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
+import { ListaAnais } from "@/components/publico/ListaAnais";
+import { CartaoPitch } from "@/components/publico/CartaoPitch";
 import { useCronograma } from "@/hooks/use-cronograma";
 import { useArquivosDownload } from "@/hooks/use-arquivos-download";
+import { useAnais } from "@/hooks/use-anais";
+import { usePitches } from "@/hooks/use-pitches";
+
+/**
+ * Quantos pitches a landing mostra antes de mandar para /pitches.
+ *
+ * Quatro é duas linhas da mesma grade de dois por linha — a página
+ * inteira usa doze. A prévia existe para dizer que a vitrine EXISTE, não
+ * para ser a vitrine: numa página inicial, vinte miniaturas de vídeo
+ * empurram para baixo tudo o que vem depois delas.
+ */
+const PITCHES_NA_LANDING = 4;
 
 const Landing = () => {
   const { arquivos } = useArquivosDownload("estudante");
   const { itens, carregando } = useCronograma();
+  const { anais } = useAnais();
+  const { pitches } = usePitches();
 
   // O efeito de sombra da barra superior mudou de dono: mora em
   // <CabecalhoPublico>, que /cronograma também usa. Aqui ficou só a
@@ -24,11 +40,11 @@ const Landing = () => {
     reveals.forEach((r) => observer.observe(r));
 
     return () => observer.disconnect();
-    // Depende do cronograma: a seção dele só entra no DOM quando a busca
-    // volta, e o observer é montado uma vez. Sem reobservar, os blocos
-    // `.reveal` de lá ficariam parados em opacity 0 — invisíveis para
-    // sempre. Quem já revelou mantém a classe.
-  }, [itens]);
+    // Depende das listas que chegam por rede: as seções delas só entram
+    // no DOM quando a busca volta, e o observer é montado uma vez. Sem
+    // reobservar, os blocos `.reveal` de lá ficariam parados em opacity
+    // 0 — invisíveis para sempre. Quem já revelou mantém a classe.
+  }, [itens, anais, pitches]);
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff" }}>
@@ -84,6 +100,65 @@ const Landing = () => {
 
             <div className="reveal">
               <ListaCronograma itens={itens} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Anais — some inteiro quando ainda não há publicação. Uma seção
+          "Anais do congresso." vazia na página inicial sugeriria que o
+          congresso não publica nada, que é o oposto do que ela existe
+          para dizer. Mesma regra do cronograma e dos templates. */}
+      {anais.length > 0 && (
+        <section className="cronograma-section" id="anais">
+          <div className="cronograma-inner">
+            <div className="reveal">
+              <div className="section-overline">PUBLICAÇÕES</div>
+              <h2 className="section-title">Anais do congresso.</h2>
+              <p className="section-description">
+                Onde os trabalhos apresentados nas edições do congresso foram publicados.
+              </p>
+            </div>
+
+            <div className="reveal">
+              <ListaAnais anais={anais} />
+            </div>
+
+            <div className="cronograma-rodape-acoes reveal">
+              <Link to="/anais" className="btn btn-outline">VER TODOS OS ANAIS</Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Pitches — só uma PRÉVIA, com o resto atrás de /pitches. Aqui não
+          entra a <GradePitches>: ela pagina pela query string, e uma
+          paginação no meio da página inicial disputaria a URL com o resto
+          da landing. O cartão é o mesmo das duas telas, então a prévia
+          não pode divergir da vitrine. */}
+      {pitches.length > 0 && (
+        <section className="pitches-section" id="pitches">
+          <div className="pitches-inner">
+            <div className="reveal">
+              <div className="section-overline">▶ VÍDEOS DE APRESENTAÇÃO</div>
+              <h2 className="section-title">Pitches do congresso.</h2>
+              <p className="section-description">
+                As apresentações em vídeo dos trabalhos aprovados, desta edição e das anteriores.
+              </p>
+            </div>
+
+            <div className="pitches-grade reveal">
+              {pitches.slice(0, PITCHES_NA_LANDING).map((pitch) => (
+                <CartaoPitch key={pitch.id} pitch={pitch} />
+              ))}
+            </div>
+
+            <div className="cronograma-rodape-acoes reveal">
+              <Link to="/pitches" className="btn btn-outline">
+                {pitches.length > PITCHES_NA_LANDING
+                  ? `VER OS ${pitches.length} PITCHES`
+                  : "VER TODOS OS PITCHES"}
+              </Link>
             </div>
           </div>
         </section>
