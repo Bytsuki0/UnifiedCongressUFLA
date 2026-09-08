@@ -43,7 +43,7 @@ const TIPO_LABEL: Record<"avaliador" | "professor", string> = {
 type Props = {
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
-  /** Proposta vinda de `recomendar_distribuicao` — ponto de partida, não decisão. */
+  /** Proposta vinda de `recomendar_distribuicao` ponto de partida, não decisão. */
   plano: ParDistribuicao[];
   trabalhos: Trabalho[];
   pool: RevisorOption[];
@@ -61,7 +61,7 @@ type Props = {
  * fechar no "Cancelar" não deixa rastro. Cada trabalho traz um seletor
  * por vaga, e o co-chair troca, esvazia ou completa o que quiser antes de
  * confirmar. Só o que estiver na tela no momento do "Confirmar" vira
- * associação — e vira tudo de uma vez, numa transação (`confirmar_distribuicao`).
+ * associação e vira tudo de uma vez, numa transação (`confirmar_distribuicao`).
  *
  * Os impedimentos aparecem desabilitados com o motivo ao lado, mas quem
  * recusa de verdade continua sendo o banco: `trg_conflito_revisor` e
@@ -92,7 +92,7 @@ const DialogoDistribuicao = ({
     return m;
   }, [revisoresAtuais]);
 
-  // Carga já gravada, por e-mail em minúsculas — é assim que
+  // Carga já gravada, por e-mail em minúsculas é assim que
   // `opcoesParaSlot` procura, e o pool vem do servidor em minúsculas.
   const cargaBase = useMemo(() => {
     const m = new Map<string, number>();
@@ -116,7 +116,7 @@ const DialogoDistribuicao = ({
     [trabalhos, revisoresPorTrabalho],
   );
 
-  // Semeia os slots com a proposta toda vez que a janela abre — reabrir
+  // Semeia os slots com a proposta toda vez que a janela abre reabrir
   // depois de um erro tem de trazer a recomendação nova, não a anterior.
   useEffect(() => {
     if (!aberto) return;
@@ -164,17 +164,17 @@ const DialogoDistribuicao = ({
         <DialogHeader>
           <DialogTitle>Distribuição recomendada</DialogTitle>
           <DialogDescription>
-            Esta é uma proposta — nada foi gravado ainda. Troque ou deixe em branco o que quiser; só as
+            Esta é uma proposta nada foi gravado ainda. Troque ou deixe em branco o que quiser; só as
             associações que estiverem aqui quando você confirmar serão criadas, e todas de uma vez. Autor,
             orientador e coautores aparecem impedidos. A carga é distribuída por igual, evitando passar de{" "}
-            {META_TRABALHOS_POR_REVISOR} trabalhos por revisor — acima disso, só quando não sobra ninguém.
+            {META_TRABALHOS_POR_REVISOR} trabalhos por revisor acima disso, só quando não sobra ninguém.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {pool.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhum revisor no pool — conceda o papel de professor ou avaliador em Papéis (Portal Admin).
+              Nenhum revisor no pool conceda o papel de professor ou avaliador em Papéis (Portal Admin).
             </p>
           ) : linhas.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -227,7 +227,7 @@ const DialogoDistribuicao = ({
                             <SelectValue placeholder="Selecione um revisor" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={VAZIO}>— deixar vago —</SelectItem>
+                            <SelectItem value={VAZIO}>— deixar vago</SelectItem>
                             {opcoes.map(({ opcao, desabilitado, motivo, carga, acimaDaMeta }) => (
                               <SelectItem
                                 key={opcao.email}
@@ -236,7 +236,7 @@ const DialogoDistribuicao = ({
                               >
                                 {opcao.nome} · {TIPO_LABEL[opcao.tipo]}, {carga}/
                                 {META_TRABALHOS_POR_REVISOR}
-                                {/* Acima da meta continua selecionável — só avisa. */}
+                                {/* Acima da meta continua selecionável só avisa. */}
                                 {acimaDaMeta && !motivo && " · acima da meta"}
                                 {motivo && ` · ${motivo}`}
                               </SelectItem>

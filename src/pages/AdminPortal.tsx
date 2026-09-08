@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { ArquivosDownloadPanel } from "@/components/admin/ArquivosDownloadPanel";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
@@ -285,6 +286,7 @@ const AdminPortal = () => {
               <div className="user-meta">Coord. Comissão · UFLA</div>
             </div>
             <div className="user-avatar admin">AD</div>
+            <BotaoNotificacoes />
             <BotaoSuporte />
           </div>
         </header>

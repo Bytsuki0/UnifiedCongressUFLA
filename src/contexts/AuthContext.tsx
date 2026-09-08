@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, Re
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { emailEstaConfirmado } from "@/services/verificacaoEmailService";
+import { resolveMyRole } from "@/services/papeisService";
 
 export type UserRole = "estudante" | "professor" | "avaliador" | "admin" | "externo";
 
@@ -33,24 +34,6 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   revalidarEmailConfirmado: async () => null,
 });
-
-const ROLE_PRIORITY: UserRole[] = ["admin", "avaliador", "professor", "estudante", "externo"];
-
-/**
- * Papel do usuário logado, resolvido no servidor (public.user_roles via
- * get_my_roles). A autorização real é aplicada por RLS no banco — este
- * valor só orienta a navegação da interface.
- */
-export async function resolveMyRole(): Promise<UserRole> {
-  const { data, error } = await supabase.rpc("get_my_roles");
-  if (!error && Array.isArray(data)) {
-    for (const role of ROLE_PRIORITY) {
-      if (data.includes(role)) return role;
-    }
-  }
-  // Sem papel resolvido, assume o menor privilégio.
-  return "externo";
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);

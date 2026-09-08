@@ -909,7 +909,8 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 
 /* Contato do suporte na barra superior, à direita do usuário. Abre a
    janela com o endereço — por isso é <button>, e não link. */
-.top-bar .link-suporte {
+.top-bar .link-suporte,
+.top-bar .link-notificacoes {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -928,7 +929,8 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   transition: all var(--transition-fast);
 }
 
-.top-bar .link-suporte:hover {
+.top-bar .link-suporte:hover,
+.top-bar .link-notificacoes:hover {
   border-color: var(--color-primary);
   background: var(--gray-50);
   color: var(--color-primary);
@@ -948,7 +950,27 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   line-height: 1;
 }
 
-.top-bar .link-suporte:hover .link-suporte-icone {
+/* Contador de avisos ainda não fechados nesta aba. Some quando zera —
+   um badge permanentemente aceso deixa de ser lido. O `min-width` com
+   `padding` horizontal mantém o círculo redondo em "1" e o alonga em
+   "12", em vez de espremer o número. */
+.top-bar .link-notificacoes-contador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--color-danger, #dc2626);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.top-bar .link-suporte:hover .link-suporte-icone,
+.top-bar .link-notificacoes:hover .link-suporte-icone {
   background: var(--color-primary);
   color: var(--white);
 }
@@ -1282,18 +1304,29 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 }
 
 /* ---- Abas dos anexos do trabalho (AnexosDoTrabalho.tsx) ---- */
-/* Mesma linguagem do .profile-select-group, com duas diferenças que a
-   lista variável exige: os itens NÃO dividem a largura em partes iguais
-   (os títulos vêm da organização e têm comprimentos muito diferentes) e a
-   barra QUEBRA em várias linhas — uma categoria com quatro anexos não
-   pode espremer os rótulos até virarem reticências. */
+/* Cada aba é um BOTÃO, e tem de parecer um. A primeira versão seguia o
+   .profile-select-group: texto liso sobre uma faixa cinza, com relevo só
+   na opção marcada. Ali funciona — são duas opções de um formulário que o
+   usuário já está preenchendo. Aqui não: a barra fica solta no cabeçalho,
+   ao lado dos botões de baixar, e quem abre a tela para LER o trabalho não
+   percebia que "Resumo" era clicável e que havia mais anexos atrás dele.
+   Por isso a aba não marcada ganhou superfície própria (fundo branco,
+   borda e sombra), o ícone do tipo e o levantar no hover.
+
+   Duas diferenças em relação ao .profile-select-group ficaram: os itens
+   NÃO dividem a largura em partes iguais (os títulos vêm da organização e
+   têm comprimentos muito diferentes) e a barra QUEBRA em várias linhas —
+   uma categoria com quatro anexos não pode espremer os rótulos até
+   virarem reticências. */
 .anexo-tabs {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   background: var(--gray-100);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  gap: 2px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  gap: 4px;
 }
 
 .anexo-tab {
@@ -1311,21 +1344,61 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 }
 
 .anexo-tab-text {
-  display: block;
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
   font-size: var(--fs-caption);
   font-weight: var(--fw-black);
   text-transform: uppercase;
   letter-spacing: var(--ls-label);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-1);
   color: var(--color-text-secondary);
   transition: all var(--transition-fast);
 }
 
+/* O ícone diz o que a aba abre (documento ou vídeo) antes do clique. */
+.anexo-tab-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.anexo-tab:hover .anexo-tab-text {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Afundar no clique: é o segundo sinal de que aquilo é um botão, e o
+   único que aparece em quem navega por toque (não há hover no celular). */
+.anexo-tab:active .anexo-tab-text {
+  transform: translateY(0);
+  box-shadow: var(--shadow-1);
+}
+
 .anexo-tab input:checked + .anexo-tab-text {
   background: var(--color-primary);
+  border-color: var(--color-primary);
   color: var(--white);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-2);
+}
+
+.anexo-tab input:checked + .anexo-tab-text .anexo-tab-icon {
+  opacity: 1;
+}
+
+/* A aba aberta não levanta no hover: ela já está no topo, e mover o que
+   está selecionado sugere que o clique faria alguma coisa. */
+.anexo-tab input:checked + .anexo-tab-text:hover {
+  transform: none;
+  color: var(--white);
+  border-color: var(--color-primary);
 }
 
 /* Foco visível pelo teclado: o input real é invisível, então o anel tem
@@ -1333,6 +1406,14 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 .anexo-tab input:focus-visible + .anexo-tab-text {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anexo-tab-text,
+  .anexo-tab:hover .anexo-tab-text {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* ---- Página inicial pública (Landing.tsx) ---- */

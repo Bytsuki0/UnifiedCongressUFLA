@@ -5,14 +5,14 @@ import type { AnexoDoTrabalho } from "@/lib/anexos";
 /**
  * Leitura dos anexos de um trabalho: as abas, os botões e o visor.
  *
- * Antes eram dois anexos fixos — um PDF e um vídeo — e cada tela do lado
+ * Antes eram dois anexos fixos um PDF e um vídeo e cada tela do lado
  * de quem lê (`/revisor/analise/:id` e `/co-chairs/parecer-editorial/:id`)
  * tinha a sua própria cópia do alternador, da URL assinada e do botão de
  * baixar. Agora a quantidade e o tipo vêm da categoria, e as abas se
  * montam a partir do que o trabalho ENTREGOU.
  *
  * O estado (qual aba está aberta, a URL assinada) mora em
- * `useAnexoAtivo`, em src/hooks — um .tsx só pode exportar componentes,
+ * `useAnexoAtivo`, em src/hooks um .tsx só pode exportar componentes,
  * senão o lint acusa `react-refresh/only-export-components`.
  *
  * ⚠ São TRÊS peças e não um componente só de propósito: as duas telas têm
@@ -20,13 +20,33 @@ import type { AnexoDoTrabalho } from "@/lib/anexos";
  * grid e `PdfViewer` se posiciona por `inset: 0` dentro de `.pdf-viewer`,
  * então qualquer barra de abas colocada ali dentro ficaria COBERTA pelo
  * canvas (z-index 5). As abas têm de morar fora do visor, e cada tela as
- * põe onde cabe. O que é compartilhado — estado, URL assinada, escolha do
- * visualizador, estados vazios — está todo aqui.
+ * põe onde cabe. O que é compartilhado estado, URL assinada, escolha do
+ * visualizador, estados vazios está todo aqui.
  */
 
 /**
- * A barra de abas. Some quando há um anexo só — uma aba sozinha não é
- * escolha, é ruído — e quando não há nenhum.
+ * Ícone do tipo do anexo, dentro da aba. Diz o que a aba abre documento
+ * ou vídeo antes de o revisor clicar, e é metade do que faz a aba não
+ * marcada parecer um botão em vez de um rótulo.
+ */
+function IconeDoTipo({ tipo }: { tipo: AnexoDoTrabalho["tipo"] }) {
+  if (tipo === "video") {
+    return (
+      <svg className="anexo-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    );
+  }
+  return (
+    <svg className="anexo-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  );
+}
+
+/**
+ * A barra de abas. Some quando há um anexo só uma aba sozinha não é
+ * escolha, é ruído e quando não há nenhum.
  */
 export function AbasDeAnexos({
   anexos,
@@ -49,7 +69,10 @@ export function AbasDeAnexos({
             checked={i === indice}
             onChange={() => onEscolher(i)}
           />
-          <span className="anexo-tab-text">{anexo.titulo}</span>
+          <span className="anexo-tab-text">
+            <IconeDoTipo tipo={anexo.tipo} />
+            {anexo.titulo}
+          </span>
         </label>
       ))}
     </div>
@@ -74,7 +97,7 @@ async function baixarPdf(url: string, nome: string) {
   }
 }
 
-/** Baixar / abrir em nova aba — o que faz sentido para o anexo aberto. */
+/** Baixar / abrir em nova aba o que faz sentido para o anexo aberto. */
 export function AcoesDoAnexo({
   anexo,
   url,
@@ -132,8 +155,8 @@ const ICONE_PDF = (
 /**
  * O conteúdo de dentro de `.pdf-viewer`.
  *
- * Quem desenha o contêiner é a página — na do revisor ele é uma coluna do
- * grid, na do co-chair um bloco dentro de um Card —, mas o contrato de
+ * Quem desenha o contêiner é a página na do revisor ele é uma coluna do
+ * grid, na do co-chair um bloco dentro de um Card, mas o contrato de
  * layout é o mesmo nas duas: `position: relative`, com `PdfViewer` e
  * `VideoViewer` se posicionando por `inset: 0`.
  */

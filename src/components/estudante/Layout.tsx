@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { APP_SHORT } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -80,6 +81,7 @@ const Layout = () => {
               <div className="user-meta">{user?.email}</div>
             </div>
             <div className="user-avatar purple">{initials(user?.nome)}</div>
+            <BotaoNotificacoes />
             <BotaoSuporte />
           </div>
         </header>

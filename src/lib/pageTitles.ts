@@ -62,6 +62,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/cronograma", "Cronograma"],
   ["/co-chairs/anais", "Anais do congresso"],
   ["/co-chairs/pitches", "Pitches"],
+  ["/co-chairs/avisos", "Avisos de login"],
   ["/co-chairs/atribuicoes", "Atribuição de revisores"],
   ["/co-chairs/parecer-editorial/:id", "Analisar trabalho"],
   ["/co-chairs/parecer-editorial", "Parecer editorial"],

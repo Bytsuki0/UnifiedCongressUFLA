@@ -227,6 +227,42 @@ export type Database = {
         }
         Relationships: []
       }
+      avisos: {
+        Row: {
+          corpo: string
+          criado_em: string
+          criado_por: string | null
+          id: string
+          imagem: string
+          ordem: number
+          papeis: string[]
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          corpo?: string
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          imagem?: string
+          ordem?: number
+          papeis: string[]
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          corpo?: string
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          imagem?: string
+          ordem?: number
+          papeis?: string[]
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       categoria_anexos: {
         Row: {
           categoria_id: string
@@ -1234,6 +1270,16 @@ export type Database = {
           participante_nome: string
         }[]
       }
+      meus_avisos: {
+        Args: never
+        Returns: {
+          corpo: string
+          id: string
+          imagem: string
+          tipo: string
+          titulo: string
+        }[]
+      }
       minicourse_occupancy: {
         Args: never
         Returns: {
@@ -1241,6 +1287,7 @@ export type Database = {
           minicourse_id: string
         }[]
       }
+      papeis_efetivos: { Args: never; Returns: string[] }
       parecer_editorial_do_meu_trabalho: {
         Args: { _trabalho_id: string }
         Returns: {

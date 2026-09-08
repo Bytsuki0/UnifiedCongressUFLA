@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { APP_SHORT } from "@/lib/brand";
 
 const Layout = () => {
@@ -101,6 +102,14 @@ const Layout = () => {
               Pitches
             </NavLink>
 
+            <NavLink to="/co-chairs/avisos" title="Avisos de Login" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <path d="m3 11 18-5v12L3 14v-3z"/>
+                <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+              </svg>
+              Avisos de Login
+            </NavLink>
+
             <NavLink to="/co-chairs/atribuicoes" title="Atribuições" className={({ isActive }) => navItem(isActive)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
@@ -151,6 +160,7 @@ const Layout = () => {
               <div className="user-meta">{user?.email || "Sistema de Submissões"}</div>
             </div>
             <div className="user-avatar">{initials(user?.nome)}</div>
+            <BotaoNotificacoes />
             <BotaoSuporte />
           </div>
         </header>

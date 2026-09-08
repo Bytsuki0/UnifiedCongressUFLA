@@ -32,6 +32,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AvisosLogin } from "@/components/AvisosLogin";
+import { AvisosProvider } from "@/contexts/AvisosContext";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
@@ -78,6 +80,7 @@ import Categorias from "./pages/co-chairs/Categorias";
 import CoChairsCronograma from "./pages/co-chairs/Cronograma";
 import CoChairsAnais from "./pages/co-chairs/Anais";
 import CoChairsPitches from "./pages/co-chairs/Pitches";
+import CoChairsAvisos from "./pages/co-chairs/Avisos";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
@@ -131,9 +134,21 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
+        {/* Os avisos da organização, num estado só. Precisa ficar DENTRO
+            do AuthProvider (lê a sessão) e FORA do Router, envolvendo o
+            pop-up e os Layouts: é o mesmo estado que alimenta o diálogo
+            do login e a aba Notificações da barra superior, e são eles
+            que têm de concordar. */}
+        <AvisosProvider>
         <BrowserRouter>
           {/* Ajusta o <title> a cada navegação (precisa estar dentro do Router). */}
           <DocumentTitle />
+          {/* Avisos da organização, exibidos em diálogo logo depois do
+              login. Montado UMA vez aqui, e não dentro de cada Layout:
+              nos cinco portais seria o mesmo diálogo, e ele reabriria a
+              cada troca de tela. Ele mesmo se cala quando não há sessão
+              — sem papel resolvido não há aviso a mostrar. */}
+          <AvisosLogin />
           <Routes>
             {/* Rotas públicas — sem autenticação. */}
             <Route path="/" element={<Landing />} />
@@ -256,6 +271,7 @@ const App = () => (
                 <Route path="cronograma" element={<CoChairsCronograma />} />
                 <Route path="anais" element={<CoChairsAnais />} />
                 <Route path="pitches" element={<CoChairsPitches />} />
+                <Route path="avisos" element={<CoChairsAvisos />} />
                 <Route path="atribuicoes" element={<Atribuicoes />} />
                 <Route path="parecer-editorial" element={<ParecerEditorial />} />
                 <Route path="parecer-editorial/:id" element={<ParecerEditorialDetalhe />} />
@@ -304,6 +320,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </AvisosProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

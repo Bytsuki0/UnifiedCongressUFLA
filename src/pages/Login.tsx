@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveMyRole } from "@/contexts/AuthContext";
+import { resolveMyRole } from "@/services/papeisService";
 import { toast } from "sonner";
 import { APP_MARK, APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/brand";
 import { portalDoPapel, saudacaoDoPapel } from "@/lib/portais";

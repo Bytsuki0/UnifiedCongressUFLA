@@ -5,6 +5,7 @@ import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { initials } from "@/pages/revisor/shared";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
+import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { APP_SHORT } from "@/lib/brand";
 
 const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
@@ -75,6 +76,7 @@ const Layout = () => {
               <div className="user-meta">{user?.email}</div>
             </div>
             <div className="user-avatar" style={{ background: "var(--color-primary)" }}>{initials(user?.nome)}</div>
+            <BotaoNotificacoes />
             <BotaoSuporte />
           </div>
         </header>

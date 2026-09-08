@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   Gavel,
+  Megaphone,
   Tags,
   Users,
   Video,
@@ -15,10 +16,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 
 /**
- * Painel de Controle dos co-chairs — a porta de entrada do portal.
+ * Painel de Controle dos co-chairs a porta de entrada do portal.
  *
  * Os cartões são uma LISTA, e não oito blocos de JSX repetidos: eram
- * quatro escritos à mão e o painel já estava mentindo — Trabalhos e
+ * quatro escritos à mão e o painel já estava mentindo Trabalhos e
  * Cronograma existiam no menu lateral e não aqui, e quem entrava pelo
  * painel não sabia que as telas existiam. Com a lista, acrescentar uma
  * seção é uma linha, e é mais difícil esquecer.
@@ -79,6 +80,13 @@ const SECOES: Secao[] = [
     titulo: "Anais do Congresso",
     descricao: "Publique onde os trabalhos do congresso saíram e o link de cada volume.",
     Icone: BookOpen,
+  },
+  {
+    para: "/co-chairs/avisos",
+    titulo: "Avisos de Login",
+    descricao:
+      "Recados em janela para os papéis que você escolher, exibidos a cada entrada no sistema.",
+    Icone: Megaphone,
   },
   {
     para: "/co-chairs/pitches",
