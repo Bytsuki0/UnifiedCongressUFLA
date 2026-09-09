@@ -10,7 +10,7 @@ const CORES = ["blue-800", "blue-700", "blue-600", "blue-500"];
  *
  * A grade antiga era `repeat(4, 1fr)` e a lista tinha exatamente quatro
  * itens, fixos no código. Agora a organização acrescenta e remove
- * arquivos em /admin/configuracoes: com cinco, a grade quebrava a
+ * arquivos em /co-chairs/downloads: com cinco, a grade quebrava a
  * seção em duas fileiras desalinhadas; com um, deixava três buracos.
  * O carrossel mostra quantos couberem e guarda o resto, seja qual for o
  * número.

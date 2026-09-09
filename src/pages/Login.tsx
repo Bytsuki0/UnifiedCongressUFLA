@@ -95,7 +95,7 @@ const Login = () => {
             width={753}
             height={317}
           />
-          <h1 className="hero-title">O Congresso Unificado - Campus Paraíso.</h1>
+          <h1 className="hero-title">IV Congresso Unificado - Campus Paraíso.</h1>
           <p className="hero-description">
             Sistema oficial do {APP_NAME}.
           </p>

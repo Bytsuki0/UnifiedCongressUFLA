@@ -76,7 +76,11 @@ export async function carregarPrazoSubmissoes(): Promise<PrazoSubmissoes> {
  * Eram 8 colunas `link_*` em `configuracoes` mais uma lista fixa em
  * `src/lib/downloads.ts`: publicar um arquivo novo exigia migration,
  * código e deploy. Agora são linhas de `arquivos_download`, editadas em
- * /admin/configuracoes.
+ * /co-chairs/downloads — a tela saiu de /admin/configuracoes na
+ * 20260909120000, e a policy de escrita foi junto (`is_app_admin()` ->
+ * `is_event_staff()`). Quem escreve daqui para frente é a organização
+ * do congresso; o admin continua dentro, porque `is_event_staff()` é
+ * admin OU avaliador.
  * ----------------------------------------------------------------- */
 
 /** Onde o arquivo aparece. É coluna com CHECK no banco, não texto livre. */
@@ -115,7 +119,7 @@ export async function carregarArquivosDownload(): Promise<ArquivoDownload[]> {
 }
 
 /**
- * A mesma lista pela TABELA, para a tela do admin: ela precisa da
+ * A mesma lista pela TABELA, para a tela de edição: ela precisa da
  * `ordem` para saber onde encaixar o próximo arquivo. Aqui o erro
  * PROPAGA — quem está editando tem de saber que a lista não carregou,
  * senão acrescenta em cima de um estado que não é o do banco.

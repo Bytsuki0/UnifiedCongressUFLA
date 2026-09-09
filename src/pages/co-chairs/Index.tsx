@@ -4,6 +4,7 @@ import {
   BookOpen,
   CalendarDays,
   ClipboardList,
+  Download,
   FileText,
   Gavel,
   Megaphone,
@@ -94,6 +95,13 @@ const SECOES: Secao[] = [
     descricao:
       "A vitrine de vídeos. Os trabalhos aprovados entram sozinhos; aqui vai o acervo antigo.",
     Icone: Video,
+  },
+  {
+    para: "/co-chairs/downloads",
+    titulo: "Links de Downloads",
+    descricao:
+      "Modelos, normas e manuais no Drive, para a página inicial, o login e o arquivo do revisor.",
+    Icone: Download,
   },
 ];
 

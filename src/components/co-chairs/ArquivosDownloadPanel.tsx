@@ -10,12 +10,21 @@ import {
 
 /**
  * Os arquivos que a organização publica para download, em
- * /admin/configuracoes.
+ * /co-chairs/downloads.
  *
  * Antes eram oito campos de URL fixos no formulário, um por arquivo
  * previsto lá atrás: publicar um nono exigia migration, código e deploy.
  * Agora é uma lista — a organização acrescenta e remove sozinha
  * (migration 20260830120000).
+ *
+ * O painel nasceu dentro de /admin/configuracoes e MUDOU DE PORTAL na
+ * 20260909120000, junto com a policy de escrita (`is_app_admin()` ->
+ * `is_event_staff()`). O que se publica aqui é material do congresso —
+ * modelo de artigo, normas, manual do revisor —, e isso é trabalho da
+ * organização, não de quem administra contas e papéis. As duas coisas
+ * andam juntas de propósito: neste projeto a policy acompanha ONDE A
+ * TELA MORA, e mover a tela sem mover a policy deixaria o co-chair
+ * olhando para uma lista que ele não consegue gravar.
  *
  * As duas listas abaixo NÃO são um detalhe visual: `grupo` é coluna com
  * CHECK no banco e decide em que tela o arquivo aparece. Publicar o
@@ -23,11 +32,11 @@ import {
  * congresso, e é por isso que o botão de adicionar é um por grupo, e
  * não um só com um seletor onde escolher errado é o padrão.
  *
- * Acrescentar e remover gravam NA HORA, sem passar pelo "SALVAR
- * CONFIGURAÇÕES" do rodapé da página: aquele botão escreve a linha
- * única de `configuracoes`, que é outra tabela. Um botão só para as
- * duas coisas deixaria o admin sem saber o que foi gravado quando uma
- * das duas falhasse.
+ * Acrescentar e remover gravam NA HORA: não há botão de salvar nesta
+ * tela, e é o que a separa de /admin/configuracoes — lá o painel ficava
+ * ABAIXO do SALVAR CONFIGURAÇÕES justamente para não parecer que aquele
+ * botão o gravava (ele grava a linha única de `configuracoes`, outra
+ * tabela). Fora daquela página, a ambiguidade some com ela.
  */
 
 type Grupo = { valor: GrupoDownload; titulo: string; ajuda: string };
@@ -136,8 +145,8 @@ export function ArquivosDownloadPanel() {
 
       <p style={{ fontSize: "var(--fs-caption)", color: "var(--color-text-secondary)", marginBottom: 16 }}>
         Cole o link de compartilhamento do Drive e dê um nome ao arquivo. Lembre-se de deixar o
-        arquivo acessível a quem tem o link. Acrescentar e remover valem na hora, sem passar pelo
-        botão SALVAR CONFIGURAÇÕES.
+        arquivo acessível a quem tem o link. Acrescentar e remover valem na hora — esta tela não
+        tem botão de salvar.
       </p>
 
       {carregando ? (

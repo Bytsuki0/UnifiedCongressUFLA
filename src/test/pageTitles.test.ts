@@ -22,6 +22,7 @@ describe("títulos de página", () => {
     ["/co-chairs/avaliadores/novo", "Novo avaliador"],
     ["/co-chairs/parecer-editorial", "Parecer editorial"],
     ["/co-chairs/parecer-editorial/abc-123", "Analisar trabalho"],
+    ["/co-chairs/downloads", "Links de downloads"],
     ["/revisor/analise", "Trabalhos para análise"],
     ["/revisor/analise/abc-123", "Analisar trabalho"],
     ["/revisor/arquivo", "Arquivo"],

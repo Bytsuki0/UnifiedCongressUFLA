@@ -4,7 +4,6 @@ import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
-import { ArquivosDownloadPanel } from "@/components/admin/ArquivosDownloadPanel";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
 import { PapeisPanel } from "@/components/admin/PapeisPanel";
 import { UsuariosPanel } from "@/components/admin/UsuariosPanel";
@@ -562,13 +561,15 @@ const AdminPortal = () => {
               </button>
             </div>
 
-            {/* Depois do botão, e não entre os cards acima, porque não é
-                ele quem grava esta lista: os arquivos moram em
-                `arquivos_download` e cada acréscimo ou remoção vale na
-                hora. Tudo o que está ACIMA do botão é o que ele salva. */}
-            <div className="config-cards" style={{ marginTop: 24 }}>
-              <ArquivosDownloadPanel />
-            </div>
+            {/* O painel "Links de Downloads (Google Drive)" MOROU AQUI,
+                logo abaixo deste botão — abaixo porque não era ele quem
+                gravava a lista. Mudou para /co-chairs/downloads na
+                20260909120000, e a policy de escrita de
+                `arquivos_download` foi junto (is_app_admin ->
+                is_event_staff): modelo de artigo e manual do revisor são
+                material do congresso, e quem cuida disso é a mesma
+                organização que cuida do cronograma e das categorias.
+                Não recolocar aqui sem mover a policy de volta. */}
           </div>
 
           {/* NOTIFICAÇÕES */}
