@@ -32,6 +32,18 @@ export type AnexoDaCategoria = {
   titulo: string;
   /** Frase de apoio sob o campo. Vazia esconde a linha. */
   descricao: string;
+  /**
+   * `false` = o campo aparece no formulário do autor mas pode ficar
+   * vazio. O padrão é `true` (a submissão não passa sem ele) — é o que
+   * toda exigência cadastrada até 20260911 era, quando "estar na lista" e
+   * "ser obrigatório" ainda eram a mesma coisa.
+   *
+   * ⚠ Opcional é sobre estar AUSENTE, nunca sobre estar errado: anexo
+   * opcional preenchido passa pela mesma validação do obrigatório. É
+   * assim que `aplicar_anexos` faz no servidor, e as duas regras têm de
+   * concordar.
+   */
+  obrigatorio: boolean;
   ordem: number;
 };
 
@@ -128,6 +140,8 @@ export function validarAnexos(args: {
       // gravado; string vazia é a pessoa tendo apagado o link.
       const url = (item.url ?? jaGravado ?? "").trim();
       if (!url) {
+        // Campo vazio é resposta legítima num anexo opcional — e só aí.
+        if (!exigencia.obrigatorio) continue;
         return `Informe o link de vídeo de "${exigencia.titulo}".`;
       }
       if (!idDoVideo(url)) {
@@ -138,8 +152,12 @@ export function validarAnexos(args: {
 
     const arquivo = item.arquivo ?? null;
     if (!arquivo) {
-      if (!jaGravado) return `Anexe o PDF de "${exigencia.titulo}".`;
-      continue; // mantém o arquivo que já está gravado
+      if (!jaGravado && exigencia.obrigatorio) {
+        return `Anexe o PDF de "${exigencia.titulo}".`;
+      }
+      // Sem arquivo novo: mantém o que já está gravado — ou, num anexo
+      // opcional, segue sem nada.
+      continue;
     }
     if (arquivo.type !== "application/pdf") {
       return `"${exigencia.titulo}": o arquivo precisa estar em formato PDF.`;
@@ -177,14 +195,34 @@ export function rascunhoInicial(
  * Mora aqui, e não junto do componente, por duas razões: um .tsx só pode
  * exportar componentes (`react-refresh/only-export-components`), e a
  * frase tem de concordar com o que `validarAnexos` cobra — as duas mudam
- * no mesmo arquivo se um dia existir anexo opcional.
+ * no mesmo arquivo. Foi o que aconteceu em 20260911, quando o anexo
+ * opcional passou a existir: a contagem de "exige" conta OBRIGATÓRIO, e
+ * os opcionais entram como um aviso à parte. Somar os dois números numa
+ * frase só ("exige 2 arquivos PDF") faria a tela cobrar o que o servidor
+ * dispensa.
  */
 export function resumoDoPasso(exigencias: AnexoDaCategoria[]): string {
-  const pdfs = exigencias.filter((e) => e.tipo === "pdf").length;
-  const videos = exigencias.filter((e) => e.tipo === "video").length;
+  if (exigencias.length === 0) return "Esta categoria não exige anexo.";
+
+  const obrigatorios = exigencias.filter((e) => e.obrigatorio);
+  const opcionais = exigencias.length - obrigatorios.length;
+
+  const pdfs = obrigatorios.filter((e) => e.tipo === "pdf").length;
+  const videos = obrigatorios.filter((e) => e.tipo === "video").length;
   const partes: string[] = [];
   if (pdfs > 0) partes.push(pdfs === 1 ? "1 arquivo PDF" : `${pdfs} arquivos PDF`);
   if (videos > 0) partes.push(videos === 1 ? "1 link de vídeo" : `${videos} links de vídeo`);
-  if (partes.length === 0) return "Esta categoria não exige anexo.";
-  return `Esta categoria exige ${partes.join(" e ")} · Limite de 10MB por PDF`;
+
+  const frases = [
+    partes.length > 0
+      ? `Esta categoria exige ${partes.join(" e ")}`
+      : "Nenhum anexo é obrigatório aqui",
+  ];
+  if (opcionais > 0) {
+    frases.push(opcionais === 1 ? "1 anexo opcional" : `${opcionais} anexos opcionais`);
+  }
+  // O limite só aparece quando há PDF em jogo — obrigatório ou não.
+  if (exigencias.some((e) => e.tipo === "pdf")) frases.push("Limite de 10MB por PDF");
+
+  return frases.join(" · ");
 }

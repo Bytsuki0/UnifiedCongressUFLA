@@ -170,7 +170,15 @@ describe("reenviarTrabalho", () => {
       coautores: [{ nome: "Bruno", email: "bruno@ufla.br" }],
       categoriaId: "c2",
       exigencias: [
-        { id: "a1", categoria_id: "c2", tipo: "pdf", titulo: "Trabalho", descricao: "", ordem: 1 },
+        {
+          id: "a1",
+          categoria_id: "c2",
+          tipo: "pdf",
+          titulo: "Trabalho",
+          descricao: "",
+          obrigatorio: true,
+          ordem: 1,
+        },
       ],
       anexos: {},
     });
@@ -204,7 +212,15 @@ describe("reenviarTrabalho", () => {
         coautores: [],
         categoriaId: "c1",
         exigencias: [
-          { id: "a1", categoria_id: "c1", tipo: "pdf", titulo: "Trabalho", descricao: "", ordem: 1 },
+          {
+            id: "a1",
+            categoria_id: "c1",
+            tipo: "pdf",
+            titulo: "Trabalho",
+            descricao: "",
+            obrigatorio: true,
+            ordem: 1,
+          },
         ],
         anexos: { a1: { arquivo: new File(["x"], "novo.pdf", { type: "application/pdf" }) } },
       }),

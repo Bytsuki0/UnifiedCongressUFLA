@@ -56,8 +56,8 @@ beforeEach(() => {
 
 describe("submeterTrabalho", () => {
   const EXIGENCIAS = [
-    { id: "a1", categoria_id: "c1", tipo: "pdf" as const, titulo: "Trabalho", descricao: "", ordem: 1 },
-    { id: "a2", categoria_id: "c1", tipo: "video" as const, titulo: "Vídeo", descricao: "", ordem: 2 },
+    { id: "a1", categoria_id: "c1", tipo: "pdf" as const, titulo: "Trabalho", descricao: "", obrigatorio: true, ordem: 1 },
+    { id: "a2", categoria_id: "c1", tipo: "video" as const, titulo: "Vídeo", descricao: "", obrigatorio: true, ordem: 2 },
   ];
 
   it("NÃO distribui revisores — o trabalho nasce sem nenhum", async () => {

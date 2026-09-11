@@ -42,7 +42,7 @@ export async function carregarCategorias(): Promise<CategoriasCarregadas> {
     supabase.from("criterios").select("id, categoria_id, ordem, titulo"),
     supabase
       .from("categoria_anexos")
-      .select("id, categoria_id, tipo, titulo, descricao, ordem"),
+      .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem"),
     supabase.from("trabalhos").select("id, categoria_id"),
   ]);
 
@@ -83,7 +83,15 @@ export async function carregarCategorias(): Promise<CategoriasCarregadas> {
  * ----------------------------------------------------------------- */
 
 function agruparAnexos(
-  linhas: { id: string; categoria_id: string; tipo: string; titulo: string; descricao: string; ordem: number }[],
+  linhas: {
+    id: string;
+    categoria_id: string;
+    tipo: string;
+    titulo: string;
+    descricao: string;
+    obrigatorio: boolean;
+    ordem: number;
+  }[],
 ): Record<string, AnexoDaCategoria[]> {
   const porCategoria: Record<string, AnexoDaCategoria[]> = {};
   for (const linha of linhas) {
@@ -109,7 +117,7 @@ function agruparAnexos(
 export async function listarAnexosPorCategoria(): Promise<Record<string, AnexoDaCategoria[]>> {
   const { data, error } = await supabase
     .from("categoria_anexos")
-    .select("id, categoria_id, tipo, titulo, descricao, ordem");
+    .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem");
   if (error) throw error;
   return agruparAnexos(data ?? []);
 }
@@ -119,6 +127,8 @@ export type NovoAnexoCategoria = {
   tipo: TipoAnexo;
   titulo: string;
   descricao: string;
+  /** `false` deixa o autor submeter sem este item. Ver `AnexoDaCategoria`. */
+  obrigatorio: boolean;
   ordem: number;
 };
 
@@ -133,24 +143,30 @@ export async function criarAnexoCategoria(
       tipo: entrada.tipo,
       titulo: entrada.titulo.trim(),
       descricao: entrada.descricao.trim(),
+      obrigatorio: entrada.obrigatorio,
       ordem: entrada.ordem,
     })
-    .select("id, categoria_id, tipo, titulo, descricao, ordem")
+    .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem")
     .single();
   if (error) throw new Error(error.message);
   return { ...data, tipo: data.tipo as TipoAnexo };
 }
 
 /**
- * Corrige título, descrição ou ordem de uma exigência.
+ * Corrige título, descrição, obrigatoriedade ou ordem de uma exigência.
  *
  * `tipo` fica de fora de propósito: trocar 'pdf' por 'video' numa
  * exigência já cumprida deixaria entregas de PDF penduradas numa
  * exigência de vídeo. Quem quiser trocar o tipo remove e cria outra.
+ *
+ * `obrigatorio`, ao contrário, é editável à vontade: ele não mexe no que
+ * já foi entregue, só no que a próxima gravação do autor vai cobrar.
+ * Afrouxar não invalida submissão nenhuma; apertar passa a cobrar de quem
+ * ainda for salvar — o mesmo efeito de ACRESCENTAR uma exigência hoje.
  */
 export async function atualizarAnexoCategoria(
   id: string,
-  campos: { titulo?: string; descricao?: string; ordem?: number },
+  campos: { titulo?: string; descricao?: string; obrigatorio?: boolean; ordem?: number },
 ): Promise<void> {
   const { error } = await supabase.from("categoria_anexos").update(campos).eq("id", id);
   if (error) throw new Error(error.message);
@@ -187,7 +203,12 @@ export async function mapaCategorias(): Promise<Record<string, string>> {
 }
 
 /** Uma exigência ainda não persistida, como o diálogo de nova categoria a monta. */
-export type RascunhoAnexoCategoria = { tipo: TipoAnexo; titulo: string; descricao: string };
+export type RascunhoAnexoCategoria = {
+  tipo: TipoAnexo;
+  titulo: string;
+  descricao: string;
+  obrigatorio: boolean;
+};
 
 /**
  * Cria a categoria e, junto, os critérios e os anexos exigidos de título
@@ -228,6 +249,7 @@ export async function criarCategoria(
       tipo: a.tipo,
       titulo: a.titulo.trim(),
       descricao: a.descricao.trim(),
+      obrigatorio: a.obrigatorio,
       ordem: i + 1,
     }))
     .filter((a) => a.titulo);

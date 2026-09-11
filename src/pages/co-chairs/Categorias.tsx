@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -51,15 +52,27 @@ const emptyCriterios = (): Criterio[] =>
  * `tipo` também não é editável depois (ver `atualizarAnexoCategoria`):
  * trocá-lo numa exigência já cumprida deixaria PDFs pendurados numa
  * exigência de vídeo.
+ *
+ * `obrigatorio: true` no padrão, e é o padrão do banco também
+ * (20260911120000): até ali TODA linha desta lista era cobrada, então
+ * nascer obrigatório é o que faz o botão "Exigir um PDF" continuar
+ * fazendo exatamente o que o nome dele diz. Quem quiser afrouxar marca
+ * "Opcional" na linha — decisão explícita, e não o efeito de não ter
+ * reparado num seletor.
  */
-const PADRAO_DO_TIPO: Record<TipoAnexo, { titulo: string; descricao: string }> = {
+const PADRAO_DO_TIPO: Record<
+  TipoAnexo,
+  { titulo: string; descricao: string; obrigatorio: boolean }
+> = {
   pdf: {
     titulo: "Trabalho completo",
     descricao: "O arquivo do trabalho em PDF, até 10 MB.",
+    obrigatorio: true,
   },
   video: {
     titulo: "Vídeo de apresentação",
     descricao: "Link do vídeo no YouTube. Os avaliadores o assistem dentro do sistema.",
+    obrigatorio: true,
   },
 };
 
@@ -191,6 +204,7 @@ const Categorias = () => {
       await atualizarAnexoCategoria(anexo.id, {
         titulo: anexo.titulo.trim(),
         descricao: anexo.descricao.trim(),
+        obrigatorio: anexo.obrigatorio,
       });
       toast.success("Anexo salvo.");
     } catch (e) {
@@ -316,6 +330,8 @@ const Categorias = () => {
                     {counts[cat.id] ?? 0} trabalho(s) · {cat.criterios.length} critério(s) ·{" "}
                     {cat.anexos.filter((a) => a.tipo === "pdf").length} PDF(s) ·{" "}
                     {cat.anexos.filter((a) => a.tipo === "video").length} vídeo(s)
+                    {cat.anexos.some((a) => !a.obrigatorio) &&
+                      ` · ${cat.anexos.filter((a) => !a.obrigatorio).length} opcional(is)`}
                   </p>
                 </div>
                 <Button
@@ -366,11 +382,12 @@ const Categorias = () => {
                 <div className="space-y-3 border-t border-border pt-4">
                   <div>
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Anexos exigidos na submissão
+                      Anexos da submissão
                     </Label>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Cada linha vira um campo no formulário do autor e uma aba na tela do
-                      revisor. Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
+                      revisor. Marque cada uma como obrigatória — sem ela a submissão não passa —
+                      ou opcional. Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
                     </p>
                   </div>
 
@@ -413,11 +430,48 @@ const Categorias = () => {
                         </div>
                         <Input
                           value={anexo.descricao}
-                          placeholder="Explique o que enviar aqui (opcional)"
+                          placeholder="Explique o que enviar aqui (pode ficar em branco)"
                           onChange={(e) =>
                             setAnexoCampo(cat.id, anexo.id, { descricao: e.target.value })
                           }
                         />
+
+                        {/* Obrigatório ou opcional. Nasce obrigatório (ver
+                            PADRAO_DO_TIPO) e afrouxar é escolha explícita.
+                            ⚠ Só entra no banco com o "Salvar anexo" abaixo,
+                            como o título e a descrição — os três são a mesma
+                            linha e uma gravação por campo daria três toasts
+                            para uma edição só. */}
+                        <RadioGroup
+                          value={anexo.obrigatorio ? "obrigatorio" : "opcional"}
+                          onValueChange={(valor) =>
+                            setAnexoCampo(cat.id, anexo.id, {
+                              obrigatorio: valor === "obrigatorio",
+                            })
+                          }
+                          aria-label={`Obrigatoriedade de ${anexo.titulo}`}
+                          className="flex flex-wrap gap-x-4 gap-y-2"
+                        >
+                          {/* O `aria-label` repete o texto ao lado porque o
+                              <label> em volta só serve ao clique: o item do
+                              Radix é um <button>, e botão não tira nome
+                              acessível de <label> — ficaria anônimo no
+                              leitor de tela. */}
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <RadioGroupItem value="obrigatorio" aria-label="Obrigatório" />
+                            Obrigatório
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <RadioGroupItem value="opcional" aria-label="Opcional" />
+                            Opcional
+                          </label>
+                        </RadioGroup>
+                        <p className="text-xs text-muted-foreground">
+                          {anexo.obrigatorio
+                            ? "O autor não consegue enviar o trabalho sem este item."
+                            : "O campo aparece no formulário, mas pode ficar em branco."}
+                        </p>
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -463,7 +517,8 @@ const Categorias = () => {
             <DialogTitle>Nova categoria</DialogTitle>
             <DialogDescription>
               Defina o nome e os 5 critérios de análise iniciais (editáveis depois). A categoria
-              nasce pedindo um PDF e um vídeo na submissão — ajuste isso no cartão dela.
+              nasce pedindo um PDF e um vídeo obrigatórios na submissão — ajuste isso, inclusive
+              a obrigatoriedade de cada um, no cartão dela.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

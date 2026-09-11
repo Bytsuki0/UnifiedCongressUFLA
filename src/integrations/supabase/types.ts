@@ -269,6 +269,7 @@ export type Database = {
           criado_em: string
           descricao: string
           id: string
+          obrigatorio: boolean
           ordem: number
           tipo: string
           titulo: string
@@ -278,6 +279,7 @@ export type Database = {
           criado_em?: string
           descricao?: string
           id?: string
+          obrigatorio?: boolean
           ordem?: number
           tipo: string
           titulo: string
@@ -287,6 +289,7 @@ export type Database = {
           criado_em?: string
           descricao?: string
           id?: string
+          obrigatorio?: boolean
           ordem?: number
           tipo?: string
           titulo?: string

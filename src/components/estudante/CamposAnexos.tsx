@@ -39,6 +39,16 @@ export function CamposAnexos({
 
   const orfaos = anexosOrfaos(atuais, exigencias);
 
+  /**
+   * O sufixo do rótulo. `*` é a marca de campo obrigatório no resto do
+   * formulário (título, palavras-chave, categoria), então o anexo
+   * opcional tem de dizer o contrário com todas as letras — um rótulo
+   * sem marca nenhuma, ao lado de três com `*`, lê-se como descuido e
+   * não como permissão.
+   */
+  const marca = (exigencia: AnexoDaCategoria) =>
+    exigencia.obrigatorio ? " *" : " (opcional)";
+
   const verPdf = async (valor: string) => {
     if (!(await openPdf(valor))) toast.error("Não foi possível abrir o PDF.");
   };
@@ -53,7 +63,8 @@ export function CamposAnexos({
           return (
             <div className="form-group" key={exigencia.id}>
               <label className="form-label" htmlFor={`anexo-${exigencia.id}`}>
-                {exigencia.titulo} *
+                {exigencia.titulo}
+                {marca(exigencia)}
               </label>
               <input
                 type="url"
@@ -70,7 +81,10 @@ export function CamposAnexos({
 
         return (
           <div className="form-group" key={exigencia.id}>
-            <label className="form-label">{exigencia.titulo} *</label>
+            <label className="form-label">
+              {exigencia.titulo}
+              {marca(exigencia)}
+            </label>
             {exigencia.descricao && <div className="form-hint">{exigencia.descricao}</div>}
 
             {gravado && (
@@ -115,7 +129,9 @@ export function CamposAnexos({
                   <div className="drop-subtitle">
                     {gravado
                       ? "Sem arquivo novo, o PDF atual é mantido"
-                      : "ou clique para selecionar do computador · Limite 10MB"}
+                      : exigencia.obrigatorio
+                        ? "ou clique para selecionar do computador · Limite 10MB"
+                        : "ou clique para selecionar · Limite 10MB · pode seguir sem anexar"}
                   </div>
                   <label className="btn btn-primary btn-sm" style={{ cursor: "pointer" }}>
                     Selecionar Arquivo

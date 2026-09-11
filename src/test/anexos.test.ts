@@ -41,6 +41,7 @@ const pdf = (id: string, ordem: number, titulo = `PDF ${id}`): AnexoDaCategoria 
   tipo: "pdf",
   titulo,
   descricao: "",
+  obrigatorio: true,
   ordem,
 });
 
@@ -50,7 +51,17 @@ const video = (id: string, ordem: number, titulo = `Vídeo ${id}`): AnexoDaCateg
   tipo: "video",
   titulo,
   descricao: "",
+  obrigatorio: true,
   ordem,
+});
+
+/**
+ * A mesma exigência, afrouxada — é o que o co-chair faz ao marcar
+ * "Opcional" na linha, em /co-chairs/categorias.
+ */
+const opcional = (exigencia: AnexoDaCategoria): AnexoDaCategoria => ({
+  ...exigencia,
+  obrigatorio: false,
 });
 
 const entregue = (
@@ -183,6 +194,86 @@ describe("validarAnexos — edição de um trabalho existente", () => {
   });
 });
 
+/**
+ * Anexo opcional (20260911): "estar na lista" deixou de significar "ser
+ * cobrado". A organização passa a poder OFERECER um campo — um vídeo
+ * para quem tiver um, um segundo PDF para quem precisar — sem trancar a
+ * submissão de quem não tem. Antes a única forma de não cobrar era não
+ * cadastrar a linha, e aí quem TINHA o vídeo não tinha onde pô-lo.
+ *
+ * ⚠ São duas metades, e a segunda é a que se perde numa refatoração:
+ * opcional dispensa o campo VAZIO, e só isso. Preenchido errado continua
+ * sendo erro — senão bastaria marcar a linha como opcional para o
+ * formulário aceitar link de qualquer domínio. `aplicar_anexos` faz
+ * exatamente isto no servidor, e as duas regras têm de concordar.
+ */
+describe("validarAnexos — anexo opcional", () => {
+  it("deixa a submissão passar sem o PDF e sem o vídeo opcionais", () => {
+    expect(
+      validarAnexos({
+        exigencias: [opcional(pdf("a1", 1)), opcional(video("a2", 2))],
+        rascunho: {},
+      }),
+    ).toBeNull();
+
+    // Campo de vídeo montado e deixado em branco é o mesmo caso: a
+    // pessoa viu o campo e seguiu.
+    expect(
+      validarAnexos({
+        exigencias: [opcional(video("a2", 2))],
+        rascunho: { a2: { url: "   " } },
+      }),
+    ).toBeNull();
+  });
+
+  it("continua cobrando o que é obrigatório ao lado", () => {
+    expect(
+      validarAnexos({
+        exigencias: [
+          opcional(pdf("a1", 1, "Anexos complementares")),
+          pdf("a2", 2, "Trabalho completo"),
+        ],
+        rascunho: {},
+      }),
+    ).toBe('Anexe o PDF de "Trabalho completo".');
+  });
+
+  it("opcional PREENCHIDO passa pelas mesmas conferências", () => {
+    expect(
+      validarAnexos({
+        exigencias: [opcional(video("a1", 1, "Vídeo do projeto"))],
+        rascunho: { a1: { url: "https://vimeo.com/123456789" } },
+      }),
+    ).toBe('O link de "Vídeo do projeto" precisa ser um vídeo do YouTube.');
+
+    expect(
+      validarAnexos({
+        exigencias: [opcional(pdf("a1", 1, "Carta de anuência"))],
+        rascunho: { a1: { arquivo: arquivoPdf(MAX_PDF_BYTES + 1) } },
+      }),
+    ).toBe('"Carta de anuência": o PDF excede o limite de 10MB.');
+  });
+
+  /**
+   * Opcional quer dizer "pode nunca ser enviado", NÃO "pode ser
+   * desfeito". O contrato de `_anexos` continua sendo "valor nulo =
+   * mantém o que está gravado" — é ele que impede que corrigir um título
+   * obrigue a reenviar todos os PDFs —, e esvaziar o campo na tela não
+   * tem como dizer "apague". A tela não barra; o link gravado é que
+   * continua lá. Remover de verdade pede um terceiro estado no corpo da
+   * RPC, e é outra migration.
+   */
+  it("não barra quem esvazia um vídeo opcional já entregue", () => {
+    expect(
+      validarAnexos({
+        exigencias: [opcional(video("a1", 1))],
+        rascunho: { a1: { url: "" } },
+        atuais: [entregue("a1", "video", YOUTUBE)],
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("rascunhoInicial", () => {
   it("preenche só os vídeos; PDF vazio significa manter", () => {
     const inicial = rascunhoInicial(
@@ -234,5 +325,25 @@ describe("resumoDoPasso", () => {
 
   it("diz que não exige nada quando a lista é vazia", () => {
     expect(resumoDoPasso([])).toBe("Esta categoria não exige anexo.");
+  });
+
+  it("conta como exigência só o obrigatório; o opcional vira aviso à parte", () => {
+    const frase = resumoDoPasso([pdf("a1", 1), opcional(pdf("a2", 2))]);
+    expect(frase).toContain("Esta categoria exige 1 arquivo PDF");
+    expect(frase).toContain("1 anexo opcional");
+    // Somar os dois diria "2 arquivos PDF" e a tela cobraria o que o
+    // servidor dispensa.
+    expect(frase).not.toContain("2 arquivos PDF");
+  });
+
+  it("diz que nada é obrigatório quando só há opcionais", () => {
+    expect(resumoDoPasso([opcional(video("a1", 1)), opcional(video("a2", 2))])).toBe(
+      "Nenhum anexo é obrigatório aqui · 2 anexos opcionais",
+    );
+  });
+
+  it("só menciona o limite de 10MB quando há PDF em jogo", () => {
+    expect(resumoDoPasso([video("a1", 1)])).not.toContain("10MB");
+    expect(resumoDoPasso([opcional(pdf("a1", 1))])).toContain("Limite de 10MB por PDF");
   });
 });
