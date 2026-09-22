@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
+import { BotaoMenuMobile } from "@/components/BotaoMenuMobile";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { APP_SHORT } from "@/lib/brand";
@@ -28,7 +29,7 @@ const Layout = () => {
 
   return (
     <div>
-      <aside className="sidebar">
+      <aside className="sidebar" id="menu-lateral">
         <BotaoRecolherSidebar />
 
         <NavLink to="/estudante/papeis-submetidos" className="sidebar-logo">
@@ -74,9 +75,10 @@ const Layout = () => {
 
       <main className="main-content">
         <header className="top-bar">
+          <BotaoMenuMobile />
           <span className="top-bar-title">SUBMISSÃO</span>
           <div className="user-info">
-            <div className="user-details">
+            <div className="user-details rotulo-icone">
               <div className="user-name">{user?.nome}</div>
               <div className="user-meta">{user?.email}</div>
             </div>

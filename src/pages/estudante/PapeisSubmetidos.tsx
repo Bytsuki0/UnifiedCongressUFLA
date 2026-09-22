@@ -193,16 +193,16 @@ const PapeisSubmetidos = () => {
                     !podeVerParecer && !podeEditar && !podeCorrigir && !podeReenviar;
                   return (
                   <tr key={t.id} className={linhaDesfecho(t.status)}>
-                    <td style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</td>
-                    <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.autores}</td>
-                    <td>{catNome(t.categoria_id)}</td>
-                    <td><span className={statusBadge(t.status)}>{statusLabel[t.status] ?? t.status}</span></td>
-                    <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
+                    <td data-rotulo="TÍTULO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</td>
+                    <td data-rotulo="AUTORES" className="celula-truncada">{t.autores}</td>
+                    <td data-rotulo="CATEGORIA">{catNome(t.categoria_id)}</td>
+                    <td data-rotulo="STATUS"><span className={statusBadge(t.status)}>{statusLabel[t.status] ?? t.status}</span></td>
+                    <td data-rotulo="DATA">{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
                     {/* Contagem, não link: um trabalho pode ter vários
                         anexos agora, e os arquivos abrem na tela do
                         trabalho, que é onde eles têm nome e contexto. */}
-                    <td>{(anexos[t.id]?.length ?? 0) > 0 ? `${anexos[t.id].length} anexo(s)` : "—"}</td>
-                    <td>
+                    <td data-rotulo="ANEXOS">{(anexos[t.id]?.length ?? 0) > 0 ? `${anexos[t.id].length} anexo(s)` : "—"}</td>
+                    <td data-rotulo="AÇÕES" className="celula-acoes">
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                         {/* Notas e comentários: para TODO desfecho, não só
                             para quem tem correção a fazer. Quem foi

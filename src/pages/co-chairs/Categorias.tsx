@@ -512,7 +512,7 @@ const Categorias = () => {
 
       {/* Diálogo: nova categoria */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nova categoria</DialogTitle>
             <DialogDescription>

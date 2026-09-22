@@ -105,21 +105,21 @@ export function PapeisPanel() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={ROLES.length + 1} style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
+                <td colSpan={ROLES.length + 1} className="celula-plena" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
                   Carregando…
                 </td>
               </tr>
             )}
             {!isLoading && lista.length === 0 && (
               <tr>
-                <td colSpan={ROLES.length + 1} style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
+                <td colSpan={ROLES.length + 1} className="celula-plena" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
                   Nenhuma conta encontrada.
                 </td>
               </tr>
             )}
             {lista.map((c) => (
               <tr key={c.id}>
-                <td>
+                <td data-rotulo="CONTA" className="celula-titulo">
                   <div style={{ fontWeight: "var(--fw-semibold)" }}>
                     {c.nome || "—"}
                     {c.id === user?.id && <span className="badge badge-blue" style={{ marginLeft: 8 }}>você</span>}
@@ -129,7 +129,7 @@ export function PapeisPanel() {
                 {ROLES.map((r) => {
                   const tinha = c.roles.includes(r.value);
                   return (
-                    <td key={r.value} style={{ textAlign: "center" }}>
+                    <td key={r.value} data-rotulo={r.label.toUpperCase()} className="celula-centrada">
                       <button
                         type="button"
                         disabled={alternar.isPending}

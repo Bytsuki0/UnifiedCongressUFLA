@@ -92,16 +92,16 @@ const Analise = () => {
                   const resultado = t ? pareceres[t.id] : undefined;
                   return (
                     <tr key={a.id}>
-                      <td style={{ fontWeight: "var(--fw-semibold)" }}>{t?.titulo ?? "Trabalho removido"}</td>
-                      <td>{t?.categoria_id ? (categorias[t.categoria_id] ?? "—") : "—"}</td>
-                      <td>{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
+                      <td data-rotulo="TÍTULO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{t?.titulo ?? "Trabalho removido"}</td>
+                      <td data-rotulo="CATEGORIA">{t?.categoria_id ? (categorias[t.categoria_id] ?? "—") : "—"}</td>
+                      <td data-rotulo="STATUS">{t ? <span className={`badge ${TRABALHO_STATUS_BADGE[t.status] ?? "badge-gray"}`}>{TRABALHO_STATUS_LABEL[t.status] ?? t.status}</span> : "—"}</td>
                       {/* Só a CONTAGEM, não os links: os anexos abrem na
                           tela de análise, onde a leitura acontece com o
                           formulário do parecer ao lado. Um "Ver PDF" aqui
                           teria de virar N botões, um por anexo. */}
-                      <td>{t && t.anexos.length > 0 ? `${t.anexos.length} anexo(s)` : "—"}</td>
-                      <td>{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
-                      <td>
+                      <td data-rotulo="ANEXOS">{t && t.anexos.length > 0 ? `${t.anexos.length} anexo(s)` : "—"}</td>
+                      <td data-rotulo="SEU PARECER">{resultado ? <span className={`badge ${RESULTADO_BADGE[resultado]}`}>{RESULTADO_LABEL[resultado]}</span> : <span className="badge badge-amber">Pendente</span>}</td>
+                      <td data-rotulo="AÇÃO" className="celula-acoes">
                         <button className="btn btn-primary btn-sm" disabled={!t} onClick={() => navigate(`/revisor/analise/${a.id}`)}>
                           {resultado ? "Revisar" : "Analisar"}
                         </button>

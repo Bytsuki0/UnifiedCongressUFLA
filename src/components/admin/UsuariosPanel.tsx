@@ -100,27 +100,27 @@ export function UsuariosPanel() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
+                <td colSpan={4} className="celula-plena" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
                   Carregando…
                 </td>
               </tr>
             )}
             {!isLoading && lista.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
+                <td colSpan={4} className="celula-plena" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
                   Nenhuma conta encontrada.
                 </td>
               </tr>
             )}
             {lista.map((c) => (
               <tr key={`${c.source}-${c.id}`}>
-                <td>
+                <td data-rotulo="CONTA" className="celula-titulo">
                   <div style={{ fontWeight: "var(--fw-semibold)" }}>{c.nome || "—"}</div>
                   <div style={{ fontSize: "var(--fs-caption)", color: "var(--color-text-muted)" }}>{c.email}</div>
                 </td>
-                <td>{c.detalhe || "—"}</td>
-                <td><span className={badgePorTipo[c.tipo]}>{c.tipo}</span></td>
-                <td>
+                <td data-rotulo="CURSO / DEPARTAMENTO">{c.detalhe || "—"}</td>
+                <td data-rotulo="PERFIL"><span className={badgePorTipo[c.tipo]}>{c.tipo}</span></td>
+                <td data-rotulo="AÇÕES" className="celula-acoes">
                   <button
                     type="button"
                     className="btn btn-danger btn-sm"

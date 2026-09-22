@@ -306,6 +306,21 @@
   --white: #FFFFFF;
 }
 
+/* ---- Escala tipográfica no celular ----
+   48px de `--fs-h1` e 64px de `--fs-display` foram medidos para uma tela
+   larga; num aparelho de 360px o mesmo título quebra em quatro linhas e
+   engole a dobra. Redefinir os TOKENS resolve todos os títulos de uma vez,
+   sem tocar em nenhuma regra de componente — e, por estar dentro da media
+   query, não tem como vazar para o desktop. */
+@media (max-width: 768px) {
+  :root {
+    --fs-display: 36px;
+    --fs-h1: 30px;
+    --fs-h2: 26px;
+    --fs-h3: 22px;
+  }
+}
+
 /* ============================================================
    Componentes base do Nexus (classes globais escritas à mão)
 
@@ -797,6 +812,47 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 /* Na gaveta do celular não há o que recolher. */
 @media (max-width: 768px) { .sidebar-toggle { display: none; } }
 
+/* ---- Botão que abre a gaveta (só no celular) ----
+   Mora como primeiro item da barra superior de cada layout. Existe porque
+   abaixo de 768px a `.sidebar` sai da tela e o `.sidebar-toggle` acima some:
+   sem ele não havia como chegar à navegação — nem ao "Sair", que mora dentro
+   da barra. Fica escondido no desktop, onde quem manda é o `.sidebar-toggle`,
+   que RECOLHE a barra em vez de escondê-la. */
+.menu-mobile-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: var(--space-3);
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.menu-mobile-toggle:hover { background: var(--gray-100); color: var(--color-text); }
+.menu-mobile-toggle svg { width: 20px; height: 20px; }
+
+/* Fundo escuro da gaveta aberta: abaixo da barra lateral (z-index 100) e
+   acima de todo o resto. Um toque nele fecha. */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0, 0, 0, 0.45);
+  animation: menuBackdropIn var(--transition-fast) var(--ease-default);
+}
+
+@keyframes menuBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ---- Menu lateral secundário (Congresso › Administração) ----
    Abre ao lado do principal; empurra o conteúdo via .with-subnav. */
 .sidebar-subnav {
@@ -975,11 +1031,47 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   color: var(--white);
 }
 
+/* ---- Rótulo que acompanha um ícone ----
+   Regra do projeto: abaixo de 768px, o texto que apenas DESCREVE um ícone
+   ao lado dele some, e fica o ícone.
+
+   ⚠ Vale exclusivamente para texto NÃO interativo. Dentro de um <button>
+   ou de um <a> o rótulo FICA: um controle sem nome visível vira adivinhação
+   no toque, onde não há cursor para revelar o `title`. */
+@media (max-width: 768px) {
+  .rotulo-icone { display: none; }
+}
+
 /* Em tela estreita a barra já disputa espaço com nome e e-mail: fica só
-   o "?", que abre a mesma janela. */
+   o "?", que abre a mesma janela.
+
+   Os dois botões (suporte e notificações) são a exceção assumida à regra
+   acima — são interativos e mesmo assim ficam só com o ícone. Cada um é uma
+   pílula com desenho inequívoco ("?" e sino) e traz `title` + `aria-label`;
+   devolver os rótulos estouraria de novo a barra que o resto desta faixa
+   está justamente consertando. */
 @media (max-width: 768px) {
   .top-bar .link-suporte-label { display: none; }
   .top-bar .link-suporte { padding: 6px; }
+
+  /* O nome e o e-mail (`.user-details.rotulo-icone`) saem; o `.user-avatar`
+     fica, que é o ícone daquele texto. */
+  .top-bar { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+
+  /* O título não tem ícone que o substitua: encolhe com reticências em vez
+     de sumir, porque é ele que diz em qual portal a pessoa está. */
+  .top-bar .top-bar-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Abaixo disso o hambúrguer e o avatar já identificam a tela, e o título
+   só rouba a largura de que os dois precisam. */
+@media (max-width: 420px) {
+  .top-bar .top-bar-title { display: none; }
 }
 
 /* Janela do suporte. O endereço fica selecionável (user-select) para
@@ -1091,6 +1183,128 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 .linha-aprovada { --cor-desfecho: var(--color-success); }
 .linha-reprovada { --cor-desfecho: var(--color-danger); }
 .linha-outro { --cor-desfecho: var(--gray-300); }
+
+/* Truncagem de célula larga (autores, por exemplo). Era estilo inline; virou
+   classe justamente para que a faixa mobile abaixo consiga desligá-la —
+   estilo inline ganha de qualquer media query, e o nome ficaria cortado
+   dentro do cartão, que tem a largura toda disponível. */
+.celula-truncada {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mesma história: centralizar era estilo inline, e no cartão do celular
+   centralizaria o rótulo junto com o valor. */
+.celula-centrada { text-align: center; }
+
+/* ---- Tabela vira cartão no celular ----
+   Sete colunas não cabem em 360px, e `.table-container` tem `overflow:
+   hidden` — o que não cabia era simplesmente cortado. Aqui cada <tr> vira um
+   cartão e cada <td> ganha o próprio cabeçalho como rótulo, lido de
+   `data-rotulo`.
+
+   ⚠ Todo <td> novo precisa de `data-rotulo`, senão a célula aparece sem
+   dizer o que é. O atributo não renderiza nada no desktop: quem o lê é só o
+   `::before` daqui de dentro. */
+@media (max-width: 768px) {
+  .table-container {
+    background: none;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .table thead { display: none; }
+
+  .table,
+  .table tbody,
+  .table tbody tr,
+  .table tbody td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tbody tr {
+    background: var(--white);
+    border: 1px solid var(--color-border);
+    /* A faixa de desfecho troca o `inset box-shadow` da primeira célula pela
+       borda do cartão: num cartão, a listra na primeira célula viraria um
+       risco no meio do bloco. Mesmas cores, mesma semântica. */
+    border-left: 4px solid var(--cor-desfecho, var(--color-border));
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+  }
+
+  .table tbody tr:hover { background: var(--white); }
+
+  .table tbody td {
+    display: grid;
+    grid-template-columns: minmax(80px, 34%) 1fr;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-1) 0;
+    border-bottom: none;
+    overflow-wrap: anywhere;
+  }
+
+  /* A faixa de desfecho subiu para a borda do cartão (acima): aqui ela sai
+     da primeira célula, senão o cartão ganharia DOIS riscos coloridos.
+     O seletor repete `tr.linha-desfecho` de propósito — `.table tbody td`
+     sozinho PERDE em especificidade para `.linha-desfecho > td:first-child`
+     e o `box-shadow` sobreviveria. */
+  .table tbody tr.linha-desfecho > td:first-child { box-shadow: none; }
+
+  .table tbody td::before {
+    content: attr(data-rotulo);
+    font-size: var(--fs-label);
+    font-weight: var(--fw-black);
+    letter-spacing: var(--ls-label);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+  }
+
+  /* O nome do cartão: largura cheia, em destaque e sem rótulo — ninguém
+     precisa da palavra "TÍTULO" acima do título. É marcado por CLASSE e não
+     por `:first-child` porque nem toda tabela começa pelo título: a de
+     auditoria começa pela caixa de seleção. */
+  .table tbody td.celula-titulo {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
+  }
+
+  .table tbody td.celula-titulo::before { content: none; }
+
+  /* Os botões ganham a linha inteira e altura de toque. A célula é marcada
+     por CLASSE, e não pelo texto do rótulo: umas tabelas dizem "AÇÕES" e
+     outras "AÇÃO", e casar por texto quebraria na primeira que escrevesse
+     diferente. */
+  .table tbody td.celula-acoes {
+    display: block;
+    margin-top: var(--space-3);
+  }
+
+  .table tbody td.celula-acoes::before { content: none; }
+  .table tbody td.celula-acoes .btn { padding: 10px 16px; }
+
+  /* Dentro do cartão há largura de sobra: o corte deixa de fazer sentido. */
+  .table tbody td.celula-truncada {
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .table tbody td.celula-centrada { text-align: left; }
+
+  /* Linha que não é dado — "Carregando…", "Nenhuma conta encontrada" — e
+     por isso ocupa a largura toda sem rótulo nenhum. */
+  .table tbody td.celula-plena { display: block; }
+  .table tbody td.celula-plena::before { content: none; }
+}
 
 /* ---- Grade de indicadores (os 4 cards de números dos dashboards) ---- */
 .stats-grid {
@@ -1479,6 +1693,64 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
   gap: 12px;
 }
 
+/* Botão que abre o menu público. Só existe no celular — ver abaixo. */
+.header-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.header-menu-toggle svg { width: 20px; height: 20px; }
+
+/* ---- Menu público vira gaveta no celular ----
+   Os cinco botões pedem ~640px em fila e `.btn` é `white-space: nowrap`:
+   não havia quebra, a barra estourava. Aqui eles empilham num painel sob o
+   cabeçalho, **com o texto** — são controles, e texto interativo não vira
+   ícone (ver `.rotulo-icone`).
+
+   O painel é `position: absolute` dentro do `.landing-header`, que já é
+   `position: fixed` e portanto serve de bloco de contenção. */
+@media (max-width: 768px) {
+  .header-menu-toggle { display: inline-flex; }
+
+  .header-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 20px 16px;
+    background: var(--white);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .header-nav.aberta { display: flex; }
+  .header-nav .btn { width: 100%; justify-content: center; }
+
+  /* A marca não pode empurrar o botão para fora quando o nome é longo. */
+  .header-logo { min-width: 0; }
+  .header-logo .logo-text-group { min-width: 0; }
+  .header-logo .logo-title,
+  .header-logo .logo-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .hero {
   position: relative;
   min-height: 100vh;
@@ -1776,6 +2048,17 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 
 .landing-footer div { font-size: var(--fs-sm); color: var(--color-text-secondary); }
 .landing-footer a { color: var(--color-primary); font-weight: var(--fw-medium); text-decoration: none; }
+
+/* Em 360px o `space-between` espremia o crédito numa coluna de quatro
+   palavras para caber o contato ao lado. Empilhado, cada um fica numa linha. */
+@media (max-width: 640px) {
+  .landing-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: 24px 20px;
+  }
+}
 
 /* Animação de entrada ao rolar: a classe .revealed é adicionada por JS
    (IntersectionObserver na Landing) quando o bloco entra na tela. */
@@ -2815,14 +3098,71 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
 
 @media (max-width: 768px) {
   .main-content { margin-left: 0; }
-  .sidebar { transform: translateX(-100%); transition: transform var(--transition-normal); }
-  .sidebar.open { transform: translateX(0); }
   .content-area { padding: 24px 16px; }
   .config-row { flex-direction: column; }
+  /* Duas colunas de formulário lado a lado não cabem num celular: o que
+     valia a 640px passa a valer aqui, junto do resto. */
+  .form-row { flex-direction: column; }
+  .toolbar { flex-wrap: wrap; }
+
+  /* ---- A barra lateral vira gaveta ----
+     Fora da tela por padrão; entra quando o <BotaoMenuMobile /> marca
+     `<body data-menu="aberto">`. Antes existia um `.sidebar.open` aqui que
+     NENHUM componente chegava a aplicar — a barra ficava inalcançável e,
+     com ela, o botão "Sair".
+
+     A largura fica na própria `.sidebar`, e não em `--sidebar-width`, para
+     não arrastar junto o `.sidebar-subnav { left: var(--sidebar-width) }`
+     da área `/congresso`. 88vw são 317px num aparelho de 360px — a maior
+     parte da tela, como pedido; o teto de 340px evita que num tablet a
+     gaveta vire uma faixa larga e vazia. */
+  .sidebar {
+    width: min(88vw, 340px);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+  }
+
+  body[data-menu="aberto"] .sidebar {
+    transform: translateX(0);
+    box-shadow: var(--shadow-2);
+  }
+
+  /* Dedo, não ponteiro. */
+  .sidebar .nav-item { padding: var(--space-4); }
+
+  .menu-mobile-toggle { display: inline-flex; }
+
+  /* ---- Texto sem espaço para quebrar ----
+     E-mail, URL do Drive, caminho no bucket: numa tela de 360px um único
+     "token" longo é mais largo que o cartão que o contém e empurra a página
+     inteira. Não é `overflow: hidden` (esconderia o dado) — é deixar quebrar
+     onde for preciso. */
+  .card,
+  .alert,
+  .form-hint,
+  .user-meta,
+  .doc-description,
+  .table tbody td { overflow-wrap: anywhere; }
+
+  .suporte-acoes { flex-wrap: wrap; }
+
+  /* Linhas que só existiam lado a lado: título + botão de ação, cartão de
+     trabalho + selo. Com `justify-content: space-between` e um `.btn` de
+     `white-space: nowrap`, o que não cabe empurra a página. */
+  .dashboard-header-row,
+  .work-list-header,
+  .work-card { flex-wrap: wrap; }
+  .work-card { gap: var(--space-3); }
 }
 
 @media (max-width: 640px) {
   .dashboard-stats-grid, .stats-grid { grid-template-columns: 1fr; }
+  /* ⚠ A variante de dois cartões tem especificidade dobrada (é o que a
+     impede de esticar na media query de 1024px), então a regra acima NÃO a
+     alcançava: em 360px ela continuava pedindo 2 × 200px + 24px de gap e
+     estourava a tela do autor. O seletor aqui repete a dobra de propósito. */
+  .dashboard-stats-grid.dashboard-stats-grid-duplo { grid-template-columns: 1fr; }
   .carrossel-trilho > .template-card { flex-basis: 100%; }
   .downloads-grid, .form-row { grid-template-columns: 1fr; flex-direction: column; }
   .landing-header { padding: 0 20px; }
@@ -3019,6 +3359,41 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
   grid-template-columns: 1fr 420px;
   gap: 0;
   min-height: calc(100vh - 120px);
+}
+
+/* ---- A avaliação empilha antes de o formulário espremer o PDF ----
+   900px e não 768px: os 420px do formulário são FIXOS, então abaixo disso o
+   documento já fica com menos de 480px e deixa de ser legível — muito antes
+   de a tela virar "celular". O PDF vai para cima e o parecer para baixo, os
+   dois roláveis. */
+@media (max-width: 900px) {
+  .avaliacao-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .pdf-viewer {
+    height: 60vh;
+    min-height: 320px;
+    padding: var(--space-4);
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .avaliacao-subheader { flex-wrap: wrap; }
+
+  /* Título longo do trabalho não pode empurrar o "voltar" para fora. */
+  .avaliacao-subheader .sub-id {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Três botões com `flex: 1` viram três fatias ilegíveis: deixam de
+     disputar a mesma linha. */
+  .review-actions { flex-wrap: wrap; }
+  .review-actions .btn { flex: 1 1 140px; }
 }
 
 /* Visor de PDF — o conteúdo estático (ícone + nome do arquivo) aparece

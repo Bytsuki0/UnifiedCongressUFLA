@@ -96,9 +96,9 @@ export function PareceresRecebidos({ pareceres }: { pareceres: ParecerAnonimo[] 
                   <tbody>
                     {p.itens.map((it) => (
                       <tr key={it.criterio_id}>
-                        <td style={{ fontWeight: "var(--fw-semibold)" }}>{it.titulo}</td>
-                        <td style={{ textAlign: "center" }}>{it.nota} / 5</td>
-                        <td style={{ color: it.comentario ? undefined : "var(--color-text-muted)", whiteSpace: "pre-wrap" }}>
+                        <td data-rotulo="CRITÉRIO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{it.titulo}</td>
+                        <td data-rotulo="NOTA" className="celula-centrada">{it.nota} / 5</td>
+                        <td data-rotulo="COMENTÁRIO" style={{ color: it.comentario ? undefined : "var(--color-text-muted)", whiteSpace: "pre-wrap" }}>
                           {it.comentario || "—"}
                         </td>
                       </tr>

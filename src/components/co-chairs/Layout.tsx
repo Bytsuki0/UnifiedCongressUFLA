@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
+import { BotaoMenuMobile } from "@/components/BotaoMenuMobile";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { APP_SHORT } from "@/lib/brand";
@@ -25,7 +26,10 @@ const Layout = () => {
 
   return (
     <div>
-      <aside className="sidebar" style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* `100dvh` e não `100vh`: no celular a barra de endereço faz o 100vh
+          ser maior que a área visível, e os últimos itens do menu — entre
+          eles o "Sair" — ficavam cortados abaixo da dobra. */}
+      <aside className="sidebar" id="menu-lateral" style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
         <BotaoRecolherSidebar />
 
         <NavLink to="/co-chairs/dashboard" className="sidebar-logo">
@@ -162,9 +166,10 @@ const Layout = () => {
 
       <main className="main-content">
         <header className="top-bar">
+          <BotaoMenuMobile />
           <span className="top-bar-title">GERENCIAMENTO</span>
           <div className="user-info">
-            <div className="user-details">
+            <div className="user-details rotulo-icone">
               <div className="user-name">{user?.nome || "Usuário"}</div>
               <div className="user-meta">{user?.email || "Sistema de Submissões"}</div>
             </div>

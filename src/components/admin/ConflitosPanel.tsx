@@ -91,10 +91,10 @@ export function ConflitosPanel() {
                 <tbody>
                   {violacoes.map((l) => (
                     <tr key={l.associacaoId}>
-                      <td style={{ fontWeight: "var(--fw-semibold)" }}>{l.titulo}</td>
-                      <td>{l.email}</td>
-                      <td><span className="badge badge-red">{MOTIVO_LABEL[l.motivo]}</span></td>
-                      <td>
+                      <td data-rotulo="TRABALHO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{l.titulo}</td>
+                      <td data-rotulo="REVISOR IMPEDIDO">{l.email}</td>
+                      <td data-rotulo="VÍNCULO"><span className="badge badge-red">{MOTIVO_LABEL[l.motivo]}</span></td>
+                      <td data-rotulo="AÇÃO" className="celula-acoes">
                         <button
                           className="btn btn-danger btn-sm"
                           style={{ padding: "4px 8px", fontSize: 11 }}
@@ -142,9 +142,9 @@ export function ConflitosPanel() {
                 <tbody>
                   {bloqueios.map((l) => (
                     <tr key={`${l.trabalhoId}:${l.email}`}>
-                      <td style={{ fontWeight: "var(--fw-semibold)" }}>{l.titulo}</td>
-                      <td>{l.email}</td>
-                      <td><span className="badge badge-gray">{MOTIVO_LABEL[l.motivo]}</span></td>
+                      <td data-rotulo="TRABALHO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{l.titulo}</td>
+                      <td data-rotulo="E-MAIL IMPEDIDO">{l.email}</td>
+                      <td data-rotulo="VÍNCULO"><span className="badge badge-gray">{MOTIVO_LABEL[l.motivo]}</span></td>
                     </tr>
                   ))}
                 </tbody>

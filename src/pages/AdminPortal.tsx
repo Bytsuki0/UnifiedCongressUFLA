@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
+import { BotaoMenuMobile } from "@/components/BotaoMenuMobile";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
 import { BotaoNotificacoes } from "@/components/BotaoNotificacoes";
 import { ConflitosPanel } from "@/components/admin/ConflitosPanel";
@@ -226,7 +227,7 @@ const AdminPortal = () => {
 
   return (
     <div>
-      <aside className="sidebar sidebar-dark">
+      <aside className="sidebar sidebar-dark" id="menu-lateral">
         <BotaoRecolherSidebar />
 
         <a href="#" className="sidebar-logo" onClick={e => { e.preventDefault(); setActiveSection("auditoria"); }}>
@@ -278,9 +279,10 @@ const AdminPortal = () => {
 
       <main className="main-content">
         <header className="top-bar">
+          <BotaoMenuMobile />
           <span className="top-bar-title">PORTAL DA COMISSÃO ORGANIZADORA</span>
           <div className="user-info">
-            <div className="user-details">
+            <div className="user-details rotulo-icone">
               <div className="user-name">Administrador</div>
               <div className="user-meta">Coord. Comissão · UFLA</div>
             </div>
@@ -382,7 +384,7 @@ const AdminPortal = () => {
                   <tbody>
                     {filtered.map(t => (
                       <tr key={t.id}>
-                        <td>
+                        <td data-rotulo="SELECIONAR">
                           <input
                             type="checkbox"
                             aria-label={`Selecionar "${t.titulo}"`}
@@ -390,16 +392,16 @@ const AdminPortal = () => {
                             onChange={() => alternarSelecao(t.id)}
                           />
                         </td>
-                        <td style={{ fontFamily: "monospace", fontSize: "var(--fs-caption)", color: "var(--color-text-muted)" }}>{t.id.slice(0, 8)}…</td>
-                        <td>
+                        <td data-rotulo="ID" style={{ fontFamily: "monospace", fontSize: "var(--fs-caption)", color: "var(--color-text-muted)" }}>{t.id.slice(0, 8)}…</td>
+                        <td data-rotulo="TRABALHO E AUTOR" className="celula-titulo">
                           <div style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</div>
                           <div style={{ fontSize: "var(--fs-caption)", color: "var(--color-text-muted)" }}>{t.autores}</div>
                         </td>
-                        <td>{catNome(t.categoria_id)}</td>
-                        <td><span className={statusBadge[t.status] ?? "badge badge-gray"}>{statusLabel[t.status] ?? t.status}</span></td>
-                        <td>{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
-                        <td>
-                          <div style={{ display: "flex", gap: 4 }}>
+                        <td data-rotulo="CATEGORIA">{catNome(t.categoria_id)}</td>
+                        <td data-rotulo="STATUS"><span className={statusBadge[t.status] ?? "badge badge-gray"}>{statusLabel[t.status] ?? t.status}</span></td>
+                        <td data-rotulo="DATA">{new Date(t.data_submissao).toLocaleDateString("pt-BR")}</td>
+                        <td data-rotulo="AÇÕES" className="celula-acoes">
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {/* Os botões de desfecho (Aprovar / Aprovar c/
                                 correções / Reprovar) saíram em 20260820140000.
                                 Eles gravavam `status` cru: sem autor, sem

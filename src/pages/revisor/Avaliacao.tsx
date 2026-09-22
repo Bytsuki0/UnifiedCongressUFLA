@@ -105,9 +105,9 @@ const Avaliacao = () => {
         <span className="sub-id">
           {activeSub ? `${activeSub.id} · ${activeSub.categoria?.toUpperCase()} · Prazo: ${deadlineOf(activeSub).toLocaleDateString("pt-BR")}` : "—"}
         </span>
-        <span className="auto-save">
+        <span className="auto-save" title="Salvamento automático ativo">
           <span className="dot" />
-          SALVAMENTO AUTOMÁTICO ATIVO
+          <span className="rotulo-icone">SALVAMENTO AUTOMÁTICO ATIVO</span>
         </span>
       </div>
 

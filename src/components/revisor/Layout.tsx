@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
+import { BotaoMenuMobile } from "@/components/BotaoMenuMobile";
 import { supabase } from "@/integrations/supabase/client";
 import { initials } from "@/pages/revisor/shared";
 import { BotaoSuporte } from "@/components/BotaoSuporte";
@@ -24,7 +25,7 @@ const Layout = () => {
 
   return (
     <div>
-      <aside className="sidebar">
+      <aside className="sidebar" id="menu-lateral">
         <BotaoRecolherSidebar />
 
         <NavLink to="/revisor/atribuicoes" className="sidebar-logo">
@@ -69,9 +70,10 @@ const Layout = () => {
 
       <main className="main-content">
         <header className="top-bar">
+          <BotaoMenuMobile />
           <span className="top-bar-title">REVISÃO</span>
           <div className="user-info">
-            <div className="user-details">
+            <div className="user-details rotulo-icone">
               <div className="user-name">{user?.nome}</div>
               <div className="user-meta">{user?.email}</div>
             </div>

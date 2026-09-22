@@ -255,7 +255,7 @@ const Cronograma = () => {
 
       {/* Diálogo: novo item / edição */}
       <Dialog open={!!editor} onOpenChange={(aberto) => !aberto && setEditor(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editor?.id ? "Editar item" : "Novo item"}</DialogTitle>
             <DialogDescription>

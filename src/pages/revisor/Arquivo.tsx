@@ -40,12 +40,12 @@ const Arquivo = () => {
               <tbody>
                 {arquivos.map(a => (
                   <tr key={a.id}>
-                    <td>
+                    <td data-rotulo="DOCUMENTO" className="celula-titulo">
                       <div className="doc-title">{a.titulo}</div>
                       {a.descricao && <div className="doc-description">{a.descricao}</div>}
                     </td>
-                    <td>{a.formato ? <span className="badge badge-gray">{a.formato}</span> : "—"}</td>
-                    <td>
+                    <td data-rotulo="TIPO">{a.formato ? <span className="badge badge-gray">{a.formato}</span> : "—"}</td>
+                    <td data-rotulo="AÇÃO" className="celula-acoes">
                       <BotaoBaixar url={a.url} className="btn btn-outline btn-sm">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
