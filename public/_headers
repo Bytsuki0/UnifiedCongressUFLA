@@ -34,8 +34,8 @@
   X-Robots-Tag: noindex, nofollow
 /co-chairs/*
   X-Robots-Tag: noindex, nofollow
-# /congresso inteiro: área congelada, hoje só para admin — não há mais
-# página pública sob esse prefixo.
+# /congresso inteiro: área aposentada (código em deprecated/congresso/) —
+# só restam redirecionamentos e o NotFound sob esse prefixo.
 /congresso/*
   X-Robots-Tag: noindex, nofollow
 

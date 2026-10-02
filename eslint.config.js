@@ -9,7 +9,10 @@ export default tseslint.config(
   // é outro runtime, com outro type-checker. Passar o ESLint do frontend nele
   // só produziria ruído — o `tsc` do projeto já o ignora (tsconfig.app.json
   // inclui apenas `src`).
-  { ignores: ["dist", "supabase/functions/**"] },
+  //
+  // deprecated/** é código aposentado (hoje, a área /congresso): fica fora
+  // do build e do tsc, e não é mantido — lintar só geraria ruído.
+  { ignores: ["dist", "supabase/functions/**", "deprecated/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

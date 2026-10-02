@@ -8,8 +8,8 @@ atribuições e rankings, e o admin cuida de papéis, prazos e auditoria.
 Produção: **<https://ciuflaictin.com.br>** (Cloudflare Workers).
 
 > A área do evento (`/congresso`: inscrição, minicursos, certificados,
-> programação) está **congelada** fora do escopo atual, visível só para o
-> admin. Ver [Área congelada](#área-congelada).
+> programação) foi **aposentada**: o código está em `deprecated/congresso/`,
+> fora do build. Ver [Área aposentada](#área-aposentada).
 
 ---
 
@@ -23,8 +23,8 @@ Produção: **<https://ciuflaictin.com.br>** (Cloudflare Workers).
 | Estado remoto | TanStack Query |
 | Backend / Banco | Supabase (PostgreSQL + RLS + Auth + Storage) |
 | Integrações externas | Supabase Edge Functions (Deno) + Brevo (e-mail) |
-| Formulários | React Hook Form + Zod |
-| PDF | react-pdf (leitura) + pdf-lib (certificados) |
+| Validação | Zod |
+| PDF | react-pdf (leitura) |
 | Testes | Vitest + Testing Library |
 | Hospedagem | Cloudflare Workers (static assets) via Wrangler |
 
@@ -114,7 +114,6 @@ RLS**. A rota inicial de cada papel sai de `src/lib/portais.ts`, nunca de um
 | `/revisor` | Pareceres e avaliações | `professor`, `avaliador`, `admin` |
 | `/admin` | Auditoria, conflitos, papéis, usuários, configurações, notificações | `admin` |
 | `/co-chairs` | Trabalhos, categorias, atribuições, rankings | `avaliador`, `admin` |
-| `/congresso` | Área do evento **congelada** | `admin` |
 
 **`externo` tem a mesma alçada de autor que `estudante`**: quem é de fora da
 UFLA também submete trabalho e cai em `/estudante` no login. Isso não exigiu
@@ -126,14 +125,16 @@ O Portal Admin tem uma URL por seção (`/admin/papeis`, `/admin/conflitos`,
 `/admin` é a auditoria. As URLs antigas de co-chairs (`/dashboard`,
 `/trabalhos`, …) redirecionam para `/co-chairs/...`.
 
-### Área congelada
+### Área aposentada
 
 `/congresso` (inscrição, minicursos, certificados, programação e o
-`/congresso/admin`) saiu do escopo e não é desenvolvida até segunda ordem.
-Todo o prefixo está atrás de `allowedRoles={["admin"]}` inclusive o que era
-público e `portalDoPapel` não devolve `/congresso` para papel nenhum. O
-código **não é apagado**: ainda há telas que podem migrar para outros portais
-(duas já migraram: papéis e usuários, hoje em `/admin`).
+`/congresso/admin`) saiu do escopo. O código foi movido para
+`deprecated/congresso/` (mesma árvore de `src/`), fora do build, do `tsc`, do
+ESLint e dos testes; as rotas saíram do `App.tsx` e `/congresso/*` cai no
+NotFound. Só ficaram os redirecionamentos de `/congresso/admin/papeis` e
+`/congresso/admin/usuarios`, as duas telas que migraram para `/admin`.
+As tabelas e RPCs do evento **continuam no banco** (migrations já aplicadas).
+Como restaurar: `deprecated/congresso/README.md`.
 
 ---
 
@@ -189,9 +190,9 @@ src/
 ├── integrations/
 │   └── supabase/        # client.ts (anon key) + types.ts GERADO
 ├── lib/                 # brand.ts, portais.ts, pageTitles.ts, pdfStorage.ts, …
-├── pages/               # co-chairs/, estudante/, event/, revisor/ + públicas
+├── pages/               # co-chairs/, estudante/, revisor/ + públicas
 ├── services/            # queries e RPCs (avaliação, correção, revisores, …)
-├── test/                # Vitest 17 arquivos, 187 testes
+├── test/                # Vitest 26 arquivos, 326 testes
 └── App.tsx              # mapa de rotas + providers
 
 supabase/
@@ -199,6 +200,7 @@ supabase/
 ├── functions/           # Edge Functions (Deno): enviar-email, redefinir-senha
 └── backups/             # snapshots do `npm run backup` (gitignored tem PII)
 
+deprecated/              # código aposentado, fora do build (hoje: congresso/)
 scripts/                 # migrate, deploy, backup, checks de segurança, …
 deploy/                  # exemplos de nginx/apache (ver deploy/README.md)
 sql/rls-audit.sql        # consulta de auditoria das policies

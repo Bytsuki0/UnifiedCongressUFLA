@@ -69,25 +69,8 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/parecer-editorial", "Parecer editorial"],
   ["/co-chairs", "Painel de co-chairs"],
 
-  // Congresso — área congelada, hoje visível só para o admin.
-  ["/congresso/informacoes", "Informações do congresso"],
-  ["/congresso/programacao", "Programação"],
-  ["/congresso/verificar/:codigo", "Verificação de certificado"],
-  ["/congresso/verificar", "Verificar certificado"],
-  ["/congresso/dashboard", "Painel do congresso"],
-  ["/congresso/inscricao", "Inscrição"],
-  ["/congresso/minicursos", "Minicursos"],
-  ["/congresso/certificados", "Certificados"],
-  ["/congresso/perfil", "Meu perfil"],
-  // /congresso/admin/{papeis,usuarios} não entram: as duas migraram para o
-  // Portal Admin e as URLs antigas só redirecionam.
-  ["/congresso/admin/inscricoes", "Inscrições"],
-  ["/congresso/admin/minicursos", "Gestão de minicursos"],
-  ["/congresso/admin/programacao", "Gestão da programação"],
-  ["/congresso/admin/certificados", "Emissão de certificados"],
-  ["/congresso/admin/verificar", "Conferir certificados"],
-  ["/congresso/admin/notificacoes", "Enviar notificações"],
-  ["/congresso/admin", "Administração do congresso"],
+  // /congresso não entra: a área foi aposentada (código em
+  // deprecated/congresso/) e as duas URLs que sobraram só redirecionam.
 ];
 
 /** Título completo da aba para um caminho. Sem correspondência, só a marca. */

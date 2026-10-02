@@ -10,8 +10,9 @@
  *   /admin       → Portal Admin: papéis, conflitos, usuários (só admin)
  *   /dashboard…  → gestão de co-chairs: trabalhos, categorias, atribuições
  *                  e parecer editorial (avaliador, admin)
- *   /congresso   → área do evento — CONGELADA, fora do escopo do projeto.
- *                  Só o admin enxerga; ninguém é redirecionado para lá.
+ *
+ * A antiga área do evento (/congresso) foi aposentada: o código mora em
+ * deprecated/congresso/, fora do build. Só sobraram dois redirecionamentos.
  *
  * O controle de acesso é feito por <ProtectedRoute allowedRoles={[...]} />,
  * que envolve grupos de rotas. Isso é apenas a barreira de UI — a barreira
@@ -85,25 +86,6 @@ import CoChairsDownloads from "./pages/co-chairs/Downloads";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
-
-// Páginas do evento (congresso) — todas sob /congresso, hoje só para admin.
-// Mantidas importadas de propósito: a área está congelada, não removida.
-import EventInformacoes from "./pages/event/Informacoes";
-import EventProgramacao from "./pages/event/Programacao";
-import EventVerificar from "./pages/event/Verificar";
-import EventVerificarCodigo from "./pages/event/VerificarCodigo";
-import EventDashboard from "./pages/event/Dashboard";
-import EventInscricao from "./pages/event/Inscricao";
-import EventMinicursos from "./pages/event/Minicursos";
-import EventCertificados from "./pages/event/Certificados";
-import EventPerfil from "./pages/event/Perfil";
-import AdminIndex from "./pages/event/admin/AdminIndex";
-import AdminInscricoes from "./pages/event/admin/AdminInscricoes";
-import AdminMinicursos from "./pages/event/admin/AdminMinicursos";
-import AdminProgramacao from "./pages/event/admin/AdminProgramacao";
-import AdminCertificados from "./pages/event/admin/AdminCertificados";
-import AdminVerificar from "./pages/event/admin/AdminVerificar";
-import AdminNotificacoes from "./pages/event/admin/AdminNotificacoes";
 
 // Cache compartilhado do React Query — instanciado uma única vez fora do
 // componente para não ser recriado a cada render.
@@ -287,34 +269,12 @@ const App = () => (
               <Route key={p} path={p} element={<RedirecionaCoChairs />} />
             ))}
 
-            {/* ===== Congresso — CONGELADO =====
-                A área do evento saiu do escopo do projeto e não será
-                desenvolvida até segunda ordem. O código fica no repositório
-                porque ainda há telas que podem migrar para outros portais —
-                mas /congresso inteiro passou a ser visível SÓ para o admin,
-                inclusive o que antes era público (/informacoes, /programacao,
-                /verificar). Ninguém mais é mandado para cá: `portalDoPapel`
-                já não devolve /congresso para papel nenhum. */}
-            <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-              <Route path="/congresso/informacoes" element={<EventInformacoes />} />
-              <Route path="/congresso/programacao" element={<EventProgramacao />} />
-              <Route path="/congresso/verificar" element={<EventVerificar />} />
-              <Route path="/congresso/verificar/:codigo" element={<EventVerificarCodigo />} />
-              <Route path="/congresso/dashboard" element={<EventDashboard />} />
-              <Route path="/congresso/inscricao" element={<EventInscricao />} />
-              <Route path="/congresso/minicursos" element={<EventMinicursos />} />
-              <Route path="/congresso/certificados" element={<EventCertificados />} />
-              <Route path="/congresso/perfil" element={<EventPerfil />} />
-              <Route path="/congresso/admin" element={<AdminIndex />} />
-              <Route path="/congresso/admin/inscricoes" element={<AdminInscricoes />} />
-              <Route path="/congresso/admin/minicursos" element={<AdminMinicursos />} />
-              <Route path="/congresso/admin/programacao" element={<AdminProgramacao />} />
-              <Route path="/congresso/admin/certificados" element={<AdminCertificados />} />
-              <Route path="/congresso/admin/verificar" element={<AdminVerificar />} />
-              <Route path="/congresso/admin/notificacoes" element={<AdminNotificacoes />} />
-            </Route>
+            {/* ===== Congresso — APOSENTADO =====
+                A área do evento saiu do escopo e o código foi movido para
+                deprecated/congresso/ (fora do build). /congresso/* agora cai
+                no NotFound, exceto os dois redirecionamentos abaixo.
 
-            {/* Duas telas do congresso saíram de lá para o Portal Admin, que
+                Duas telas do congresso saíram de lá para o Portal Admin, que
                 é onde a gestão de contas ficou concentrada: papéis (conceder
                 avaliador/professor é o que monta o pool de revisores) e a
                 lista de usuários. */}

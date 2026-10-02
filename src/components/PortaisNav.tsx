@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/contexts/AuthContext";
 
-type CurrentPage = "estudante" | "revisor" | "admin" | "dashboard" | "congresso";
+type CurrentPage = "estudante" | "revisor" | "admin" | "dashboard";
 
 const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNode }> = {
   estudante: {
@@ -45,33 +45,19 @@ const NAV_ITEMS: Record<string, { label: string; to: string; icon: React.ReactNo
       </>
     ),
   },
-  congresso: {
-    label: "Congresso",
-    to: "/congresso/dashboard",
-    icon: (
-      <>
-        <path d="M8 2v4"/>
-        <path d="M16 2v4"/>
-        <rect width="18" height="18" x="3" y="4" rx="2"/>
-        <path d="M3 10h18"/>
-      </>
-    ),
-  },
 };
 
 function getPortaisItems(role: UserRole): string[] {
   // Ordem fixa e canônica por papel. A página atual NÃO é removida — fica no
   // lugar (marcada como ativa) para que os botões nunca troquem de posição.
   //
-  // "congresso" só aparece para o admin: a área do evento está congelada e
-  // fora do escopo, e o link é o único caminho de interface que sobrou até
-  // lá. `externo` repete a lista do estudante — mesma alçada de autor.
+  // `externo` repete a lista do estudante — mesma alçada de autor.
   const byRole: Record<UserRole, string[]> = {
     externo: ["estudante"],
     estudante: ["estudante"],
     professor: ["estudante", "revisor"],
     avaliador: ["dashboard", "estudante", "revisor"],
-    admin: ["dashboard", "estudante", "revisor", "admin", "congresso"],
+    admin: ["dashboard", "estudante", "revisor", "admin"],
   };
   return byRole[role] || [];
 }
