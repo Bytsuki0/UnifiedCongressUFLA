@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert } from "lucide-react";
+import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert, Users } from "lucide-react";
 import {
   MAX_REVISORES_POR_TRABALHO,
   META_TRABALHOS_POR_REVISOR,
@@ -20,6 +20,7 @@ import {
   removerRevisor,
   RevisorOption,
 } from "@/services/revisorService";
+import { definirRevisoresPorTrabalho } from "@/services/configuracoesService";
 import DialogoDistribuicao from "@/components/co-chairs/DialogoDistribuicao";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +88,11 @@ const Atribuicoes = () => {
   const [plano, setPlano] = useState<ParDistribuicao[]>([]);
   const [dialogoAberto, setDialogoAberto] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  // Revisores por trabalho: o que está GRAVADO (é o que o servidor cobra)
+  // e a posição do controle, que pode estar à frente dele por um instante.
+  const [numeroRevisores, setNumeroRevisores] = useState<number | null>(null);
+  const [posicaoControle, setPosicaoControle] = useState<number | null>(null);
+  const [gravandoNumero, setGravandoNumero] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
@@ -97,6 +103,8 @@ const Atribuicoes = () => {
       setRevisores(dados.revisores);
       setPareceres(dados.pareceres);
       setConflitos(indexarConflitos(dados.conflitos));
+      setNumeroRevisores(dados.revisoresPorTrabalho);
+      setPosicaoControle(dados.revisoresPorTrabalho);
     } catch (e) {
       toast.error("Erro ao carregar dados");
     } finally {
@@ -107,6 +115,41 @@ const Atribuicoes = () => {
   useEffect(() => {
     carregar();
   }, []);
+
+  /*
+   * O controle grava sozinho, meio segundo depois de parar de mexer: é um
+   * número só, e um botão de salvar ao lado dele deixaria a recomendação
+   * rodando sobre um valor diferente do que aparece na tela. O meio
+   * segundo é o que impede que arrastar de 3 para 1 grave o 2 no caminho
+   * — cada gravação recalcula a fila do parecer editorial inteira.
+   * Enquanto grava, o controle trava, para não haver duas no ar.
+   */
+  useEffect(() => {
+    if (posicaoControle === null || posicaoControle === numeroRevisores || gravandoNumero) return;
+    const timer = setTimeout(async () => {
+      setGravandoNumero(true);
+      try {
+        const n = await definirRevisoresPorTrabalho(posicaoControle);
+        setNumeroRevisores(n);
+        toast.success(
+          `Agora são ${n} revisor(es) por trabalho. A fila do Parecer Editorial já segue o novo número.`,
+        );
+      } catch (e) {
+        // O controle volta para o que está gravado: deixá-lo na posição
+        // recusada mostraria um número que o servidor não está cobrando.
+        setPosicaoControle(numeroRevisores);
+        toast.error(e instanceof Error ? e.message : "Não foi possível alterar o número de revisores");
+      } finally {
+        setGravandoNumero(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [posicaoControle, numeroRevisores, gravandoNumero]);
+
+  // Sem número carregado conta como pendente: a recomendação não roda às
+  // cegas quando a leitura falhou.
+  const numeroPendente =
+    numeroRevisores === null || posicaoControle !== numeroRevisores || gravandoNumero;
 
   const trabalhosPorId = useMemo(() => new Map(trabalhos.map((t) => [t.id, t])), [trabalhos]);
 
@@ -148,7 +191,7 @@ const Atribuicoes = () => {
   }, [pareceres]);
 
   const revCount = trabalhoId ? (revisoresPorTrabalho.get(trabalhoId)?.length ?? 0) : 0;
-  const revLimiteAtingido = revCount >= MAX_REVISORES_POR_TRABALHO;
+  const revLimiteAtingido = numeroRevisores !== null && revCount >= numeroRevisores;
 
   // Trabalhos que ninguém revisa ainda — ver o aviso no topo.
   const semRevisor = trabalhos.filter((t) => !revisoresPorTrabalho.has(t.id)).length;
@@ -250,13 +293,20 @@ const Atribuicoes = () => {
             <ClipboardList className="h-6 w-6" /> Atribuições
           </h1>
           <p className="text-muted-foreground">
-            Associe revisores (avaliadores e professores, tratados igualmente) aos trabalhos. Até{" "}
-            {MAX_REVISORES_POR_TRABALHO} revisores por trabalho · a recomendação evita passar de{" "}
+            Associe revisores (avaliadores e professores, tratados igualmente) aos trabalhos. Quantos
+            revisores cada trabalho recebe é definido logo abaixo · a recomendação evita passar de{" "}
             {META_TRABALHOS_POR_REVISOR} trabalhos por revisor, mas passa se for isso ou deixar trabalho a
             descoberto · autor, orientador e coautores não podem revisar o próprio trabalho.
           </p>
         </div>
-        <Button onClick={handleRecomendar} disabled={submitting || loading} variant="secondary">
+        {/* Travado enquanto o número não termina de gravar: a recomendação
+            lê o número do SERVIDOR, e rodá-la nesse meio-tempo proporia
+            para o valor antigo. */}
+        <Button
+          onClick={handleRecomendar}
+          disabled={submitting || loading || numeroPendente}
+          variant="secondary"
+        >
           <Sparkles className="mr-2 h-4 w-4" />
           Recomendar distribuição
         </Button>
@@ -279,6 +329,59 @@ const Atribuicoes = () => {
           </span>
         </div>
       )}
+
+      {/*
+        Revisores por trabalho. Não é só o alvo da recomendação: o servidor
+        usa o MESMO número como teto da associação e como a quantidade de
+        pareceres que encerra a revisão. Com o controle em 2, dois
+        pareceres já levam o trabalho ao Parecer Editorial.
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" /> Revisores por trabalho
+          </CardTitle>
+          <CardDescription>
+            Vale para todos os trabalhos: é quantos revisores a recomendação propõe, o limite de revisores
+            de cada trabalho e quantos pareceres encerram a avaliação e levam o trabalho ao Parecer
+            Editorial. Trabalhos que já têm mais revisores do que o número escolhido não perdem nenhum, e
+            os que já receberam uma decisão editorial não mudam.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {posicaoControle === null ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="w-full max-w-xs">
+                <label htmlFor="revisores-por-trabalho" className="sr-only">
+                  Revisores por trabalho
+                </label>
+                <input
+                  id="revisores-por-trabalho"
+                  type="range"
+                  min={1}
+                  max={MAX_REVISORES_POR_TRABALHO}
+                  step={1}
+                  value={posicaoControle}
+                  onChange={(e) => setPosicaoControle(Number(e.target.value))}
+                  disabled={gravandoNumero}
+                  className="w-full cursor-pointer accent-primary disabled:cursor-wait"
+                />
+                <div className="flex justify-between px-1 text-xs text-muted-foreground" aria-hidden="true">
+                  {Array.from({ length: MAX_REVISORES_POR_TRABALHO }, (_, i) => (
+                    <span key={i}>{i + 1}</span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm" aria-live="polite">
+                <strong className="text-2xl">{posicaoControle}</strong> revisor(es) por trabalho
+                {numeroPendente && <span className="ml-2 text-muted-foreground">· salvando...</span>}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Associação manual unificada */}
       <Card>
@@ -303,7 +406,7 @@ const Atribuicoes = () => {
                   const n = revisoresPorTrabalho.get(t.id)?.length ?? 0;
                   return (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.titulo}, {n}/{MAX_REVISORES_POR_TRABALHO}
+                      {t.titulo}, {n}/{numeroRevisores}
                     </SelectItem>
                   );
                 })}
@@ -311,7 +414,7 @@ const Atribuicoes = () => {
             </Select>
             {trabalhoId && (
               <p className={`mt-1 text-xs ${revLimiteAtingido ? "text-destructive" : "text-muted-foreground"}`}>
-                {revCount}/{MAX_REVISORES_POR_TRABALHO} revisores{revLimiteAtingido && ", limite atingido"}
+                {revCount}/{numeroRevisores} revisores{revLimiteAtingido && ", limite atingido"}
               </p>
             )}
           </div>
@@ -385,8 +488,8 @@ const Atribuicoes = () => {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{t.titulo}</CardTitle>
-                    <Badge variant={lista.length >= MAX_REVISORES_POR_TRABALHO ? "destructive" : "secondary"}>
-                      {lista.length}/{MAX_REVISORES_POR_TRABALHO}
+                    <Badge variant={lista.length >= numeroRevisores ? "destructive" : "secondary"}>
+                      {lista.length}/{numeroRevisores}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -480,6 +583,7 @@ const Atribuicoes = () => {
         pool={revisorOptions}
         conflitos={conflitos}
         revisoresAtuais={revisores}
+        numeroRevisores={numeroRevisores}
         confirmando={confirmando}
         onConfirmar={handleConfirmarDistribuicao}
       />

@@ -34,6 +34,7 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/estudante/trabalho/:id", "Resultado da avaliação"],
   ["/estudante/templates", "Templates"],
   ["/estudante/cronograma", "Cronograma"],
+  ["/estudante/avisos", "Avisos"],
 
   // Painel do Revisor
   ["/revisor/analise/:id", "Analisar trabalho"],

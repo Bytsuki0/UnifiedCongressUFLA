@@ -73,7 +73,14 @@ export type Parecer = {
   updated_at: string;
 };
 
-// Máximo de revisores que podem ser associados a um único trabalho.
+/**
+ * Até onde vai o controle de revisores por trabalho em Atribuições —
+ * espelha o CHECK `configuracoes_revisores_por_trabalho_check` (1 a 3).
+ *
+ * ⚠ NÃO é o número em vigor. Esse é gravado pela organização e lido do
+ * servidor (`carregarRevisoresPorTrabalho`); usar esta constante no lugar
+ * dele mostraria "x/3" com o servidor cobrando 2.
+ */
 export const MAX_REVISORES_POR_TRABALHO = 3;
 
 export type AvaliacaoStatus = "pendente" | "em_avaliacao" | "concluida";

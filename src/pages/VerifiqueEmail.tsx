@@ -151,7 +151,8 @@ const VerifiqueEmail = () => {
 
           <div className="precad-hint" style={{ marginBottom: 24 }}>
             Não achou? Procure na caixa de <strong>spam</strong> ou em
-            "promoções", o link vale por 24 horas.
+            "promoções". Confirme em até 4 horas: depois disso o cadastro é
+            apagado e precisa ser refeito.
           </div>
 
           {aviso && (

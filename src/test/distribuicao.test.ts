@@ -157,6 +157,9 @@ describe("recomendarDistribuicao", () => {
     mocks.rpc.mockResolvedValue({ data: proposta, error: null });
 
     expect(await recomendarDistribuicao()).toEqual(proposta);
+    // Sem argumento, e é a outra metade do teste: o número de revisores
+    // por trabalho o servidor lê sozinho (20261011120000). Mandá-lo daqui
+    // deixaria a proposta discordar do teto e do fechamento da revisão.
     expect(mocks.rpc).toHaveBeenCalledWith("recomendar_distribuicao");
   });
 });

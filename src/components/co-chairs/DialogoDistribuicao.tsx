@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  MAX_REVISORES_POR_TRABALHO,
-  META_TRABALHOS_POR_REVISOR,
-  Trabalho,
-  TrabalhoRevisor,
-} from "@/lib/types";
+import { META_TRABALHOS_POR_REVISOR, Trabalho, TrabalhoRevisor } from "@/lib/types";
 import {
   MotivoConflito,
   opcoesParaSlot,
@@ -50,6 +45,8 @@ type Props = {
   conflitos: Map<string, Map<string, MotivoConflito>>;
   /** Associações JÁ gravadas, de todos os trabalhos. */
   revisoresAtuais: TrabalhoRevisor[];
+  /** Revisores por trabalho em vigor no servidor — é ele que define as vagas. */
+  numeroRevisores: number;
   confirmando: boolean;
   onConfirmar: (pares: { trabalho_id: string; revisor_email: string }[]) => void;
 };
@@ -76,6 +73,7 @@ const DialogoDistribuicao = ({
   pool,
   conflitos,
   revisoresAtuais,
+  numeroRevisores,
   confirmando,
   onConfirmar,
 }: Props) => {
@@ -103,7 +101,7 @@ const DialogoDistribuicao = ({
     return m;
   }, [revisoresAtuais]);
 
-  // Só entram os trabalhos com vaga: os que já têm 3 revisores não têm o
+  // Só entram os trabalhos com vaga: os que já estão completos não têm o
   // que recomendar, e removê-los continua sendo pela lixeira da página.
   const linhas = useMemo(
     () =>
@@ -112,8 +110,8 @@ const DialogoDistribuicao = ({
           trabalho: t,
           associados: revisoresPorTrabalho.get(t.id) ?? [],
         }))
-        .filter((l) => l.associados.length < MAX_REVISORES_POR_TRABALHO),
-    [trabalhos, revisoresPorTrabalho],
+        .filter((l) => l.associados.length < numeroRevisores),
+    [trabalhos, revisoresPorTrabalho, numeroRevisores],
   );
 
   // Semeia os slots com a proposta toda vez que a janela abre reabrir
@@ -122,7 +120,7 @@ const DialogoDistribuicao = ({
     if (!aberto) return;
     const inicial = new Map<string, (string | null)[]>();
     linhas.forEach(({ trabalho, associados }) => {
-      const vagas = MAX_REVISORES_POR_TRABALHO - associados.length;
+      const vagas = numeroRevisores - associados.length;
       const propostos = plano
         .filter((p) => p.trabalho_id === trabalho.id)
         .map((p) => p.revisor_email);
@@ -164,7 +162,8 @@ const DialogoDistribuicao = ({
         <DialogHeader>
           <DialogTitle>Distribuição recomendada</DialogTitle>
           <DialogDescription>
-            Esta é uma proposta nada foi gravado ainda. Troque ou deixe em branco o que quiser; só as
+            Esta é uma proposta de {numeroRevisores} revisor(es) por trabalho, o número definido em
+            Atribuições — nada foi gravado ainda. Troque ou deixe em branco o que quiser; só as
             associações que estiverem aqui quando você confirmar serão criadas, e todas de uma vez. Autor,
             orientador e coautores aparecem impedidos. A carga é distribuída por igual, evitando passar de{" "}
             {META_TRABALHOS_POR_REVISOR} trabalhos por revisor acima disso, só quando não sobra ninguém.
@@ -178,7 +177,7 @@ const DialogoDistribuicao = ({
             </p>
           ) : linhas.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Todos os trabalhos já têm {MAX_REVISORES_POR_TRABALHO} revisores.
+              Todos os trabalhos já têm {numeroRevisores} revisor(es).
             </p>
           ) : (
             linhas.map(({ trabalho, associados }) => {
@@ -189,7 +188,7 @@ const DialogoDistribuicao = ({
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-sm font-medium">{trabalho.titulo}</h3>
                     <Badge variant="secondary" className="shrink-0">
-                      {associados.length + escolhidos}/{MAX_REVISORES_POR_TRABALHO}
+                      {associados.length + escolhidos}/{numeroRevisores}
                     </Badge>
                   </div>
 

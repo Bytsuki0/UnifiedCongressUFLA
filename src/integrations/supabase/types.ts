@@ -382,6 +382,7 @@ export type Database = {
           id: boolean
           max_coautores: number
           parecer_min_caracteres: number
+          revisores_por_trabalho: number
           submissoes_abertura: string | null
           submissoes_encerramento: string | null
         }
@@ -393,6 +394,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          revisores_por_trabalho?: number
           submissoes_abertura?: string | null
           submissoes_encerramento?: string | null
         }
@@ -404,6 +406,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          revisores_por_trabalho?: number
           submissoes_abertura?: string | null
           submissoes_encerramento?: string | null
         }
@@ -1234,6 +1237,7 @@ export type Database = {
       }
       data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
+      definir_revisores_por_trabalho: { Args: { _n: number }; Returns: number }
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
       editar_submissao: {
         Args: {
@@ -1340,6 +1344,7 @@ export type Database = {
           hoje: string
         }[]
       }
+      purgar_contas_nao_confirmadas: { Args: never; Returns: number }
       recomendar_distribuicao: {
         Args: never
         Returns: {
@@ -1366,6 +1371,7 @@ export type Database = {
         Args: { _comentario: string; _decisao: string; _trabalho_id: string }
         Returns: string
       }
+      revisores_por_trabalho: { Args: never; Returns: number }
       submeter_trabalho: {
         Args: {
           _anexos: Json

@@ -59,6 +59,7 @@ import EstudanteReenvio from "./pages/estudante/Reenvio";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
 import EstudanteCronograma from "./pages/estudante/Cronograma";
+import EstudanteAvisos from "./pages/estudante/Avisos";
 
 // Painel do Revisor — uma página por função, sob /revisor
 import RevisorLayout from "./components/revisor/Layout";
@@ -212,6 +213,9 @@ const App = () => (
                 {/* Mesma lista de /cronograma, para quem já entrou não
                     ter de sair do portal para conferir um prazo. */}
                 <Route path="cronograma" element={<EstudanteCronograma />} />
+                {/* Os avisos de login endereçados a quem está logado, numa
+                    página fixa — o pop-up some quando é fechado. */}
+                <Route path="avisos" element={<EstudanteAvisos />} />
               </Route>
             </Route>
 

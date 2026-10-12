@@ -39,10 +39,21 @@ export type PrazoSubmissoes = {
   hoje: string;
 };
 
+/**
+ * Colunas que o painel do admin edita — e só elas. ⚠ Não trocar por `*`:
+ * `salvarConfiguracoes` grava de volta o objeto inteiro que veio daqui, e
+ * com `*` levaria junto `revisores_por_trabalho`, que é de outra tela
+ * (/co-chairs/atribuicoes). Um admin salvando o prazo com a página aberta
+ * desde antes desfaria em silêncio o número que um co-chair acabou de
+ * mudar.
+ */
+const COLUNAS_DO_ADMIN =
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, edital, atualizado_em";
+
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase
     .from("configuracoes")
-    .select("*")
+    .select(COLUNAS_DO_ADMIN)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data;
@@ -68,6 +79,45 @@ export async function carregarPrazoSubmissoes(): Promise<PrazoSubmissoes> {
     return { abertura: null, encerramento: null, aberto: true, hoje: "" };
   }
   return data[0];
+}
+
+/* ------------------------------------------------------------------
+ * Revisores por trabalho (migration 20261011120000)
+ * ------------------------------------------------------------------
+ * Quantos revisores cada trabalho recebe (1 a 3). Não é só o alvo da
+ * recomendação: o servidor usa o MESMO número como teto da associação e
+ * como a quantidade de pareceres que encerra a revisão e manda o trabalho
+ * para o parecer editorial. Por isso ele é gravado, e não um estado da
+ * tela — com o controle em 2 e o fechamento esperando 3, o trabalho
+ * ficaria em avaliação para sempre.
+ *
+ * Mora na linha de `configuracoes`, mas a escrita é por RPC
+ * (`is_event_staff()`): a policy de UPDATE da tabela é do admin e cobre o
+ * prazo de submissão junto.
+ * ----------------------------------------------------------------- */
+
+/**
+ * O número em vigor. O erro PROPAGA: quem distribui não pode ver "x/3"
+ * numa tela quando o servidor está cobrando 2.
+ */
+export async function carregarRevisoresPorTrabalho(): Promise<number> {
+  const { data, error } = await supabase.rpc("revisores_por_trabalho");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Grava o número. Mudá-lo recalcula na hora a fila do parecer editorial
+ * (trigger `trg_revisores_por_trabalho`): baixar manda para lá quem já tem
+ * pareceres suficientes; subir devolve à avaliação quem ainda não tem.
+ * Trabalho já decidido não se move.
+ */
+export async function definirRevisoresPorTrabalho(n: number): Promise<number> {
+  const { data, error } = await supabase.rpc("definir_revisores_por_trabalho", { _n: n });
+  // `new Error`: o PostgrestError não é instância de Error, e a página
+  // filtra por `instanceof Error` para mostrar a frase do banco.
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 /* ------------------------------------------------------------------

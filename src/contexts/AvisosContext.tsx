@@ -5,13 +5,15 @@ import { carregarMeusAvisos, type Aviso } from "@/services/avisosService";
 /**
  * Os avisos endereçados a quem está logado, num lugar só.
  *
- * Duas telas mostram a mesma lista e precisam concordar:
+ * Três telas mostram a mesma lista e precisam concordar:
  *
  *   · `<AvisosLogin />`  o diálogo que abre depois do login, com o que
  *     ainda não foi fechado NESTA aba;
  *   · `<BotaoNotificacoes />` a aba "Notificações" da barra superior,
  *     que mostra TODOS os avisos, sempre, para quem quiser reler o que
- *     já fechou.
+ *     já fechou;
+ *   · `/estudante/avisos` a mesma lista completa, como página fixa do
+ *     menu do Portal do Estudante.
  *
  * Elas moram em pontos distantes da árvore (o diálogo na raiz do App, o
  * botão dentro de cada Layout), e é isso que torna o contexto necessário

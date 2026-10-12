@@ -116,7 +116,7 @@ function montarEmail(nome: string | null, link: string) {
     "",
     link,
     "",
-    "O link vale por 24 horas e pode ser usado uma única vez.",
+    "O link vale até 4 horas depois do cadastro e pode ser usado uma única vez. Sem confirmação nesse prazo, o cadastro é apagado e precisa ser refeito.",
     "Se não foi você quem se cadastrou, ignore esta mensagem — nenhuma ação será tomada.",
     "",
     `${APP_NAME} — ${APP_TAGLINE}`,
@@ -142,7 +142,7 @@ function montarEmail(nome: string | null, link: string) {
           Se o botão não funcionar, copie e cole este endereço no navegador:
         </p>
         <p style="margin:0 0 24px;word-break:break-all;font-size:13px;color:#4b5563;">${link}</p>
-        <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">O link vale por 24 horas e pode ser usado uma única vez.</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">O link vale até 4 horas depois do cadastro e pode ser usado uma única vez. Sem confirmação nesse prazo, o cadastro é apagado e precisa ser refeito.</p>
         <p style="margin:0;font-size:13px;color:#6b7280;">
           Se não foi você quem se cadastrou, ignore esta mensagem — nenhuma ação será tomada.
         </p>

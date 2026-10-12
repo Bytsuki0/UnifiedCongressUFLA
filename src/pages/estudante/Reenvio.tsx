@@ -245,7 +245,7 @@ const Reenvio = () => {
           <h1 className="page-title">Reenviar trabalho</h1>
           <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
             Você pode alterar tudo — inclusive autoria e categoria. Depois do reenvio o trabalho
-            volta para a fila e recebe três avaliadores novos.
+            volta para a fila e recebe avaliadores novos.
           </p>
         </div>
 

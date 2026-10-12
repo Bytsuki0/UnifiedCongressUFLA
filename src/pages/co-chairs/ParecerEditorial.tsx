@@ -7,7 +7,6 @@ import {
   DECISAO_BADGE,
   DECISAO_LABEL,
   LinhaParecerEditorial,
-  PARECERES_PARA_DECIDIR,
 } from "@/services/parecerEditorialService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,20 +23,24 @@ import {
 /**
  * A fila do parecer editorial.
  *
- * Todo trabalho aparece, mas só sai do cinza quando os 3 pareceres da
+ * Todo trabalho aparece, mas só sai do cinza quando os pareceres da
  * rodada corrente entraram — é a leitura direta da regra do servidor
- * (`registrar_parecer_editorial` recusa abaixo de 3). Decidir antes de
- * ler os três seria decidir no escuro, e é por isso que o botão não fica
- * apenas feio: fica desabilitado.
+ * (`registrar_parecer_editorial` recusa abaixo do número de revisores por
+ * trabalho configurado em Atribuições). Decidir antes de ler todos seria
+ * decidir no escuro, e é por isso que o botão não fica apenas feio: fica
+ * desabilitado.
  */
 const ParecerEditorial = () => {
   const [linhas, setLinhas] = useState<LinhaParecerEditorial[]>([]);
+  const [necessarios, setNecessarios] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        setLinhas(await carregarPainelParecerEditorial());
+        const painel = await carregarPainelParecerEditorial();
+        setLinhas(painel.linhas);
+        setNecessarios(painel.pareceresParaDecidir);
       } catch {
         toast.error("Erro ao carregar os trabalhos");
       } finally {
@@ -58,8 +61,9 @@ const ParecerEditorial = () => {
           <Gavel className="h-6 w-6" /> Parecer Editorial
         </h1>
         <p className="text-muted-foreground">
-          A decisão final de cada trabalho. Ela deixou de sair sozinha da média dos pareceres: os{" "}
-          {PARECERES_PARA_DECIDIR} revisores emitem, e um co-chair lê tudo e decide, com justificativa.
+          A decisão final de cada trabalho. Ela deixou de sair sozinha da média dos pareceres: os
+          revisores emitem{necessarios !== null && ` (${necessarios} por trabalho, como definido em Atribuições)`},
+          e um co-chair lê tudo e decide, com justificativa.
         </p>
       </div>
 
@@ -100,7 +104,7 @@ const ParecerEditorial = () => {
               </TableRow>
             ) : (
               linhas.map((l) => (
-                // Sem os 3 pareceres a linha inteira apaga. `pointer-events-none`
+                // Sem os pareceres necessários a linha inteira apaga. `pointer-events-none`
                 // fica fora de propósito: o co-chair ainda precisa poder
                 // selecionar o título para procurá-lo em Atribuições.
                 <TableRow key={l.trabalho.id} className={l.pronto ? undefined : "opacity-45"}>
@@ -115,7 +119,7 @@ const ParecerEditorial = () => {
                   <TableCell className="text-muted-foreground">{l.categoriaNome}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={l.pronto ? "secondary" : "outline"}>
-                      {l.pareceres}/{PARECERES_PARA_DECIDIR}
+                      {l.pareceres}/{necessarios}
                     </Badge>
                   </TableCell>
                   <TableCell>

@@ -131,6 +131,13 @@ const RPCS_NEGADAS = [
   // que grava. Ambas exigem `is_event_staff()`, e nem executáveis por anon.
   ["recomendar_distribuicao", {}],
   ["confirmar_distribuicao", { _pares: [] }],
+  // Revisores por trabalho (migration 20261011120000): a leitura é de
+  // quem tem sessão; a escrita, da organização.
+  ["revisores_por_trabalho", {}],
+  ["definir_revisores_por_trabalho", { _n: 2 }],
+  // Purga das contas não confirmadas (migration 20261011130000): só o
+  // pg_cron a chama; a API não tem por que alcançar um DELETE em auth.users.
+  ["purgar_contas_nao_confirmadas", {}],
   // Parecer editorial (migration 20260820140000). A primeira é staff-only;
   // as outras duas exigem sessão do autor.
   [

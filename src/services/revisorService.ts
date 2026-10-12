@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ordenarAnexos, type AnexoDoTrabalho } from "@/lib/anexos";
 import { COLUNAS_ANEXO } from "@/services/anexosService";
+import { carregarRevisoresPorTrabalho } from "@/services/configuracoesService";
 import {
   Criterio,
-  MAX_REVISORES_POR_TRABALHO,
   META_TRABALHOS_POR_REVISOR,
   Parecer,
   ParecerItem,
@@ -297,25 +297,21 @@ export async function listarRevisoresDoTrabalho(
   return (data ?? []) as TrabalhoRevisor[];
 }
 
-/** Associa um revisor (avaliador ou professor) a um trabalho. Máximo de 3. */
+/**
+ * Associa um revisor (avaliador ou professor) a um trabalho.
+ *
+ * O teto é o número configurado em Atribuições, e quem o cobra é o
+ * trigger `trg_z_max_revisores`, por rodada. Não há contagem prévia aqui:
+ * a que existia comparava com um 3 fixo e contava TODAS as rodadas, então
+ * recusava o reenvio que ainda não tinha revisor nenhum. A tela já
+ * desabilita o botão no teto; o que escapar disso recebe a frase do banco.
+ */
 export async function associarRevisor(
   trabalhoId: string,
   email: string,
   nome: string | null,
   tipo: "avaliador" | "professor",
 ): Promise<void> {
-  // Validação amigável antes de bater no trigger do banco.
-  const { count, error: countError } = await supabase
-    .from("trabalho_revisores")
-    .select("*", { count: "exact", head: true })
-    .eq("trabalho_id", trabalhoId);
-  if (countError) throw countError;
-  if ((count ?? 0) >= MAX_REVISORES_POR_TRABALHO) {
-    throw new Error(
-      `Este trabalho já possui ${MAX_REVISORES_POR_TRABALHO} revisores associados (máximo).`,
-    );
-  }
-
   const { error } = await supabase
     .from("trabalho_revisores")
     .insert({ trabalho_id: trabalhoId, revisor_email: email, revisor_nome: nome, tipo });
@@ -328,7 +324,8 @@ export async function associarRevisor(
     if (error.code === "23514") {
       throw new Error(error.message);
     }
-    throw error;
+    // Inclui o teto de revisores (P0001), cuja mensagem diz o número.
+    throw new Error(error.message);
   }
 }
 
@@ -346,9 +343,11 @@ export type ParDistribuicao = {
 };
 
 /**
- * Proposta de distribuição para todos os trabalhos com menos de 3
- * revisores. **Não grava nada** — quem grava é `confirmarDistribuicao`,
- * depois de um co-chair revisar par a par.
+ * Proposta de distribuição para todos os trabalhos com menos revisores do
+ * que o número configurado em Atribuições (o servidor lê esse número
+ * sozinho — ele não vai no request, para a proposta nunca discordar do
+ * teto e do fechamento da revisão). **Não grava nada** — quem grava é
+ * `confirmarDistribuicao`, depois de um co-chair revisar par a par.
  *
  * O cálculo mora no servidor (`recomendar_distribuicao`, STABLE) e não
  * aqui: era exatamente esta função que, na versão anterior, gravava
@@ -369,8 +368,8 @@ export async function recomendarDistribuicao(): Promise<ParDistribuicao[]> {
  * Grava a distribuição que o co-chair confirmou.
  *
  * Tudo ou nada: a RPC é uma transação, então um par recusado (conflito de
- * interesse, teto de 3 por trabalho, teto de 5 por revisor) aborta o lote
- * inteiro e nada é gravado. A mensagem do banco sobe intacta — é lá que
+ * interesse, teto de revisores por trabalho) aborta o lote inteiro e
+ * nada é gravado. A mensagem do banco sobe intacta — é lá que
  * mora a frase que diz QUEM foi recusado e por quê.
  */
 export async function confirmarDistribuicao(
@@ -393,7 +392,7 @@ export type OpcaoSlot = {
   /**
    * Passou de `META_TRABALHOS_POR_REVISOR`. É AVISO, não impedimento:
    * a opção continua selecionável, porque o contrário é deixar trabalho
-   * com menos de 3 revisores quando o pool acaba.
+   * com menos revisores do que o configurado quando o pool acaba.
    */
   acimaDaMeta: boolean;
 };
@@ -487,13 +486,16 @@ export async function carregarPainelAtribuicoes(): Promise<{
   revisores: TrabalhoRevisor[];
   pareceres: ParecerLite[];
   conflitos: Conflito[];
+  /** O número em vigor no servidor — ver `carregarRevisoresPorTrabalho`. */
+  revisoresPorTrabalho: number;
 }> {
-  const [pool, tr, rv, pa, conflitos] = await Promise.all([
+  const [pool, tr, rv, pa, conflitos, revisoresPorTrabalho] = await Promise.all([
     carregarPoolRevisores(),
     supabase.from("trabalhos").select("*").order("titulo"),
     supabase.from("trabalho_revisores").select("*").order("created_at"),
     supabase.from("pareceres").select("trabalho_id, revisor_email, resultado, rodada"),
     carregarConflitos(),
+    carregarRevisoresPorTrabalho(),
   ]);
   if (tr.error || rv.error || pa.error) throw tr.error ?? rv.error ?? pa.error;
 
@@ -511,6 +513,7 @@ export async function carregarPainelAtribuicoes(): Promise<{
     revisores: ((rv.data ?? []) as TrabalhoRevisor[]).filter(corrente),
     pareceres: ((pa.data ?? []) as ParecerLite[]).filter(corrente),
     conflitos,
+    revisoresPorTrabalho,
   };
 }
 

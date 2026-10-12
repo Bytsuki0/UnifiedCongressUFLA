@@ -276,7 +276,9 @@ const Avisos = () => {
             <h1 className="text-2xl font-bold">Avisos de Login</h1>
             <p className="text-sm text-muted-foreground">
               Recados que aparecem em uma janela logo depois do login, para os papéis que você
-              escolher. Enquanto o aviso estiver cadastrado, ele reaparece a cada nova entrada.
+              escolher. Enquanto o aviso estiver cadastrado, ele reaparece a cada nova entrada — e
+              os marcados para estudantes ou participantes externos também ficam na página Avisos do
+              portal de Submissão.
             </p>
           </div>
         </div>

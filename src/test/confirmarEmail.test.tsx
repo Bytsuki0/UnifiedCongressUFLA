@@ -102,13 +102,15 @@ describe("/confirmar-email", () => {
     expect(screen.getByText(/seu link continua válido/i)).toBeInTheDocument();
   });
 
-  it("token expirado aponta o caminho do reenvio", async () => {
+  // O link vence junto com o prazo da conta (created_at + 4 h, migration
+  // 20261011130000): expirado = cadastro apagado, e reenviar não adianta.
+  it("token expirado aponta o caminho do novo cadastro", async () => {
     mocks.confirmarEmailComToken.mockResolvedValue("expirado");
     montar("/confirmar-email?token=velho");
 
     fireEvent.click(botaoConfirmar());
 
     expect(await screen.findByText(/este link não vale mais/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /entrar e reenviar/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /cadastrar de novo/i })).toHaveAttribute("href", "/cadastro");
   });
 });

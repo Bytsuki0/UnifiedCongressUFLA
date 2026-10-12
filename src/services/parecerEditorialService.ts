@@ -6,6 +6,7 @@ import {
   listarAnexosDoTrabalho,
   prepararAnexos,
 } from "@/services/anexosService";
+import { carregarRevisoresPorTrabalho } from "@/services/configuracoesService";
 import type {
   Categoria,
   Criterio,
@@ -20,9 +21,13 @@ import type {
  *
  * Até 20260820140000 essa decisão era automática — a moda dos 3 pareceres
  * virava `trabalhos.status` no instante em que o terceiro revisor
- * clicava em enviar. Agora os 3 pareceres apenas ENCERRAM a revisão
+ * clicava em enviar. Agora os pareceres apenas ENCERRAM a revisão
  * (status `aguardando_parecer_editorial`) e uma pessoa decide, com
  * justificativa, em /co-chairs/parecer-editorial.
+ *
+ * Quantos pareceres encerram a revisão é o número de revisores por
+ * trabalho que a organização grava em Atribuições (1 a 3, migration
+ * 20261011120000) — não mais um 3 fixo.
  */
 
 /** As quatro decisões que um co-chair pode registrar. */
@@ -48,7 +53,7 @@ export const DECISAO_OPTIONS: { value: DecisaoEditorial; label: string; ajuda: s
     value: "resubmeter",
     label: "Reenviar para nova avaliação",
     ajuda:
-      "O autor reedita o trabalho INTEIRO uma única vez — inclusive autoria e categoria — e ele volta ao começo: 3 revisores novos, atribuídos de novo em Atribuições.",
+      "O autor reedita o trabalho INTEIRO uma única vez — inclusive autoria e categoria — e ele volta ao começo: revisores novos, atribuídos de novo em Atribuições.",
   },
   {
     value: "reprovado",
@@ -67,9 +72,6 @@ export const DECISAO_BADGE: Record<DecisaoEditorial, string> = {
   resubmeter: "badge badge-orange",
   reprovado: "badge badge-red",
 };
-
-/** Quantos pareceres um trabalho precisa antes de ir para a mesa do co-chair. */
-export const PARECERES_PARA_DECIDIR = 3;
 
 /** Uma decisão registrada, como a organização a vê (com quem assinou). */
 export type DecisaoRegistrada = {
@@ -95,11 +97,11 @@ export type DecisaoDoAutor = {
 export type LinhaParecerEditorial = {
   trabalho: Trabalho;
   categoriaNome: string;
-  /** Pareceres da rodada CORRENTE. Abaixo de 3, a linha fica cinza. */
+  /** Pareceres da rodada CORRENTE. Abaixo do necessário, a linha fica cinza. */
   pareceres: number;
   /** Decisão vigente da rodada corrente, quando já houver. */
   decisao: DecisaoRegistrada | null;
-  /** Pronto para análise: os 3 pareceres entraram. */
+  /** Pronto para análise: todos os pareceres necessários entraram. */
   pronto: boolean;
 };
 
@@ -111,8 +113,15 @@ export type LinhaParecerEditorial = {
  * `is_event_staff()`, e `decisoes_editoriais` tem policy própria de
  * leitura para a organização. Nenhuma RPC precisa existir só para ler.
  */
-export async function carregarPainelParecerEditorial(): Promise<LinhaParecerEditorial[]> {
-  const [tr, pa, de, ca] = await Promise.all([
+export async function carregarPainelParecerEditorial(): Promise<{
+  linhas: LinhaParecerEditorial[];
+  /**
+   * Quantos pareceres encerram a revisão, lido do servidor — é o mesmo
+   * número que `registrar_parecer_editorial` cobra.
+   */
+  pareceresParaDecidir: number;
+}> {
+  const [tr, pa, de, ca, pareceresParaDecidir] = await Promise.all([
     supabase.from("trabalhos").select("*").order("titulo"),
     supabase.from("pareceres").select("trabalho_id, revisor_email, rodada"),
     supabase
@@ -120,6 +129,7 @@ export async function carregarPainelParecerEditorial(): Promise<LinhaParecerEdit
       .select("*")
       .order("created_at", { ascending: false }),
     supabase.from("categorias").select("id, nome"),
+    carregarRevisoresPorTrabalho(),
   ]);
   if (tr.error || pa.error || de.error || ca.error) {
     throw tr.error ?? pa.error ?? de.error ?? ca.error;
@@ -146,7 +156,7 @@ export async function carregarPainelParecerEditorial(): Promise<LinhaParecerEdit
     if (!vigente.has(chave)) vigente.set(chave, d);
   });
 
-  return (tr.data ?? []).map((trabalho) => {
+  const linhas = (tr.data ?? []).map((trabalho) => {
     const chave = `${trabalho.id}:${trabalho.rodada}`;
     const pareceres = contagem.get(chave)?.size ?? 0;
     return {
@@ -156,9 +166,11 @@ export async function carregarPainelParecerEditorial(): Promise<LinhaParecerEdit
         : "—",
       pareceres,
       decisao: vigente.get(chave) ?? null,
-      pronto: pareceres >= PARECERES_PARA_DECIDIR,
+      pronto: pareceres >= pareceresParaDecidir,
     };
   });
+
+  return { linhas, pareceresParaDecidir };
 }
 
 /** Um parecer completo, COM a identificação do revisor. */

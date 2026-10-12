@@ -119,7 +119,7 @@ const ConfirmarEmail = () => {
               <h1 className="card-title">Confirme seu e-mail.</h1>
               <p className="card-description">
                 Clique no botão abaixo para liberar sua conta no {APP_NAME}. O link
-                vale por 24 horas e pode ser usado uma única vez.
+                vale até 4 horas depois do cadastro e pode ser usado uma única vez.
               </p>
               <button type="button" className="btn btn-primary btn-block btn-lg" onClick={confirmar}>
                 CONFIRMAR E-MAIL
@@ -160,11 +160,12 @@ const ConfirmarEmail = () => {
               <p className="card-overline">LINK EXPIRADO</p>
               <h1 className="card-title">Este link não vale mais.</h1>
               <p className="card-description">
-                Os links de confirmação valem por 24 horas. Entre na sua conta e peça
-                um novo e-mail, leva um clique.
+                A confirmação precisa acontecer em até 4 horas depois do cadastro.
+                Passado esse prazo o cadastro é apagado e o e-mail fica livre: é só
+                se cadastrar de novo e confirmar a tempo.
               </p>
-              <Link to={user ? "/verifique-email" : "/login"} className="btn btn-primary btn-block btn-lg">
-                {user ? "PEDIR OUTRO E-MAIL" : "ENTRAR E REENVIAR"}
+              <Link to="/cadastro" className="btn btn-primary btn-block btn-lg">
+                CADASTRAR DE NOVO
               </Link>
             </>
           )}
@@ -176,7 +177,8 @@ const ConfirmarEmail = () => {
               <p className="card-description">
                 Confira se o endereço foi copiado inteiro do e-mail, alguns
                 aplicativos quebram links longos em duas linhas. Se sua conta já
-                existe, entre e peça um novo e-mail de confirmação.
+                existe, entre e peça um novo e-mail de confirmação. Cadastros não
+                confirmados em 4 horas são apagados; nesse caso, cadastre-se de novo.
               </p>
               <Link to={user ? "/verifique-email" : "/login"} className="btn btn-primary btn-block btn-lg">
                 {user ? "PEDIR OUTRO E-MAIL" : "ENTRAR"}

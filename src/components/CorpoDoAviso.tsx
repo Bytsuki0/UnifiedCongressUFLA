@@ -6,11 +6,11 @@ import { TextoRico } from "@/components/TextoRico";
  * O conteúdo de um aviso texto com marcação ou banner, do jeito que
  * ele deve aparecer em qualquer tela.
  *
- * Componente único entre o pop-up do login (`<AvisosLogin />`) e a aba
- * Notificações (`<BotaoNotificacoes />`) pelo mesmo motivo de
- * `PareceresRecebidos`: são duas telas mostrando a MESMA coisa, e duas
- * cópias divergiriam a mais provável sendo uma delas esquecer de
- * assinar a URL do banner e mostrar um retângulo quebrado.
+ * Componente único entre o pop-up do login (`<AvisosLogin />`), a aba
+ * Notificações (`<BotaoNotificacoes />`) e a página `/estudante/avisos`
+ * pelo mesmo motivo de `PareceresRecebidos`: são telas mostrando a MESMA
+ * coisa, e cópias divergiriam a mais provável sendo uma delas esquecer
+ * de assinar a URL do banner e mostrar um retângulo quebrado.
  *
  * A assinatura é feita aqui dentro, quando o aviso entra na tela: o
  * bucket é privado e a URL expira, então não há o que pré-carregar nem
