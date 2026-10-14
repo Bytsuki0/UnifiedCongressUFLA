@@ -3,7 +3,7 @@
  * Grava os secrets das Edge Functions pela Management API — mesmo padrão
  * de scripts/migrate.js, sem Supabase CLI.
  *
- * Os três valores são lidos DO AMBIENTE, no momento da execução, e nunca
+ * Os valores são lidos DO AMBIENTE, no momento da execução, e nunca
  * de arquivo: um segredo commitado permanece no histórico do git mesmo
  * depois de apagado. Por isso eles são capturados ANTES de `loadDotEnv()`
  * — se alguém escorregar e colocar BREVO_API_KEY no .env, este script
@@ -17,13 +17,22 @@
  * derruba todo envio do dia da abertura, e `--listar` mostra só o NOME do
  * secret — nunca prova que o valor presta.
  *
- * Secrets gravados:
+ * Secrets gravados, em dois grupos — basta informar um deles:
+ *
+ *   Brevo (verificação de e-mail e redefinição de senha), os três juntos:
  *   BREVO_API_KEY    — chave da API v3 do Brevo (xkeysib-...)
  *   EMAIL_REMETENTE  — "Nome <endereco@dominio>" ou só o endereço.
  *                      O domínio precisa estar VERIFICADO no Brevo.
  *   SITE_URL         — base do link de confirmação, sem barra final
  *                      (ex.: https://ciuflaictin.com.br). Nunca vem do
  *                      header Host/Origin da requisição.
+ *
+ *   Fila dos e-mails aos revisores (Edge Function `emails-revisores`):
+ *   SEGREDO_FILA_EMAILS — o mesmo valor da Propriedade `SEGREDO` do Apps
+ *                         Script da conta congressoparaiso@ufla.br. Gerar com
+ *                         node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ *                         Não há o que conferir contra terceiros aqui: é o
+ *                         Apps Script que chama a function, nunca o contrário.
  *
  * Env vars de acesso:
  *   VITE_SUPABASE_URL     — lido do .env
@@ -36,6 +45,9 @@
  *   $env:SITE_URL        = "https://ciuflaictin.com.br"
  *   npm run config:secrets
  *
+ *   $env:SEGREDO_FILA_EMAILS = "<64 caracteres hex>"   # pode ir sozinho
+ *   npm run config:secrets
+ *
  *   npm run config:secrets -- --listar   # só mostra QUAIS secrets existem
  */
 
@@ -46,7 +58,16 @@ const DO_AMBIENTE = {
   BREVO_API_KEY: process.env.BREVO_API_KEY,
   EMAIL_REMETENTE: process.env.EMAIL_REMETENTE,
   SITE_URL: process.env.SITE_URL,
+  SEGREDO_FILA_EMAILS: process.env.SEGREDO_FILA_EMAILS,
 };
+
+/** As functions do Brevo leem os três: ou vão juntos, ou não vão. */
+const GRUPO_BREVO = ["BREVO_API_KEY", "EMAIL_REMETENTE", "SITE_URL"];
+
+/** Secrets cujo valor nunca aparece na saída (só mascarado). */
+const SIGILOSOS = ["BREVO_API_KEY", "SEGREDO_FILA_EMAILS"];
+
+const informado = (nome) => Boolean(DO_AMBIENTE[nome]?.trim());
 
 loadDotEnv(); // só para VITE_SUPABASE_URL
 
@@ -165,47 +186,75 @@ async function main() {
     return;
   }
 
-  const faltando = Object.entries(DO_AMBIENTE)
-    .filter(([, v]) => !v || v.trim() === "")
-    .map(([k]) => k);
+  const comBrevo = GRUPO_BREVO.some(informado);
+  const comFila = informado("SEGREDO_FILA_EMAILS");
 
-  if (faltando.length > 0) {
-    console.error(`\nERRO: variável(is) de ambiente ausente(s): ${faltando.join(", ")}`);
-    console.error("\nDefina as três no shell (nunca em arquivo versionado) e rode de novo:");
-    console.error('  $env:BREVO_API_KEY   = "xkeysib-..."');
-    console.error('  $env:EMAIL_REMETENTE = "Congresso Unificado ICTIN <nao-responda@ciuflaictin.com.br>"');
-    console.error('  $env:SITE_URL        = "https://ciuflaictin.com.br"');
+  if (!comBrevo && !comFila) {
+    console.error("\nERRO: nenhum secret informado no ambiente.");
+    console.error("\nDefina um dos grupos no shell (nunca em arquivo versionado) e rode de novo:");
+    console.error("  Brevo (os três juntos):");
+    console.error('    $env:BREVO_API_KEY   = "xkeysib-..."');
+    console.error('    $env:EMAIL_REMETENTE = "Congresso Unificado ICTIN <nao-responda@ciuflaictin.com.br>"');
+    console.error('    $env:SITE_URL        = "https://ciuflaictin.com.br"');
+    console.error("  Fila dos e-mails aos revisores:");
+    console.error('    $env:SEGREDO_FILA_EMAILS = "<64 caracteres hex>"');
     console.error("  npm run config:secrets");
     process.exit(1);
   }
 
-  // Barra final duplicaria a barra do link (`//confirmar-email`). A function
-  // também apara, mas gravar já normalizado evita a dúvida.
-  const valores = {
-    BREVO_API_KEY: DO_AMBIENTE.BREVO_API_KEY.trim(),
-    EMAIL_REMETENTE: DO_AMBIENTE.EMAIL_REMETENTE.trim(),
-    SITE_URL: DO_AMBIENTE.SITE_URL.trim().replace(/\/+$/, ""),
-  };
-
-  if (!valores.EMAIL_REMETENTE.includes("@")) {
-    abortar('EMAIL_REMETENTE não parece um endereço: use "Nome <conta@dominio>" ou só "conta@dominio".');
-  }
-  if (!/^https:\/\/|^http:\/\/localhost(:\d+)?$/.test(valores.SITE_URL)) {
-    abortar(
-      `SITE_URL inválida: "${valores.SITE_URL}". Use https:// (produção) — ` +
-        "é a base do link que vai no e-mail.",
-    );
-  }
-  if (!valores.BREVO_API_KEY.startsWith("xkeysib-")) {
-    console.log('\n⚠  BREVO_API_KEY não começa com "xkeysib-" — confira se é a chave da API v3.');
+  // Gravar só parte do grupo do Brevo deixaria as functions dele com uma
+  // chave nova e um remetente velho — ou o contrário.
+  if (comBrevo) {
+    const faltando = GRUPO_BREVO.filter((n) => !informado(n));
+    if (faltando.length > 0) {
+      abortar(
+        `o grupo do Brevo vai inteiro — faltam: ${faltando.join(", ")}.\n` +
+          "   Para gravar só SEGREDO_FILA_EMAILS, deixe as três variáveis do Brevo vazias.",
+      );
+    }
   }
 
-  await conferirBrevo(valores.BREVO_API_KEY, valores.EMAIL_REMETENTE);
+  const valores = {};
+
+  if (comBrevo) {
+    // Barra final duplicaria a barra do link (`//confirmar-email`). A function
+    // também apara, mas gravar já normalizado evita a dúvida.
+    valores.BREVO_API_KEY = DO_AMBIENTE.BREVO_API_KEY.trim();
+    valores.EMAIL_REMETENTE = DO_AMBIENTE.EMAIL_REMETENTE.trim();
+    valores.SITE_URL = DO_AMBIENTE.SITE_URL.trim().replace(/\/+$/, "");
+
+    if (!valores.EMAIL_REMETENTE.includes("@")) {
+      abortar('EMAIL_REMETENTE não parece um endereço: use "Nome <conta@dominio>" ou só "conta@dominio".');
+    }
+    if (!/^https:\/\/|^http:\/\/localhost(:\d+)?$/.test(valores.SITE_URL)) {
+      abortar(
+        `SITE_URL inválida: "${valores.SITE_URL}". Use https:// (produção) — ` +
+          "é a base do link que vai no e-mail.",
+      );
+    }
+    if (!valores.BREVO_API_KEY.startsWith("xkeysib-")) {
+      console.log('\n⚠  BREVO_API_KEY não começa com "xkeysib-" — confira se é a chave da API v3.');
+    }
+  }
+
+  if (comFila) {
+    valores.SEGREDO_FILA_EMAILS = DO_AMBIENTE.SEGREDO_FILA_EMAILS.trim();
+    // Quem tem este valor faz sair, em nome da conta da UFLA, tudo o que o
+    // banco considera devido. Curto demais = adivinhável.
+    if (valores.SEGREDO_FILA_EMAILS.length < 32) {
+      abortar(
+        "SEGREDO_FILA_EMAILS curto demais (mínimo 32 caracteres). Gere um com:\n" +
+          "   node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+      );
+    }
+  }
+
+  if (comBrevo) await conferirBrevo(valores.BREVO_API_KEY, valores.EMAIL_REMETENTE);
 
   console.log("\nGravando:");
   for (const [nome, valor] of Object.entries(valores)) {
-    // SITE_URL e EMAIL_REMETENTE não são segredos; a chave do Brevo é.
-    console.log(`  ${nome} = ${nome === "BREVO_API_KEY" ? mascarar(valor) : valor}`);
+    // SITE_URL e EMAIL_REMETENTE não são segredos; a chave e o segredo da fila são.
+    console.log(`  ${nome} = ${SIGILOSOS.includes(nome) ? mascarar(valor) : valor}`);
   }
 
   const res = await fetch(URL_SECRETS, {

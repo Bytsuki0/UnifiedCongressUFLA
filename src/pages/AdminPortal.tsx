@@ -64,6 +64,9 @@ const AdminPortal = () => {
   // emitia um toast — as datas de prazo agora são regra de servidor.
   const [config, setConfig] = useState<Configuracoes | null>(null);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
+  // O encerramento das avaliações como está NO BANCO: só uma data NOVA no
+  // passado pede confirmação (ela dispara o aviso de atraso no minuto seguinte).
+  const [revisoesGravado, setRevisoesGravado] = useState<string | null>(null);
   const setCampo = <K extends keyof Configuracoes>(campo: K, valor: Configuracoes[K]) =>
     setConfig((c) => (c ? { ...c, [campo]: valor } : c));
 
@@ -73,7 +76,9 @@ const AdminPortal = () => {
       if (!session) { navigate("/login"); return; }
       await loadData();
       try {
-        setConfig(await carregarConfiguracoes());
+        const lida = await carregarConfiguracoes();
+        setConfig(lida);
+        setRevisoesGravado(lida?.revisoes_encerramento ?? null);
       } catch {
         toast.error("Não foi possível carregar as configurações.");
       }
@@ -206,9 +211,28 @@ const AdminPortal = () => {
       toast.error("O encerramento não pode ser anterior à abertura.");
       return;
     }
+    if (config.alerta_horas < 1) {
+      toast.error("A antecedência do lembrete precisa ser de pelo menos 1 hora.");
+      return;
+    }
+    // Data nova já vencida = aviso de atraso para todo revisor pendente no
+    // minuto seguinte. "Hoje" em Lavras, 'AAAA-MM-DD': comparar as strings
+    // já é comparar as datas (nunca `new Date('AAAA-MM-DD')`, que lê em UTC).
+    const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    if (config.revisoes_encerramento
+        && config.revisoes_encerramento !== revisoesGravado
+        && config.revisoes_encerramento < hoje
+        && !confirm(
+          "O encerramento das avaliações escolhido já passou.\n\n" +
+          "Revisores com parecer pendente recebem o aviso de atraso de congressoparaiso@ufla.br " +
+          "no próximo minuto. Salvar assim mesmo?"
+        )) {
+      return;
+    }
     setSalvandoConfig(true);
     try {
       await salvarConfiguracoes(config);
+      setRevisoesGravado(config.revisoes_encerramento);
       toast.success("Configurações salvas. O prazo passa a valer imediatamente.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar.");
@@ -533,24 +557,42 @@ const AdminPortal = () => {
                   </svg>
                   <span className="config-title">Alertas para Revisores</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="cfg-alerta">Antecedência de Alerta (Horas)</label>
-                  <input type="number" id="cfg-alerta" className="form-input" value={config.alerta_horas} min={1} style={{ maxWidth: 200 }} onChange={e => setCampo("alerta_horas", Number(e.target.value))} />
-                  <div className="config-display">EQUIVALE A {config.alerta_horas}h ≈ {(config.alerta_horas / 24).toFixed(1)} dias</div>
-                </div>
-                <div className="config-toggle-row">
-                  <div className="config-toggle-info">
-                    <div className="toggle-title">Reenviar alerta a cada 24h após o vencimento</div>
-                    <div className="toggle-desc">Envia lembretes recorrentes ao revisor enquanto o parecer não for registrado.</div>
+
+                {/* Os dois interruptores que moravam aqui ("reenviar a cada
+                    24h" e "notificar a comissão após 72h") eram
+                    `defaultChecked` sem estado: não gravavam nada e nada os
+                    lia. Saíram junto com a chegada dos e-mails de verdade
+                    (20261014120000) — o atraso sai UMA vez por prazo. */}
+                <div className="alert alert-info alert-admin" style={{ marginBottom: "var(--space-4)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <div>
+                    <strong>OS E-MAILS SAEM DE congressoparaiso@ufla.br</strong>, só para revisores com
+                    parecer pendente que já receberam o e-mail de designação (enviado em Atribuições):
+                    um lembrete {config.alerta_horas}h antes do fim do dia do encerramento (23h59, horário
+                    de Brasília) e, se o prazo vencer, um aviso de atraso, uma única vez. Prorrogar a
+                    data reinicia os dois. <strong>Campo vazio = sem alertas.</strong> O prazo não trava
+                    parecer nenhum, só move os e-mails.
                   </div>
-                  <label className="toggle"><input type="checkbox" defaultChecked /><span className="toggle-slider" /></label>
                 </div>
-                <div className="config-toggle-row">
-                  <div className="config-toggle-info">
-                    <div className="toggle-title">Notificar Comissão quando revisor exceder 72h em atraso</div>
-                    <div className="toggle-desc">Alerta a coordenação para intervenção manual quando o prazo de tolerância for ultrapassado.</div>
+
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-revisoes">Encerramento das Avaliações</label>
+                    <input
+                      type="date"
+                      id="cfg-revisoes"
+                      className="form-input"
+                      value={config.revisoes_encerramento ?? ""}
+                      onChange={e => setCampo("revisoes_encerramento", e.target.value || null)}
+                    />
                   </div>
-                  <label className="toggle"><input type="checkbox" defaultChecked /><span className="toggle-slider" /></label>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-alerta">Antecedência do Lembrete (Horas)</label>
+                    <input type="number" id="cfg-alerta" className="form-input" value={config.alerta_horas} min={1} style={{ maxWidth: 200 }} onChange={e => setCampo("alerta_horas", Number(e.target.value))} />
+                    <div className="config-display">EQUIVALE A {config.alerta_horas}h ≈ {(config.alerta_horas / 24).toFixed(1)} dias</div>
+                  </div>
                 </div>
               </div>
             </div>

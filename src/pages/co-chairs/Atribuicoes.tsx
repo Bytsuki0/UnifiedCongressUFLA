@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert, Users } from "lucide-react";
+import { ClipboardList, Sparkles, Trash2, UserCheck, FileText, ShieldAlert, Users, Mail } from "lucide-react";
 import {
   MAX_REVISORES_POR_TRABALHO,
   META_TRABALHOS_POR_REVISOR,
@@ -19,6 +19,7 @@ import {
   recomendarDistribuicao,
   removerRevisor,
   RevisorOption,
+  solicitarAvisosAtribuicao,
 } from "@/services/revisorService";
 import { definirRevisoresPorTrabalho } from "@/services/configuracoesService";
 import DialogoDistribuicao from "@/components/co-chairs/DialogoDistribuicao";
@@ -73,6 +74,9 @@ const MOTIVO_TEXTO: Record<MotivoConflito, string> = {
   coautor: "é coautor deste trabalho",
 };
 
+/** Na fila há mais que isto = o Apps Script, que busca a cada minuto, parou. */
+const FILA_PARADA_MS = 5 * 60 * 1000;
+
 const Atribuicoes = () => {
   const [revisorOptions, setRevisorOptions] = useState<RevisorOption[]>([]);
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
@@ -93,6 +97,7 @@ const Atribuicoes = () => {
   const [numeroRevisores, setNumeroRevisores] = useState<number | null>(null);
   const [posicaoControle, setPosicaoControle] = useState<number | null>(null);
   const [gravandoNumero, setGravandoNumero] = useState(false);
+  const [enviandoAvisos, setEnviandoAvisos] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
@@ -190,6 +195,27 @@ const Atribuicoes = () => {
     return m;
   }, [pareceres]);
 
+  /*
+   * O e-mail de designação desta associação foi liberado e ainda não saiu?
+   *
+   * O "ainda deve parecer" aqui é ESPELHO de `_parecer_pendente` (SQL) — só
+   * para a tela. Sem ele, uma associação que deixou de precisar do e-mail
+   * (o parecer chegou antes, o trabalho foi decidido) ficaria "na fila" para
+   * sempre, e o aviso de fila parada nunca mais apagaria. Quem decide o que
+   * sai continua sendo o banco.
+   */
+  const naFila = (r: TrabalhoRevisor): boolean =>
+    !!r.aviso_solicitado_em &&
+    !r.aviso_enviado_em &&
+    !parecerPorChave.has(`${r.trabalho_id}:${r.revisor_email}`) &&
+    ["pendente", "em_avaliacao"].includes(trabalhosPorId.get(r.trabalho_id)?.status ?? "");
+
+  // Relógio do navegador, e pode: nada é autorizado por isto, é só um aviso
+  // (mesma exceção do "hoje" do cronograma).
+  const filaParada = revisores.some(
+    (r) => naFila(r) && Date.now() - Date.parse(r.aviso_solicitado_em as string) > FILA_PARADA_MS,
+  );
+
   const revCount = trabalhoId ? (revisoresPorTrabalho.get(trabalhoId)?.length ?? 0) : 0;
   const revLimiteAtingido = numeroRevisores !== null && revCount >= numeroRevisores;
 
@@ -268,6 +294,29 @@ const Atribuicoes = () => {
     }
   };
 
+  /**
+   * Libera os e-mails de designação. Só põe na fila: quem envia é o Apps
+   * Script da conta congressoparaiso@ufla.br, que busca a fila a cada minuto.
+   */
+  const handleEnviarAvisos = async () => {
+    setEnviandoAvisos(true);
+    try {
+      const n = await solicitarAvisosAtribuicao();
+      if (n === 0) {
+        toast.info("Nenhum revisor a avisar: quem ainda tem parecer pendente já foi avisado.");
+      } else {
+        toast.success(
+          `${n} revisor(es) na fila. Os e-mails saem de congressoparaiso@ufla.br em até 1 minuto.`,
+        );
+      }
+      await carregar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível liberar os e-mails");
+    } finally {
+      setEnviandoAvisos(false);
+    }
+  };
+
   const handleRemover = async (id: string) => {
     try {
       await removerRevisor(id);
@@ -285,9 +334,24 @@ const Atribuicoes = () => {
       <Badge variant="outline">Pendente</Badge>
     );
 
+  /** O e-mail de designação desta associação: saiu, está na fila, ou nada. */
+  const AvisoBadge = ({ r }: { r: TrabalhoRevisor }) =>
+    r.aviso_enviado_em ? (
+      <Badge
+        variant="outline"
+        title={`E-mail de designação enviado em ${new Date(r.aviso_enviado_em).toLocaleString("pt-BR")}`}
+      >
+        <Mail className="mr-1 h-3 w-3" /> avisado
+      </Badge>
+    ) : naFila(r) ? (
+      <Badge variant="secondary" title="Sai da conta congressoparaiso@ufla.br em até 1 minuto">
+        na fila
+      </Badge>
+    ) : null;
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <ClipboardList className="h-6 w-6" /> Atribuições
@@ -299,18 +363,63 @@ const Atribuicoes = () => {
             descoberto · autor, orientador e coautores não podem revisar o próprio trabalho.
           </p>
         </div>
-        {/* Travado enquanto o número não termina de gravar: a recomendação
-            lê o número do SERVIDOR, e rodá-la nesse meio-tempo proporia
-            para o valor antigo. */}
-        <Button
-          onClick={handleRecomendar}
-          disabled={submitting || loading || numeroPendente}
-          variant="secondary"
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Recomendar distribuição
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* E-mail sai para fora do sistema e não tem volta: confirma antes.
+              Associar nunca dispara e-mail sozinho — é este clique que
+              anuncia a distribuição, quando o co-chair a dá por pronta. */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={enviandoAvisos || loading}>
+                <Mail className="mr-2 h-4 w-4" />
+                {enviandoAvisos ? "Liberando..." : "Enviar e-mails aos revisores"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Enviar e-mails aos revisores?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cada revisor com parecer pendente que ainda não foi avisado recebe um e-mail de
+                  congressoparaiso@ufla.br com os títulos dos trabalhos dele (sem autores, a avaliação é às
+                  cegas) e o link do Portal de Revisão. Quem já foi avisado não recebe de novo; associações
+                  feitas depois deste clique esperam o próximo.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleEnviarAvisos}>Enviar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {/* Travado enquanto o número não termina de gravar: a recomendação
+              lê o número do SERVIDOR, e rodá-la nesse meio-tempo proporia
+              para o valor antigo. */}
+          <Button
+            onClick={handleRecomendar}
+            disabled={submitting || loading || numeroPendente}
+            variant="secondary"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Recomendar distribuição
+          </Button>
+        </div>
       </div>
+
+      {/*
+        Sinal precoce de envio quebrado: o Apps Script busca a fila a cada
+        minuto, então nada deveria ficar nela por 5. Sem este aviso, um
+        gatilho desinstalado ou um segredo trocado deixaria os revisores sem
+        e-mail em silêncio — foi o que aconteceu com a chave errada do Brevo.
+      */}
+      {!loading && filaParada && (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-sm">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span>
+            <strong>Há e-mails na fila há mais de 5 minutos</strong>: o envio pela conta
+            congressoparaiso@ufla.br parece parado. Confira as Execuções do Apps Script (gatilho
+            instalado? o SEGREDO é o mesmo gravado no Supabase?).
+          </span>
+        </div>
+      )}
 
       {/*
         Nenhum trabalho recebe revisor sozinho desde 20260820: se ninguém
@@ -508,6 +617,7 @@ const Atribuicoes = () => {
                             <span className="text-muted-foreground">— {r.revisor_email}</span>
                             <Badge variant="outline">{TIPO_LABEL[r.tipo]}</Badge>
                           </span>
+                          <AvisoBadge r={r} />
                           <ParecerBadge resultado={parecerPorChave.get(`${t.id}:${r.revisor_email}`)} />
                           <RemoverBotao onConfirm={() => handleRemover(r.id)} />
                         </li>
@@ -561,6 +671,7 @@ const Atribuicoes = () => {
                             <span className="flex-1 text-sm font-medium">
                               {t?.titulo ?? "Trabalho removido"}
                             </span>
+                            <AvisoBadge r={r} />
                             <ParecerBadge resultado={parecerPorChave.get(`${r.trabalho_id}:${o.email}`)} />
                             <RemoverBotao onConfirm={() => handleRemover(r.id)} />
                           </li>

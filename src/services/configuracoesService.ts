@@ -9,10 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
  * servidor** (trigger `protect_trabalhos_fields` + RPC
  * `editar_submissao`).
  *
- * ⚠ Só o prazo tem regra de servidor. Os outros campos são gravados para
- * que o botão pare de mentir, mas ainda não travam nada — quem for usar
- * `max_coautores` ou `parecer_min_caracteres` precisa escrever a trava
- * em SQL junto, nunca no cliente.
+ * ⚠ Só os prazos têm regra de servidor: o de submissão trava o envio, e o
+ * das avaliações (`revisoes_encerramento` + `alerta_horas`) move os e-mails
+ * aos revisores (`emails_devidos`, migration 20261014120000). Os outros
+ * campos são gravados para que o botão pare de mentir, mas ainda não travam
+ * nada — quem for usar `max_coautores` ou `parecer_min_caracteres` precisa
+ * escrever a trava em SQL junto, nunca no cliente.
  */
 
 export type Configuracoes = {
@@ -20,7 +22,17 @@ export type Configuracoes = {
   submissoes_encerramento: string | null;
   parecer_min_caracteres: number;
   max_coautores: number;
+  /**
+   * Horas antes do fim do prazo das avaliações em que sai o lembrete aos
+   * revisores com parecer pendente (migration 20261014120000).
+   */
   alerta_horas: number;
+  /**
+   * Último dia para registrar parecer, 'AAAA-MM-DD' (inclusivo, horário de
+   * Brasília). Vazio = sem lembrete nem aviso de atraso. Só move e-mails —
+   * não trava parecer nenhum.
+   */
+  revisoes_encerramento: string | null;
   edital: string;
   atualizado_em: string;
 };
@@ -48,7 +60,7 @@ export type PrazoSubmissoes = {
  * mudar.
  */
 const COLUNAS_DO_ADMIN =
-  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, edital, atualizado_em";
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, edital, atualizado_em";
 
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase

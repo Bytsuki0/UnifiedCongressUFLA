@@ -42,6 +42,10 @@ export type TrabalhoRevisor = {
   /** Rodada em que a associação nasceu; carimbada pelo banco, nunca pelo cliente. */
   rodada: number;
   created_at: string;
+  /** Quando um co-chair liberou o e-mail de designação (botão de Atribuições). */
+  aviso_solicitado_em: string | null;
+  /** Quando o e-mail de designação saiu da fila da conta congressoparaiso@ufla.br. */
+  aviso_enviado_em: string | null;
 };
 
 // Resultado possível de um parecer.

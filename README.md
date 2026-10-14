@@ -169,10 +169,30 @@ Editados em `/admin/configuracoes`, gravados na tabela `configuracoes`
 - `aberto` vem do servidor, nunca recalculado no cliente a partir das datas
   (relógio de navegador adiantado reabriria o prazo na tela). Falha de rede
   devolve `aberto: true`.
-- ⚠ Só o **prazo** tem regra de servidor. `max_coautores`,
-  `parecer_min_caracteres` e `alerta_horas` são gravados para o botão SALVAR
-  não mentir, mas não travam nada usar um deles exige escrever a trava em
-  SQL junto.
+- ⚠ Só os **prazos** têm regra de servidor. `max_coautores` e
+  `parecer_min_caracteres` são gravados para o botão SALVAR não mentir, mas
+  não travam nada usar um deles exige escrever a trava em SQL junto.
+  `alerta_horas` deixou de ser inerte: com o **encerramento das avaliações**
+  (`revisoes_encerramento`), ele decide quando saem o lembrete e o aviso de
+  atraso aos revisores — ver "E-mails aos revisores" abaixo.
+
+### E-mails aos revisores (conta congressoparaiso@ufla.br)
+
+O Brevo envia só a verificação de e-mail e a redefinição de senha. Tudo o que
+é dirigido a revisor sai da conta oficial da UFLA por um **Apps Script**
+(`apps-script/emails-revisores.gs`), que a cada minuto **busca** a fila na
+Edge Function `emails-revisores` — o Supabase nunca chama o Google. A regra
+mora em SQL (migration `20261014120000`):
+
+- **designação**: quando um co-chair clica "Enviar e-mails aos revisores" em
+  `/co-chairs/atribuicoes` (associar não envia nada sozinho);
+- **lembrete**: `alerta_horas` antes do fim do dia do encerramento das
+  avaliações (23h59, Brasília), para quem ainda deve parecer;
+- **atraso**: uma vez, quando o prazo vence.
+
+Instalação do Apps Script no cabeçalho do próprio `.gs`; o segredo
+compartilhado entra com `npm run config:secrets` (`SEGREDO_FILA_EMAILS`). A
+senha da conta fica em `segredos/` (fora do git) e nenhum código a lê.
 
 Na mesma tela ficam os **links de download** (modelos de artigo, normas,
 edital, manual do revisor…). Eles saem por uma RPC que devolve só as colunas

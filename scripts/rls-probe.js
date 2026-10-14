@@ -138,6 +138,14 @@ const RPCS_NEGADAS = [
   // Purga das contas não confirmadas (migration 20261011130000): só o
   // pg_cron a chama; a API não tem por que alcançar um DELETE em auth.users.
   ["purgar_contas_nao_confirmadas", {}],
+  // E-mails aos revisores (migration 20261014120000). A liberação é da
+  // organização; a fila e a devolução, só da Edge Function (service_role).
+  // ⚠ Buscar a fila é RESERVÁ-LA: se `emails_devidos` algum dia vazar para
+  // anon, esta chamada já marca um e-mail como enviado — é o preço de a
+  // sonda testar a permissão de verdade, e só acontece se a trava caiu.
+  ["solicitar_avisos_atribuicao", {}],
+  ["emails_devidos", { _limite: 1 }],
+  ["devolver_emails", { _tipo: "atribuicao", _associacoes: [] }],
   // Parecer editorial (migration 20260820140000). A primeira é staff-only;
   // as outras duas exigem sessão do autor.
   [

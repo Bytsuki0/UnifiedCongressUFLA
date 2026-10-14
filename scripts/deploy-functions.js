@@ -62,11 +62,12 @@ if (!ACCESS_TOKEN && !SIMULACAO) {
 
 const PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0];
 
-/** Secrets que as functions de e-mail exigem em runtime (só conferência). */
-const SECRETS_ESPERADOS = ["BREVO_API_KEY", "EMAIL_REMETENTE", "SITE_URL"];
-
-/** Functions que dependem dos SECRETS_ESPERADOS (dispara a conferência). */
-const FUNCTIONS_COM_SECRETS = ["enviar-email", "redefinir-senha"];
+/** Secrets que cada function exige em runtime (só conferência pós-deploy). */
+const SECRETS_POR_FUNCTION = {
+  "enviar-email": ["BREVO_API_KEY", "EMAIL_REMETENTE", "SITE_URL"],
+  "redefinir-senha": ["BREVO_API_KEY", "EMAIL_REMETENTE", "SITE_URL"],
+  "emails-revisores": ["SEGREDO_FILA_EMAILS", "SITE_URL"],
+};
 
 /**
  * `verify_jwt` por function; ausente = true.
@@ -77,8 +78,13 @@ const FUNCTIONS_COM_SECRETS = ["enviar-email", "redefinir-senha"];
  * JWT — o gateway a recusaria. A proteção mora em outro lugar: CORS
  * com allowlist na function e limites em SQL (5 pedidos/hora por IP,
  * 1 pedido/2 h por conta — migration 20260814120000).
+ *
+ * `emails-revisores` também: quem a chama é o Apps Script da conta
+ * congressoparaiso@ufla.br, que não tem JWT do Supabase. Ela confere o
+ * cabeçalho `x-segredo` contra o secret SEGREDO_FILA_EMAILS antes de
+ * qualquer outra coisa (migration 20261014120000).
  */
-const VERIFY_JWT_POR_SLUG = { "redefinir-senha": false };
+const VERIFY_JWT_POR_SLUG = { "redefinir-senha": false, "emails-revisores": false };
 
 /** Caminho relativo à raiz do repo, sempre com barras normais. */
 const caminhoApi = (absoluto) => path.relative(RAIZ, absoluto).split(path.sep).join("/");
@@ -203,18 +209,19 @@ async function main() {
 
   // Conferência dos secrets: a function sobe mesmo sem eles, mas devolve
   // "config_ausente" na primeira chamada. Melhor descobrir agora.
-  if (alvos.some((slug) => FUNCTIONS_COM_SECRETS.includes(slug))) {
+  const esperados = [...new Set(alvos.flatMap((slug) => SECRETS_POR_FUNCTION[slug] ?? []))];
+  if (esperados.length > 0) {
     const nomes = await nomesDosSecrets();
     if (nomes === null) {
       console.log("\n⚠  Não foi possível listar os secrets do projeto (sem permissão?).");
     } else {
-      const faltando = SECRETS_ESPERADOS.filter((n) => !nomes.includes(n));
+      const faltando = esperados.filter((n) => !nomes.includes(n));
       if (faltando.length > 0) {
         console.log(`\n⚠  Secrets ausentes: ${faltando.join(", ")}`);
         console.log("   A function responderá `config_ausente` até você rodar:");
         console.log("     npm run config:secrets");
       } else {
-        console.log(`\n  OK   secrets presentes: ${SECRETS_ESPERADOS.join(", ")}`);
+        console.log(`\n  OK   secrets presentes: ${esperados.join(", ")}`);
       }
     }
   }

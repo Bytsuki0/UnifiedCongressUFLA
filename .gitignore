@@ -44,6 +44,10 @@ docs
 # submetidos e os PDFs. Nunca versionar. Guardar fora desta máquina.
 supabase/backups/
 
+# Credenciais da conta congressoparaiso@ufla.br (a que roda o Apps Script dos
+# e-mails aos revisores). Nenhum código lê esta pasta. Nunca versionar.
+segredos/
+
 # wrangler files
 .wrangler
 .dev.vars*

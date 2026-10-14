@@ -381,6 +381,21 @@ export async function confirmarDistribuicao(
   return (data as number) ?? 0;
 }
 
+/**
+ * Libera o e-mail de designação de toda associação que ainda deve parecer e
+ * nunca foi avisada (migration 20261014120000). Não envia nada: quem envia é
+ * o Apps Script da conta congressoparaiso@ufla.br, que busca a fila a cada
+ * minuto. Devolve quantos REVISORES vão receber — um e-mail por revisor, com
+ * os títulos dos trabalhos dele.
+ */
+export async function solicitarAvisosAtribuicao(): Promise<number> {
+  const { data, error } = await supabase.rpc("solicitar_avisos_atribuicao");
+  // `new Error`: o PostgrestError é objeto puro, e a página filtra por
+  // `e instanceof Error` para mostrar a frase do banco ("Acesso negado.").
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}
+
 /** Uma opção do seletor de revisor, já resolvida quanto a impedimentos. */
 export type OpcaoSlot = {
   opcao: RevisorOption;

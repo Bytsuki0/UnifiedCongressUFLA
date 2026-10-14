@@ -382,6 +382,7 @@ export type Database = {
           id: boolean
           max_coautores: number
           parecer_min_caracteres: number
+          revisoes_encerramento: string | null
           revisores_por_trabalho: number
           submissoes_abertura: string | null
           submissoes_encerramento: string | null
@@ -394,6 +395,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
           submissoes_abertura?: string | null
           submissoes_encerramento?: string | null
@@ -406,6 +408,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
           submissoes_abertura?: string | null
           submissoes_encerramento?: string | null
@@ -1000,8 +1003,12 @@ export type Database = {
       }
       trabalho_revisores: {
         Row: {
+          atraso_prazo: string | null
+          aviso_enviado_em: string | null
+          aviso_solicitado_em: string | null
           created_at: string
           id: string
+          lembrete_prazo: string | null
           revisor_email: string
           revisor_nome: string | null
           rodada: number
@@ -1009,8 +1016,12 @@ export type Database = {
           trabalho_id: string
         }
         Insert: {
+          atraso_prazo?: string | null
+          aviso_enviado_em?: string | null
+          aviso_solicitado_em?: string | null
           created_at?: string
           id?: string
+          lembrete_prazo?: string | null
           revisor_email: string
           revisor_nome?: string | null
           rodada?: number
@@ -1018,8 +1029,12 @@ export type Database = {
           trabalho_id: string
         }
         Update: {
+          atraso_prazo?: string | null
+          aviso_enviado_em?: string | null
+          aviso_solicitado_em?: string | null
           created_at?: string
           id?: string
+          lembrete_prazo?: string | null
           revisor_email?: string
           revisor_nome?: string | null
           rodada?: number
@@ -1142,6 +1157,10 @@ export type Database = {
           trabalho_id: string
         }[]
       }
+      _parecer_pendente: {
+        Args: { _revisor_email: string; _rodada: number; _trabalho_id: string }
+        Returns: boolean
+      }
       _pool_revisores: {
         Args: never
         Returns: {
@@ -1238,6 +1257,10 @@ export type Database = {
       data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
       definir_revisores_por_trabalho: { Args: { _n: number }; Returns: number }
+      devolver_emails: {
+        Args: { _associacoes: string[]; _tipo: string }
+        Returns: number
+      }
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
       editar_submissao: {
         Args: {
@@ -1249,6 +1272,17 @@ export type Database = {
         Returns: string[]
       }
       email_confirmado: { Args: never; Returns: boolean }
+      emails_devidos: {
+        Args: { _limite?: number }
+        Returns: {
+          associacoes: string[]
+          prazo: string
+          revisor_email: string
+          revisor_nome: string
+          tipo: string
+          titulos: string[]
+        }[]
+      }
       enviar_correcao: {
         Args: {
           _anexos?: Json
@@ -1372,6 +1406,7 @@ export type Database = {
         Returns: string
       }
       revisores_por_trabalho: { Args: never; Returns: number }
+      solicitar_avisos_atribuicao: { Args: never; Returns: number }
       submeter_trabalho: {
         Args: {
           _anexos: Json
