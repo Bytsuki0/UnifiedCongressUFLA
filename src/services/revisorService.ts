@@ -383,17 +383,69 @@ export async function confirmarDistribuicao(
 
 /**
  * Libera o e-mail de designação de toda associação que ainda deve parecer e
- * nunca foi avisada (migration 20261014120000). Não envia nada: quem envia é
- * o Apps Script da conta congressoparaiso@ufla.br, que busca a fila a cada
- * minuto. Devolve quantos REVISORES vão receber — um e-mail por revisor, com
- * os títulos dos trabalhos dele.
+ * nunca foi avisada (migration 20261014120000) — ou, com `reenviar`, de toda
+ * associação que ainda deve parecer, já avisada ou não (20261026120000).
+ * Não envia nada: quem envia é o Apps Script da conta
+ * congressoparaiso@ufla.br, que busca a fila a cada minuto. Devolve quantos
+ * REVISORES vão receber — um e-mail por revisor, com os títulos dele.
  */
-export async function solicitarAvisosAtribuicao(): Promise<number> {
-  const { data, error } = await supabase.rpc("solicitar_avisos_atribuicao");
+export async function solicitarAvisosAtribuicao(reenviar = false): Promise<number> {
+  const { data, error } = await supabase.rpc("solicitar_avisos_atribuicao", {
+    _reenviar: reenviar,
+  });
   // `new Error`: o PostgrestError é objeto puro, e a página filtra por
   // `e instanceof Error` para mostrar a frase do banco ("Acesso negado.").
   if (error) throw new Error(error.message);
   return (data as number) ?? 0;
+}
+
+/**
+ * Um e-mail aos revisores, como o Apps Script o fechou (migration
+ * 20261026120000). Nasce 'reservado' na busca da fila; 'enviado' quer dizer
+ * que o Google ACEITOU — endereço inexistente no destino volta depois como
+ * aviso de não entrega na caixa de congressoparaiso@ufla.br.
+ */
+export type EnvioRevisor = {
+  id: string;
+  tipo: "atribuicao" | "lembrete" | "atraso";
+  revisor_email: string;
+  revisor_nome: string | null;
+  associacoes: string[];
+  titulos: string[];
+  status: "reservado" | "enviado" | "falha";
+  erro: string | null;
+  criado_em: string;
+  concluido_em: string | null;
+};
+
+/**
+ * Parado há mais que isto = algo quebrou: o Apps Script busca a fila a cada
+ * minuto e fecha cada envio na mesma execução.
+ */
+export const FILA_PARADA_MS = 5 * 60 * 1000;
+
+export type SituacaoEnvio = "enviado" | "falha" | "enviando" | "sem_confirmacao";
+
+/**
+ * 'reservado' recente está saindo agora; velho é lote perdido — o script
+ * morreu entre reservar e confirmar, e o e-mail pode ou não ter saído.
+ */
+export function situacaoEnvio(e: EnvioRevisor, agora = Date.now()): SituacaoEnvio {
+  if (e.status !== "reservado") return e.status;
+  return agora - Date.parse(e.criado_em) > FILA_PARADA_MS ? "sem_confirmacao" : "enviando";
+}
+
+/** O envio de designação mais recente de cada associação. */
+export function ultimaDesignacaoPorAssociacao(envios: EnvioRevisor[]): Map<string, EnvioRevisor> {
+  const m = new Map<string, EnvioRevisor>();
+  for (const e of envios) {
+    if (e.tipo !== "atribuicao") continue;
+    for (const id of e.associacoes) {
+      const atual = m.get(id);
+      if (!atual || e.criado_em > atual.criado_em) m.set(id, e);
+    }
+  }
+  return m;
 }
 
 /** Uma opção do seletor de revisor, já resolvida quanto a impedimentos. */
@@ -503,16 +555,20 @@ export async function carregarPainelAtribuicoes(): Promise<{
   conflitos: Conflito[];
   /** O número em vigor no servidor — ver `carregarRevisoresPorTrabalho`. */
   revisoresPorTrabalho: number;
+  /** Registro dos e-mails aos revisores, mais recente primeiro. */
+  envios: EnvioRevisor[];
 }> {
-  const [pool, tr, rv, pa, conflitos, revisoresPorTrabalho] = await Promise.all([
+  const [pool, tr, rv, pa, conflitos, revisoresPorTrabalho, en] = await Promise.all([
     carregarPoolRevisores(),
     supabase.from("trabalhos").select("*").order("titulo"),
     supabase.from("trabalho_revisores").select("*").order("created_at"),
     supabase.from("pareceres").select("trabalho_id, revisor_email, resultado, rodada"),
     carregarConflitos(),
     carregarRevisoresPorTrabalho(),
+    // ponytail: os 1000 mais recentes; paginar se o congresso passar disso.
+    supabase.from("envios_revisores").select("*").order("criado_em", { ascending: false }).limit(1000),
   ]);
-  if (tr.error || rv.error || pa.error) throw tr.error ?? rv.error ?? pa.error;
+  if (tr.error || rv.error || pa.error || en.error) throw tr.error ?? rv.error ?? pa.error ?? en.error;
 
   const trabalhos = tr.data ?? [];
   // A tela de Atribuições é sempre da rodada CORRENTE: contar as
@@ -529,6 +585,7 @@ export async function carregarPainelAtribuicoes(): Promise<{
     pareceres: ((pa.data ?? []) as ParecerLite[]).filter(corrente),
     conflitos,
     revisoresPorTrabalho,
+    envios: (en.data ?? []) as EnvioRevisor[],
   };
 }
 

@@ -10,6 +10,10 @@
 // O que mora aqui é o TEXTO dos e-mails. Quem recebe o quê, e quando, é
 // regra do SQL (`emails_devidos`); quem envia é o Apps Script (MailApp).
 //
+// Cada e-mail reservado é uma linha de `envios_revisores` (migration
+// 20261026120000), e o Apps Script a fecha por `concluir` com o resultado
+// do MailApp — é esse registro que a tela de Atribuições mostra.
+//
 // ⚠ DEPLOY COM `verify_jwt: false` (ver scripts/deploy-functions.js): o
 //   Apps Script não tem JWT do Supabase. Quem autentica é o cabeçalho
 //   `x-segredo`, comparado com o secret SEGREDO_FILA_EMAILS. É a exceção à
@@ -35,10 +39,14 @@ const APP_TAGLINE = "ICTIN · Submissões Científicas";
 /** Revisores por busca quando o Apps Script não diz. O SQL prende em 1..50. */
 const LIMITE_PADRAO = 20;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type Tipo = "atribuicao" | "lembrete" | "atraso";
 
 /** Uma linha de `emails_devidos()`: um e-mail para um revisor. */
 type Devido = {
+  /** A linha de `envios_revisores` que o Apps Script fecha em `concluir`. */
+  envio_id: string;
   tipo: Tipo;
   revisor_email: string;
   revisor_nome: string | null;
@@ -248,6 +256,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       ok: true,
       remetente: APP_NAME,
       emails: devidos.map((d) => ({
+        id: d.envio_id,
         tipo: d.tipo,
         associacoes: d.associacoes,
         para: d.revisor_email,
@@ -257,25 +266,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ==========================================================
-  // acao: "devolver" - o que não saiu volta para a fila
+  // acao: "concluir" - o resultado de cada envio, como o MailApp respondeu
   // ==========================================================
-  if (corpo.acao === "devolver") {
-    const falhas = Array.isArray(corpo.falhas) ? corpo.falhas : [];
-    let devolvidas = 0;
-    for (const falha of falhas as { tipo?: unknown; associacoes?: unknown }[]) {
-      if (typeof falha?.tipo !== "string" || !Array.isArray(falha.associacoes)) continue;
-      const { data, error } = await clienteServico.rpc("devolver_emails", {
-        _tipo: falha.tipo,
-        _associacoes: falha.associacoes,
-      });
-      if (error) {
-        console.error(`devolver_emails falhou [${error.code ?? ""}]: ${error.message}`);
-        return responder(500, { ok: false, erro: "falha_devolucao" });
-      }
-      devolvidas += typeof data === "number" ? data : 0;
+  // `resultados` = [{ id, erro }], erro null = enviado. Id que não é UUID
+  // fica de fora: o cast no SQL derrubaria o lote inteiro, e as linhas
+  // boas ficariam "reservado" para sempre.
+  if (corpo.acao === "concluir") {
+    const brutos = (Array.isArray(corpo.resultados) ? corpo.resultados : []) as {
+      id?: unknown;
+      erro?: unknown;
+    }[];
+    const resultados = brutos
+      .filter((r) => UUID.test(String(r?.id)))
+      .map((r) => ({
+        id: String(r.id),
+        erro: typeof r.erro === "string" && r.erro ? r.erro : null,
+      }));
+    const { data, error } = await clienteServico.rpc("concluir_envios", {
+      _resultados: resultados,
+    });
+    if (error) {
+      console.error(`concluir_envios falhou [${error.code ?? ""}]: ${error.message}`);
+      return responder(500, { ok: false, erro: "falha_conclusao" });
     }
-    console.log(`devolver: ${devolvidas} associação(ões) de volta à fila.`);
-    return responder(200, { ok: true, devolvidas });
+    const falhas = resultados.filter((r) => r.erro).length;
+    console.log(`concluir: ${data ?? 0} envio(s) fechado(s), ${falhas} com falha.`);
+    return responder(200, { ok: true, concluidos: data ?? 0 });
   }
 
   return responder(400, { ok: false, erro: "acao_invalida" });

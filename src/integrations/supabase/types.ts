@@ -542,6 +542,45 @@ export type Database = {
           },
         ]
       }
+      envios_revisores: {
+        Row: {
+          associacoes: string[]
+          concluido_em: string | null
+          criado_em: string
+          erro: string | null
+          id: string
+          revisor_email: string
+          revisor_nome: string | null
+          status: string
+          tipo: string
+          titulos: string[]
+        }
+        Insert: {
+          associacoes: string[]
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          revisor_email: string
+          revisor_nome?: string | null
+          status?: string
+          tipo: string
+          titulos: string[]
+        }
+        Update: {
+          associacoes?: string[]
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          revisor_email?: string
+          revisor_nome?: string | null
+          status?: string
+          tipo?: string
+          titulos?: string[]
+        }
+        Relationships: []
+      }
       estudantes: {
         Row: {
           created_at: string | null
@@ -1202,6 +1241,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      concluir_envios: { Args: { _resultados: Json }; Returns: number }
       confirmar_distribuicao: { Args: { _pares: Json }; Returns: number }
       confirmar_email: { Args: { p_token: string }; Returns: string }
       conflitos_do_trabalho: {
@@ -1257,10 +1297,6 @@ export type Database = {
       data_local: { Args: never; Returns: string }
       decisao_consolidada: { Args: { _trabalho_id: string }; Returns: string }
       definir_revisores_por_trabalho: { Args: { _n: number }; Returns: number }
-      devolver_emails: {
-        Args: { _associacoes: string[]; _tipo: string }
-        Returns: number
-      }
       distribuir_revisores: { Args: { _trabalho_id: string }; Returns: number }
       editar_submissao: {
         Args: {
@@ -1276,6 +1312,7 @@ export type Database = {
         Args: { _limite?: number }
         Returns: {
           associacoes: string[]
+          envio_id: string
           prazo: string
           revisor_email: string
           revisor_nome: string
@@ -1406,7 +1443,10 @@ export type Database = {
         Returns: string
       }
       revisores_por_trabalho: { Args: never; Returns: number }
-      solicitar_avisos_atribuicao: { Args: never; Returns: number }
+      solicitar_avisos_atribuicao: {
+        Args: { _reenviar?: boolean }
+        Returns: number
+      }
       submeter_trabalho: {
         Args: {
           _anexos: Json

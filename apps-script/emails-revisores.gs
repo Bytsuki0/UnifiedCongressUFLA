@@ -8,7 +8,9 @@
  *
  * Este script não decide nada. A cada minuto ele pergunta à Edge Function
  * `emails-revisores` o que está devido (designação, lembrete, atraso — a
- * regra é SQL, migration 20261014120000), envia, e devolve o que falhar.
+ * regra é SQL, migration 20261014120000), envia, e conta à função o que o
+ * MailApp respondeu para CADA e-mail (migration 20261026120000) — é o que a
+ * tela de Atribuições mostra como enviado ou falhou, com o motivo.
  * O Supabase nunca chama este script: não há web app publicado aqui.
  *
  * Instalação (uma vez):
@@ -50,7 +52,7 @@ function buscarEEnviar() {
       const lote = chamar({ acao: 'pegar', limite: Math.min(LOTE, cota) });
       if (lote.emails.length === 0) return;
 
-      const falhas = [];
+      const resultados = [];
       lote.emails.forEach(function (e) {
         try {
           MailApp.sendEmail({
@@ -60,18 +62,22 @@ function buscarEEnviar() {
             body: e.texto,
             name: lote.remetente,
           });
+          resultados.push({ id: e.id, erro: null });
         } catch (erro) {
           // Sem o endereço no log: o tipo e o motivo bastam para diagnosticar.
+          // A frase do Google vai para o registro, que só a organização lê.
           console.error('Envio falhou (' + e.tipo + '): ' + erro);
-          falhas.push({ tipo: e.tipo, associacoes: e.associacoes });
+          resultados.push({ id: e.id, erro: String((erro && erro.message) || erro) });
         }
       });
 
-      if (falhas.length > 0) {
-        // De volta à fila. Tenta de novo no próximo minuto, não em laço agora.
-        chamar({ acao: 'devolver', falhas: falhas });
-        return;
-      }
+      // Sem esta chamada o envio fica "sem confirmação" na tela — inclusive
+      // o que saiu. Se ela falhar, a execução falha alto, em "Execuções".
+      chamar({ acao: 'concluir', resultados: resultados });
+
+      // Lembrete e atraso que falharam voltam à fila: tenta no próximo
+      // minuto, não em laço agora.
+      if (resultados.some(function (r) { return r.erro; })) return;
     }
   } finally {
     trava.releaseLock();

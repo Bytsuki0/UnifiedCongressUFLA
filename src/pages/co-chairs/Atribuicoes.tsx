@@ -12,6 +12,8 @@ import {
   associarRevisor,
   carregarPainelAtribuicoes,
   confirmarDistribuicao,
+  EnvioRevisor,
+  FILA_PARADA_MS,
   indexarConflitos,
   MotivoConflito,
   ParDistribuicao,
@@ -19,7 +21,10 @@ import {
   recomendarDistribuicao,
   removerRevisor,
   RevisorOption,
+  SituacaoEnvio,
+  situacaoEnvio,
   solicitarAvisosAtribuicao,
+  ultimaDesignacaoPorAssociacao,
 } from "@/services/revisorService";
 import { definirRevisoresPorTrabalho } from "@/services/configuracoesService";
 import DialogoDistribuicao from "@/components/co-chairs/DialogoDistribuicao";
@@ -39,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -74,8 +80,21 @@ const MOTIVO_TEXTO: Record<MotivoConflito, string> = {
   coautor: "é coautor deste trabalho",
 };
 
-/** Na fila há mais que isto = o Apps Script, que busca a cada minuto, parou. */
-const FILA_PARADA_MS = 5 * 60 * 1000;
+const TIPO_EMAIL_LABEL: Record<EnvioRevisor["tipo"], string> = {
+  atribuicao: "Designação",
+  lembrete: "Lembrete",
+  atraso: "Atraso",
+};
+
+const SITUACAO: Record<SituacaoEnvio, { rotulo: string; variant: "outline" | "secondary" | "destructive" }> = {
+  enviado: { rotulo: "enviado", variant: "outline" },
+  falha: { rotulo: "falhou", variant: "destructive" },
+  enviando: { rotulo: "enviando", variant: "secondary" },
+  sem_confirmacao: { rotulo: "sem confirmação", variant: "secondary" },
+};
+
+const SEM_CONFIRMACAO_TITLE =
+  "O Apps Script pegou este e-mail e não confirmou o envio: pode ter saído ou não. Reenvie para ter certeza.";
 
 const Atribuicoes = () => {
   const [revisorOptions, setRevisorOptions] = useState<RevisorOption[]>([]);
@@ -98,6 +117,8 @@ const Atribuicoes = () => {
   const [posicaoControle, setPosicaoControle] = useState<number | null>(null);
   const [gravandoNumero, setGravandoNumero] = useState(false);
   const [enviandoAvisos, setEnviandoAvisos] = useState(false);
+  const [reenviar, setReenviar] = useState(false);
+  const [envios, setEnvios] = useState<EnvioRevisor[]>([]);
 
   const carregar = async () => {
     setLoading(true);
@@ -108,6 +129,7 @@ const Atribuicoes = () => {
       setRevisores(dados.revisores);
       setPareceres(dados.pareceres);
       setConflitos(indexarConflitos(dados.conflitos));
+      setEnvios(dados.envios);
       setNumeroRevisores(dados.revisoresPorTrabalho);
       setPosicaoControle(dados.revisoresPorTrabalho);
     } catch (e) {
@@ -210,6 +232,14 @@ const Atribuicoes = () => {
     !parecerPorChave.has(`${r.trabalho_id}:${r.revisor_email}`) &&
     ["pendente", "em_avaliacao"].includes(trabalhosPorId.get(r.trabalho_id)?.status ?? "");
 
+  const ultimaDesignacao = useMemo(() => ultimaDesignacaoPorAssociacao(envios), [envios]);
+
+  const contagemEnvios = useMemo(() => {
+    const c: Record<SituacaoEnvio, number> = { enviado: 0, falha: 0, enviando: 0, sem_confirmacao: 0 };
+    envios.forEach((e) => c[situacaoEnvio(e)]++);
+    return c;
+  }, [envios]);
+
   // Relógio do navegador, e pode: nada é autorizado por isto, é só um aviso
   // (mesma exceção do "hoje" do cronograma).
   const filaParada = revisores.some(
@@ -301,9 +331,13 @@ const Atribuicoes = () => {
   const handleEnviarAvisos = async () => {
     setEnviandoAvisos(true);
     try {
-      const n = await solicitarAvisosAtribuicao();
+      const n = await solicitarAvisosAtribuicao(reenviar);
       if (n === 0) {
-        toast.info("Nenhum revisor a avisar: quem ainda tem parecer pendente já foi avisado.");
+        toast.info(
+          reenviar
+            ? "Nenhum revisor com parecer pendente."
+            : 'Nenhum revisor a avisar: quem ainda tem parecer pendente já foi avisado. Para mandar de novo, marque "Reenviar também a quem já recebeu".',
+        );
       } else {
         toast.success(
           `${n} revisor(es) na fila. Os e-mails saem de congressoparaiso@ufla.br em até 1 minuto.`,
@@ -334,20 +368,49 @@ const Atribuicoes = () => {
       <Badge variant="outline">Pendente</Badge>
     );
 
-  /** O e-mail de designação desta associação: saiu, está na fila, ou nada. */
-  const AvisoBadge = ({ r }: { r: TrabalhoRevisor }) =>
-    r.aviso_enviado_em ? (
-      <Badge
-        variant="outline"
-        title={`E-mail de designação enviado em ${new Date(r.aviso_enviado_em).toLocaleString("pt-BR")}`}
-      >
-        <Mail className="mr-1 h-3 w-3" /> avisado
+  /**
+   * O e-mail de designação desta associação, como o Apps Script o fechou:
+   * na fila, enviando, avisado, falhou ou sem confirmação.
+   */
+  const AvisoBadge = ({ r }: { r: TrabalhoRevisor }) => {
+    if (naFila(r)) {
+      return (
+        <Badge variant="secondary" title="Sai da conta congressoparaiso@ufla.br em até 1 minuto">
+          na fila
+        </Badge>
+      );
+    }
+    const envio = ultimaDesignacao.get(r.id);
+    if (!envio) {
+      // Pego antes de o registro de envios existir (20261026120000): o
+      // resultado do MailApp não foi guardado.
+      return r.aviso_enviado_em ? (
+        <Badge variant="secondary" title={SEM_CONFIRMACAO_TITLE}>
+          sem confirmação
+        </Badge>
+      ) : null;
+    }
+    const situacao = situacaoEnvio(envio);
+    const title =
+      situacao === "enviado"
+        ? `E-mail de designação enviado em ${new Date(envio.concluido_em ?? envio.criado_em).toLocaleString("pt-BR")}`
+        : situacao === "falha"
+          ? `O envio falhou: ${envio.erro}. Clique em "Enviar e-mails aos revisores" para tentar de novo.`
+          : situacao === "enviando"
+            ? "Saindo agora da conta congressoparaiso@ufla.br"
+            : SEM_CONFIRMACAO_TITLE;
+    return (
+      <Badge variant={SITUACAO[situacao].variant} title={title}>
+        {situacao === "enviado" ? (
+          <>
+            <Mail className="mr-1 h-3 w-3" /> avisado
+          </>
+        ) : (
+          SITUACAO[situacao].rotulo
+        )}
       </Badge>
-    ) : naFila(r) ? (
-      <Badge variant="secondary" title="Sai da conta congressoparaiso@ufla.br em até 1 minuto">
-        na fila
-      </Badge>
-    ) : null;
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -367,7 +430,7 @@ const Atribuicoes = () => {
           {/* E-mail sai para fora do sistema e não tem volta: confirma antes.
               Associar nunca dispara e-mail sozinho — é este clique que
               anuncia a distribuição, quando o co-chair a dá por pronta. */}
-          <AlertDialog>
+          <AlertDialog onOpenChange={(aberto) => !aberto && setReenviar(false)}>
             <AlertDialogTrigger asChild>
               <Button variant="outline" disabled={enviandoAvisos || loading}>
                 <Mail className="mr-2 h-4 w-4" />
@@ -378,12 +441,23 @@ const Atribuicoes = () => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Enviar e-mails aos revisores?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Cada revisor com parecer pendente que ainda não foi avisado recebe um e-mail de
-                  congressoparaiso@ufla.br com os títulos dos trabalhos dele (sem autores, a avaliação é às
-                  cegas) e o link do Portal de Revisão. Quem já foi avisado não recebe de novo; associações
-                  feitas depois deste clique esperam o próximo.
+                  Cada revisor com parecer pendente que ainda não foi avisado (ou cujo envio falhou) recebe
+                  um e-mail de congressoparaiso@ufla.br com os títulos dos trabalhos dele (sem autores, a
+                  avaliação é às cegas) e o link do Portal de Revisão. Associações feitas depois deste clique
+                  esperam o próximo.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm">
+                <Checkbox
+                  checked={reenviar}
+                  onCheckedChange={(v) => setReenviar(v === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Reenviar também a quem já recebeu. Cada revisor recebe de novo todos os trabalhos que ainda
+                  aguardam o parecer dele.
+                </span>
+              </label>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction onClick={handleEnviarAvisos}>Enviar</AlertDialogAction>
@@ -583,6 +657,14 @@ const Atribuicoes = () => {
           <TabsTrigger value="por-revisor">
             <UserCheck className="mr-2 h-4 w-4" /> Por revisor
           </TabsTrigger>
+          <TabsTrigger value="emails">
+            <Mail className="mr-2 h-4 w-4" /> E-mails
+            {contagemEnvios.falha > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {contagemEnvios.falha}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* Por trabalho */}
@@ -683,6 +765,67 @@ const Atribuicoes = () => {
               </Card>
             );
           })}
+        </TabsContent>
+
+        {/* Registro dos e-mails aos revisores (migration 20261026120000):
+            cada linha é um e-mail, fechado pelo Apps Script com o que o
+            MailApp respondeu. */}
+        <TabsContent value="emails" className="space-y-4">
+          {envios.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum e-mail enviado aos revisores ainda.</p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">{contagemEnvios.enviado}</strong> enviado(s) ·{" "}
+                <strong className={contagemEnvios.falha > 0 ? "text-destructive" : "text-foreground"}>
+                  {contagemEnvios.falha}
+                </strong>{" "}
+                com falha · <strong className="text-foreground">{contagemEnvios.sem_confirmacao}</strong> sem
+                confirmação
+                {contagemEnvios.enviando > 0 && ` · ${contagemEnvios.enviando} saindo agora`}. "Enviado" quer
+                dizer que o Google aceitou o e-mail; se o endereço não existir no destino, o aviso de não
+                entrega chega à caixa de congressoparaiso@ufla.br.
+              </p>
+              <div className="table-container">
+                <table className="table" style={{ width: "100%" }}>
+                  <thead>
+                    <tr>
+                      <th>REVISOR</th>
+                      <th>TIPO</th>
+                      <th>DATA</th>
+                      <th>TRABALHOS</th>
+                      <th>SITUAÇÃO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {envios.map((e) => {
+                      const situacao = situacaoEnvio(e);
+                      return (
+                        <tr key={e.id}>
+                          <td data-rotulo="REVISOR" className="celula-titulo">
+                            {e.revisor_nome ?? e.revisor_email}
+                            <div className="text-xs text-muted-foreground">{e.revisor_email}</div>
+                          </td>
+                          <td data-rotulo="TIPO">{TIPO_EMAIL_LABEL[e.tipo]}</td>
+                          <td data-rotulo="DATA">{new Date(e.criado_em).toLocaleString("pt-BR")}</td>
+                          <td data-rotulo="TRABALHOS">{e.titulos.join(" · ")}</td>
+                          <td data-rotulo="SITUAÇÃO">
+                            <Badge
+                              variant={SITUACAO[situacao].variant}
+                              title={situacao === "sem_confirmacao" ? SEM_CONFIRMACAO_TITLE : undefined}
+                            >
+                              {SITUACAO[situacao].rotulo}
+                            </Badge>
+                            {e.erro && <div className="mt-1 text-xs text-destructive">{e.erro}</div>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

@@ -255,6 +255,9 @@ function montarInventario({ porEmail, porDono }) {
     pareceres: `
       SELECT * FROM public.pareceres
       WHERE ${porEmail("revisor_email")} ORDER BY created_at`,
+    envios_revisores: `
+      SELECT * FROM public.envios_revisores
+      WHERE ${porEmail("revisor_email")} ORDER BY criado_em`,
     profiles: `
       SELECT * FROM public.profiles
       WHERE ${porEmail("email")} ORDER BY email`,
@@ -279,6 +282,8 @@ function montarPassos({ porEmail, porDono }) {
       `DELETE FROM public.trabalho_revisores WHERE ${porEmail("revisor_email")}`],
     [`pareceres de revisores ${alvo}`,
       `DELETE FROM public.pareceres WHERE ${porEmail("revisor_email")}`],
+    [`registro de e-mails a revisores ${alvo}`,
+      `DELETE FROM public.envios_revisores WHERE ${porEmail("revisor_email")}`],
     [`fichas de estudante ${alvo}`,
       `DELETE FROM public.estudantes WHERE ${porEmail("email")}`],
     [`fichas de professor ${alvo}`,
