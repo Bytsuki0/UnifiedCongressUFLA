@@ -22,6 +22,13 @@ export type CategoriaComCriterios = {
   anexos: AnexoDaCategoria[];
 };
 
+/**
+ * As colunas de `categoria_anexos` que as telas leem. ⚠ `poster` não pode
+ * faltar: sem ele, uma exigência de pôster chegaria às telas como PDF
+ * opcional comum e apareceria no formulário de submissão.
+ */
+const COLUNAS_EXIGENCIA = "id, categoria_id, tipo, titulo, descricao, obrigatorio, poster, ordem";
+
 export type CategoriasCarregadas = {
   categorias: CategoriaComCriterios[];
   /** Quantos trabalhos apontam para cada categoria, por id. */
@@ -40,9 +47,7 @@ export async function carregarCategorias(): Promise<CategoriasCarregadas> {
   const [cats, crits, anexos, trabalhos] = await Promise.all([
     supabase.from("categorias").select("id, nome").order("nome"),
     supabase.from("criterios").select("id, categoria_id, ordem, titulo"),
-    supabase
-      .from("categoria_anexos")
-      .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem"),
+    supabase.from("categoria_anexos").select(COLUNAS_EXIGENCIA),
     supabase.from("trabalhos").select("id, categoria_id"),
   ]);
 
@@ -90,6 +95,7 @@ function agruparAnexos(
     titulo: string;
     descricao: string;
     obrigatorio: boolean;
+    poster: boolean;
     ordem: number;
   }[],
 ): Record<string, AnexoDaCategoria[]> {
@@ -108,16 +114,16 @@ function agruparAnexos(
 
 /**
  * O que cada categoria exige, indexado por categoria — é o que as quatro
- * telas do autor consultam para montar os campos.
+ * telas do autor consultam para montar os campos (sem os pôsteres, que
+ * `useExigencias` separa) e o que a lista de trabalhos consulta para saber
+ * quem tem pôster a mandar.
  *
  * Carrega TUDO de uma vez em vez de uma consulta por categoria escolhida:
  * a tabela tem dezenas de linhas, e assim trocar a categoria no
  * formulário não pisca um "carregando" no meio do preenchimento.
  */
 export async function listarAnexosPorCategoria(): Promise<Record<string, AnexoDaCategoria[]>> {
-  const { data, error } = await supabase
-    .from("categoria_anexos")
-    .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem");
+  const { data, error } = await supabase.from("categoria_anexos").select(COLUNAS_EXIGENCIA);
   if (error) throw error;
   return agruparAnexos(data ?? []);
 }
@@ -146,7 +152,7 @@ export async function criarAnexoCategoria(
       obrigatorio: entrada.obrigatorio,
       ordem: entrada.ordem,
     })
-    .select("id, categoria_id, tipo, titulo, descricao, obrigatorio, ordem")
+    .select(COLUNAS_EXIGENCIA)
     .single();
   if (error) throw new Error(error.message);
   return { ...data, tipo: data.tipo as TipoAnexo };
@@ -163,10 +169,20 @@ export async function criarAnexoCategoria(
  * já foi entregue, só no que a próxima gravação do autor vai cobrar.
  * Afrouxar não invalida submissão nenhuma; apertar passa a cobrar de quem
  * ainda for salvar — o mesmo efeito de ACRESCENTAR uma exigência hoje.
+ *
+ * `poster` fica no meio-termo: troca livre enquanto ninguém entregou a
+ * exigência, e recusada pelo banco (trigger `trava_modo_poster`) depois da
+ * primeira entrega — a frase dele chega como `Error`.
  */
 export async function atualizarAnexoCategoria(
   id: string,
-  campos: { titulo?: string; descricao?: string; obrigatorio?: boolean; ordem?: number },
+  campos: {
+    titulo?: string;
+    descricao?: string;
+    obrigatorio?: boolean;
+    poster?: boolean;
+    ordem?: number;
+  },
 ): Promise<void> {
   const { error } = await supabase.from("categoria_anexos").update(campos).eq("id", id);
   if (error) throw new Error(error.message);
@@ -178,7 +194,8 @@ export async function atualizarAnexoCategoria(
  * O que já foi entregue por ela NÃO some: a FK de `trabalho_anexos` é
  * ON DELETE SET NULL e o título fica gravado na entrega, então o revisor
  * continua vendo a aba. A entrega só sai de fato na próxima gravação do
- * autor, quando `aplicar_anexos` a descarta.
+ * autor, quando `aplicar_anexos` a descarta — menos o pôster, que a
+ * submissão nunca apaga: ele fica, e segue na aba Pôsteres dos co-chairs.
  */
 export async function excluirAnexoCategoria(id: string): Promise<void> {
   const { error } = await supabase.from("categoria_anexos").delete().eq("id", id);

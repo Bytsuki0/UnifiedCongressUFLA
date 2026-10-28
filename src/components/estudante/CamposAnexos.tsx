@@ -45,9 +45,12 @@ export function CamposAnexos({
    * opcional tem de dizer o contrário com todas as letras — um rótulo
    * sem marca nenhuma, ao lado de três com `*`, lê-se como descuido e
    * não como permissão.
+   *
+   * O pôster não leva marca: ele só aparece no diálogo do pôster, onde
+   * mandá-lo é o próprio motivo de a pessoa ter aberto a janela.
    */
   const marca = (exigencia: AnexoDaCategoria) =>
-    exigencia.obrigatorio ? " *" : " (opcional)";
+    exigencia.poster ? "" : exigencia.obrigatorio ? " *" : " (opcional)";
 
   const verPdf = async (valor: string) => {
     if (!(await openPdf(valor))) toast.error("Não foi possível abrir o PDF.");
@@ -129,7 +132,7 @@ export function CamposAnexos({
                   <div className="drop-subtitle">
                     {gravado
                       ? "Sem arquivo novo, o PDF atual é mantido"
-                      : exigencia.obrigatorio
+                      : exigencia.obrigatorio || exigencia.poster
                         ? "ou clique para selecionar do computador · Limite 10MB"
                         : "ou clique para selecionar · Limite 10MB · pode seguir sem anexar"}
                   </div>

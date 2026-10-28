@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   anexosOrfaos,
   ordenarAnexos,
+  podeEnviarPoster,
   rascunhoInicial,
   resumoDoPasso,
   validarAnexos,
@@ -42,6 +43,7 @@ const pdf = (id: string, ordem: number, titulo = `PDF ${id}`): AnexoDaCategoria 
   titulo,
   descricao: "",
   obrigatorio: true,
+  poster: false,
   ordem,
 });
 
@@ -52,7 +54,15 @@ const video = (id: string, ordem: number, titulo = `Vídeo ${id}`): AnexoDaCateg
   titulo,
   descricao: "",
   obrigatorio: true,
+  poster: false,
   ordem,
+});
+
+/** A exigência de pôster, como o CHECK do banco a admite: PDF e não obrigatória. */
+const poster = (id: string, ordem: number): AnexoDaCategoria => ({
+  ...pdf(id, ordem, "Pôster"),
+  obrigatorio: false,
+  poster: true,
 });
 
 /**
@@ -76,6 +86,7 @@ const entregue = (
   titulo: `Entrega ${ordem}`,
   ordem,
   valor,
+  poster: false,
 });
 
 const arquivoPdf = (bytes = 10) =>
@@ -310,6 +321,43 @@ describe("valorAtual e anexosOrfaos", () => {
 
   it("sem entregas, não há órfãos", () => {
     expect(anexosOrfaos(undefined, [pdf("a1", 1)])).toEqual([]);
+  });
+
+  it("pôster nunca é órfão — nem com a exigência apagada", () => {
+    // As telas de submissão recebem as exigências SEM os pôsteres, então o
+    // pôster entregue nunca casaria com nenhuma. Sem a regra, a tela de
+    // correção de quem foi aprovado com correções avisaria que o pôster
+    // "será descartado" — e `aplicar_anexos` nunca o apaga.
+    const atuais = [
+      entregue("a1", "pdf", "u1/trabalho.pdf", 1),
+      { ...entregue("p1", "pdf", "u1/poster.pdf", 2), poster: true },
+      { ...entregue(null, "pdf", "u1/poster-velho.pdf", 3), poster: true },
+    ];
+    expect(anexosOrfaos(atuais, [pdf("a1", 1)])).toEqual([]);
+  });
+});
+
+describe("podeEnviarPoster", () => {
+  const exigencias = [poster("p1", 2)];
+
+  it("aprovado e aprovado com correções, numa categoria com pôster, depois da divulgação", () => {
+    expect(podeEnviarPoster("aprovado", exigencias, true)).toBe(true);
+    expect(podeEnviarPoster("aprovado_correcoes", exigencias, true)).toBe(true);
+  });
+
+  it("nenhum outro desfecho manda pôster", () => {
+    for (const status of ["pendente", "em_avaliacao", "aguardando_parecer_editorial", "resubmeter", "reprovado"]) {
+      expect(podeEnviarPoster(status, exigencias, true)).toBe(false);
+    }
+  });
+
+  it("categoria sem pôster não tem botão", () => {
+    expect(podeEnviarPoster("aprovado", [], true)).toBe(false);
+  });
+
+  it("antes da divulgação não há botão; 'não sei' (falha de rede) não esconde", () => {
+    expect(podeEnviarPoster("aprovado", exigencias, false)).toBe(false);
+    expect(podeEnviarPoster("aprovado", exigencias, null)).toBe(true);
   });
 });
 

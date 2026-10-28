@@ -271,6 +271,7 @@ export type Database = {
           id: string
           obrigatorio: boolean
           ordem: number
+          poster: boolean
           tipo: string
           titulo: string
         }
@@ -281,6 +282,7 @@ export type Database = {
           id?: string
           obrigatorio?: boolean
           ordem?: number
+          poster?: boolean
           tipo: string
           titulo: string
         }
@@ -291,6 +293,7 @@ export type Database = {
           id?: string
           obrigatorio?: boolean
           ordem?: number
+          poster?: boolean
           tipo?: string
           titulo?: string
         }
@@ -382,6 +385,7 @@ export type Database = {
           id: boolean
           max_coautores: number
           parecer_min_caracteres: number
+          resultados_divulgacao: string | null
           revisoes_encerramento: string | null
           revisores_por_trabalho: number
           submissoes_abertura: string | null
@@ -395,6 +399,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          resultados_divulgacao?: string | null
           revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
           submissoes_abertura?: string | null
@@ -408,6 +413,7 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          resultados_divulgacao?: string | null
           revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
           submissoes_abertura?: string | null
@@ -541,6 +547,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      envios_resultados: {
+        Row: {
+          autor_email: string
+          autor_id: string
+          autor_nome: string | null
+          concluido_em: string | null
+          criado_em: string
+          erro: string | null
+          id: string
+          prioridade: number
+          status: string
+          trabalhos: Json
+        }
+        Insert: {
+          autor_email: string
+          autor_id: string
+          autor_nome?: string | null
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          prioridade: number
+          status?: string
+          trabalhos: Json
+        }
+        Update: {
+          autor_email?: string
+          autor_id?: string
+          autor_nome?: string | null
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          prioridade?: number
+          status?: string
+          trabalhos?: Json
+        }
+        Relationships: []
       }
       envios_revisores: {
         Row: {
@@ -998,6 +1043,7 @@ export type Database = {
           criado_em: string
           id: string
           ordem: number
+          poster: boolean
           tipo: string
           titulo: string
           trabalho_id: string
@@ -1008,6 +1054,7 @@ export type Database = {
           criado_em?: string
           id?: string
           ordem?: number
+          poster?: boolean
           tipo: string
           titulo: string
           trabalho_id: string
@@ -1018,6 +1065,7 @@ export type Database = {
           criado_em?: string
           id?: string
           ordem?: number
+          poster?: boolean
           tipo?: string
           titulo?: string
           trabalho_id?: string
@@ -1329,6 +1377,10 @@ export type Database = {
         }
         Returns: string[]
       }
+      enviar_posteres: {
+        Args: { _anexos: Json; _trabalho_id: string }
+        Returns: string[]
+      }
       exigir_email_confirmado: { Args: never; Returns: undefined }
       get_my_roles: { Args: never; Returns: string[] }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
@@ -1442,6 +1494,17 @@ export type Database = {
         Args: { _comentario: string; _decisao: string; _trabalho_id: string }
         Returns: string
       }
+      resultados_devidos: {
+        Args: { _limite?: number }
+        Returns: {
+          autor_email: string
+          autor_nome: string
+          envio_id: string
+          prioridade: number
+          trabalhos: Json
+        }[]
+      }
+      resultados_divulgados: { Args: never; Returns: boolean }
       revisores_por_trabalho: { Args: never; Returns: number }
       solicitar_avisos_atribuicao: {
         Args: { _reenviar?: boolean }

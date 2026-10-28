@@ -429,8 +429,13 @@ export type SituacaoEnvio = "enviado" | "falha" | "enviando" | "sem_confirmacao"
 /**
  * 'reservado' recente está saindo agora; velho é lote perdido — o script
  * morreu entre reservar e confirmar, e o e-mail pode ou não ter saído.
+ * Vale também para os e-mails de resultado (`envios_resultados`): é o mesmo
+ * Apps Script fechando os dois registros.
  */
-export function situacaoEnvio(e: EnvioRevisor, agora = Date.now()): SituacaoEnvio {
+export function situacaoEnvio(
+  e: Pick<EnvioRevisor, "status" | "criado_em">,
+  agora = Date.now(),
+): SituacaoEnvio {
   if (e.status !== "reservado") return e.status;
   return agora - Date.parse(e.criado_em) > FILA_PARADA_MS ? "sem_confirmacao" : "enviando";
 }

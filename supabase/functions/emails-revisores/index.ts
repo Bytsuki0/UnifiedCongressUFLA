@@ -1,18 +1,23 @@
 // ============================================================
-// Edge Function `emails-revisores` - fila dos e-mails aos revisores
+// Edge Function `emails-revisores` - fila dos e-mails da conta UFLA
 // ------------------------------------------------------------
 // Ponte entre o Apps Script da conta congressoparaiso@ufla.br
-// (apps-script/emails-revisores.gs) e a fila do banco (migration
-// 20261014120000). Quem chama é SÓ o Apps Script, a cada minuto; nenhum
-// navegador fala com esta função, por isso ela não tem CORS. O Brevo
-// continua com a verificação de e-mail e a redefinição de senha.
+// (apps-script/emails-revisores.gs) e as filas do banco: a dos revisores
+// (migration 20261014120000) e, desde a 20261027120000, a do resultado da
+// avaliação aos AUTORES. O nome ficou "emails-revisores" porque trocá-lo
+// exigiria editar a Propriedade URL_FUNCAO do Apps Script.
+// Quem chama é SÓ o Apps Script, a cada minuto; nenhum navegador fala com
+// esta função, por isso ela não tem CORS. O Brevo continua com a
+// verificação de e-mail e a redefinição de senha.
 //
 // O que mora aqui é o TEXTO dos e-mails. Quem recebe o quê, e quando, é
-// regra do SQL (`emails_devidos`); quem envia é o Apps Script (MailApp).
+// regra do SQL (`emails_devidos`, `resultados_devidos`); quem envia é o
+// Apps Script (MailApp).
 //
 // Cada e-mail reservado é uma linha de `envios_revisores` (migration
-// 20261026120000), e o Apps Script a fecha por `concluir` com o resultado
-// do MailApp — é esse registro que a tela de Atribuições mostra.
+// 20261026120000) ou de `envios_resultados` (20261027120000), e o Apps
+// Script a fecha por `concluir` com o resultado do MailApp — os ids são
+// UUIDs, e `concluir_envios` acha cada um na tabela certa.
 //
 // ⚠ DEPLOY COM `verify_jwt: false` (ver scripts/deploy-functions.js): o
 //   Apps Script não tem JWT do Supabase. Quem autentica é o cabeçalho
@@ -36,7 +41,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const APP_NAME = "Congresso Unificado ICTIN";
 const APP_TAGLINE = "ICTIN · Submissões Científicas";
 
-/** Revisores por busca quando o Apps Script não diz. O SQL prende em 1..50. */
+/** E-mails por busca quando o Apps Script não diz. Preso em 1..50, aqui e no SQL. */
 const LIMITE_PADRAO = 20;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,6 +59,18 @@ type Devido = {
   titulos: string[];
   /** 'AAAA-MM-DD' ou null (sem prazo - só a designação sai sem ele). */
   prazo: string | null;
+};
+
+/** Uma linha de `resultados_devidos()`: o e-mail de UM autor, com todos os trabalhos dele. */
+type Resultado = {
+  /** A linha de `envios_resultados` que o Apps Script fecha em `concluir`. */
+  envio_id: string;
+  autor_email: string;
+  autor_nome: string | null;
+  /** 1 reenvio · 2 correções · 3 aprovado · 4 reprovado - o mais urgente do autor. */
+  prioridade: number;
+  /** Já na ordem de urgência, do SQL. `media` nula = trabalho sem nota. */
+  trabalhos: { titulo: string; status: string; media: number | null; pareceres: number }[];
 };
 
 /** Resposta JSON. `erro` é um código estável, como nas functions do Brevo. */
@@ -97,6 +114,35 @@ const hojeEmLavras = () =>
 // ------------------------------------------------------------
 // Corpo dos e-mails (pt-BR)
 // ------------------------------------------------------------
+const RODAPE = "Dúvidas? Responda este e-mail - a resposta chega à comissão organizadora.";
+
+/**
+ * A moldura comum a todos os e-mails daqui. HTML deliberadamente simples e
+ * com estilo inline, como o das functions do Brevo: cliente de e-mail não
+ * carrega CSS externo. `miolo` chega pronto - e escapado - de quem chama.
+ */
+function moldura(titulo: string, miolo: string, link: string, botao: string): string {
+  return `<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:24px;background:#f4f5f7;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;">
+      <tr><td>
+        <p style="margin:0 0 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">${APP_NAME}</p>
+        <h1 style="margin:0 0 20px;font-size:20px;color:#111827;">${titulo}</h1>
+        ${miolo}
+        <p style="margin:0 0 24px;">
+          <a href="${link}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">${botao}</a>
+        </p>
+        <p style="margin:0;font-size:13px;color:#6b7280;">${RODAPE}</p>
+      </td></tr>
+    </table>
+    <p style="max-width:560px;margin:16px auto 0;font-size:12px;color:#9ca3af;text-align:center;">
+      ${APP_NAME} - ${APP_TAGLINE}
+    </p>
+  </body>
+</html>`;
+}
+
 // Só TÍTULOS: a avaliação é às cegas (ver COLUNAS_VISIVEIS em
 // src/services/revisorService.ts) - autor, orientador e coautores não
 // descem para o revisor, nem por e-mail.
@@ -144,8 +190,6 @@ function montarEmail(d: Devido, siteUrl: string) {
       `Por favor, ${registreOs} o quanto antes. Se houver algum impedimento, responda este e-mail para avisar a comissão organizadora.`;
   }
 
-  const rodape = "Dúvidas? Responda este e-mail - a resposta chega à comissão organizadora.";
-
   const texto = [
     saudacao,
     "",
@@ -156,35 +200,111 @@ function montarEmail(d: Devido, siteUrl: string) {
     ...(fecho ? [fecho, ""] : []),
     `Abra o Portal de Revisão: ${link}`,
     "",
-    rodape,
+    RODAPE,
     `${APP_NAME} - ${APP_TAGLINE}`,
   ].join("\n");
 
-  // HTML deliberadamente simples e com estilo inline, como o das functions
-  // do Brevo: cliente de e-mail não carrega CSS externo.
   const itens = d.titulos.map((t) => `<li style="margin:0 0 6px;">${escapar(t)}</li>`).join("");
-  const html = `<!doctype html>
-<html lang="pt-BR">
-  <body style="margin:0;padding:24px;background:#f4f5f7;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;">
-      <tr><td>
-        <p style="margin:0 0 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">${APP_NAME}</p>
-        <h1 style="margin:0 0 20px;font-size:20px;color:#111827;">${titulo}</h1>
-        <p style="margin:0 0 16px;line-height:1.6;">${escapar(saudacao)}</p>
+  const html = moldura(
+    titulo,
+    `<p style="margin:0 0 16px;line-height:1.6;">${escapar(saudacao)}</p>
         <p style="margin:0 0 12px;line-height:1.6;">${escapar(abertura)}</p>
         <ul style="margin:0 0 20px;padding-left:20px;line-height:1.6;">${itens}</ul>
-        ${fecho ? `<p style="margin:0 0 24px;line-height:1.6;">${escapar(fecho)}</p>` : ""}
-        <p style="margin:0 0 24px;">
-          <a href="${link}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Abrir o Portal de Revisão</a>
-        </p>
-        <p style="margin:0;font-size:13px;color:#6b7280;">${rodape}</p>
-      </td></tr>
-    </table>
-    <p style="max-width:560px;margin:16px auto 0;font-size:12px;color:#9ca3af;text-align:center;">
-      ${APP_NAME} - ${APP_TAGLINE}
-    </p>
-  </body>
-</html>`;
+        ${fecho ? `<p style="margin:0 0 24px;line-height:1.6;">${escapar(fecho)}</p>` : ""}`,
+    link,
+    "Abrir o Portal de Revisão",
+  );
+
+  return { assunto, html, texto };
+}
+
+// ------------------------------------------------------------
+// Resultado da avaliação, aos autores (migration 20261027120000)
+// ------------------------------------------------------------
+// UM e-mail por autor, com TODOS os trabalhos dele - o SQL só o libera
+// depois da última decisão. Média e número de pareceres, nunca quem os
+// assinou: a avaliação é às cegas. Os comentários ficam no portal.
+
+/** O desfecho como o autor o lê (o rótulo de `statusLabel`, por extenso) e o que ele tem de fazer. */
+const DESFECHOS: Record<string, { rotulo: string; acao: string | null }> = {
+  resubmeter: {
+    rotulo: "Reenvio solicitado",
+    acao: "Reenvie o trabalho completo pelo portal, no botão Reenviar.",
+  },
+  aprovado_correcoes: {
+    rotulo: "Aprovado com correções",
+    acao: "Envie a versão corrigida pelo portal, no botão Corrigir, para concluir a aprovação.",
+  },
+  aprovado: { rotulo: "Aprovado", acao: null },
+  reprovado: { rotulo: "Reprovado", acao: null },
+};
+
+function montarEmailResultado(r: Resultado, siteUrl: string) {
+  const nome = r.autor_nome?.trim() || null;
+  const saudacao = nome ? `Olá, ${nome}!` : "Olá!";
+  const link = `${siteUrl.replace(/\/+$/, "")}/estudante/papeis-submetidos`;
+  const n = r.trabalhos.length;
+
+  // Reenvio e correção pedem ação do autor: o assunto já diz isso na caixa de entrada.
+  const assunto =
+    r.prioridade <= 2
+      ? `Resultado da avaliação: ação necessária - ${APP_NAME}`
+      : `Resultado da avaliação - ${APP_NAME}`;
+  const titulo = n === 1 ? "O resultado do seu trabalho" : "O resultado dos seus trabalhos";
+  const abertura =
+    n === 1
+      ? `Saiu o resultado da avaliação do seu trabalho no ${APP_NAME}:`
+      : `Saiu o resultado da avaliação dos seus ${n} trabalhos no ${APP_NAME}:`;
+  const fecho = "Os comentários dos avaliadores estão no portal, na página de cada trabalho.";
+
+  const blocos = r.trabalhos.map((t) => {
+    const desfecho = DESFECHOS[t.status] ?? { rotulo: t.status, acao: null };
+    const pareceres = t.pareceres === 1 ? "1 parecer" : `${t.pareceres} pareceres`;
+    // `toFixed(2)`, como a média que o autor vê em PareceresRecebidos.
+    const nota =
+      t.media === null ? null : `Média das notas: ${Number(t.media).toFixed(2)} de 5 (${pareceres}).`;
+    return { titulo: t.titulo, rotulo: desfecho.rotulo, nota, acao: desfecho.acao };
+  });
+
+  const texto = [
+    saudacao,
+    "",
+    abertura,
+    "",
+    ...blocos.flatMap((b) => [
+      `- ${b.titulo}`,
+      `  Resultado: ${b.rotulo}`,
+      ...(b.nota ? [`  ${b.nota}`] : []),
+      ...(b.acao ? [`  ${b.acao}`] : []),
+      "",
+    ]),
+    fecho,
+    "",
+    `Abra o portal: ${link}`,
+    "",
+    RODAPE,
+    `${APP_NAME} - ${APP_TAGLINE}`,
+  ].join("\n");
+
+  const itens = blocos
+    .map(
+      (b) =>
+        `<li style="margin:0 0 12px;"><strong>${escapar(b.titulo)}</strong><br>` +
+        `Resultado: <strong>${escapar(b.rotulo)}</strong>` +
+        (b.nota ? `<br>${escapar(b.nota)}` : "") +
+        (b.acao ? `<br><em>${escapar(b.acao)}</em>` : "") +
+        `</li>`,
+    )
+    .join("");
+  const html = moldura(
+    titulo,
+    `<p style="margin:0 0 16px;line-height:1.6;">${escapar(saudacao)}</p>
+        <p style="margin:0 0 12px;line-height:1.6;">${escapar(abertura)}</p>
+        <ul style="margin:0 0 20px;padding-left:20px;line-height:1.6;">${itens}</ul>
+        <p style="margin:0 0 24px;line-height:1.6;">${escapar(fecho)}</p>`,
+    link,
+    "Abrir o portal",
+  );
 
   return { assunto, html, texto };
 }
@@ -240,28 +360,59 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // acao: "pegar" - reserva o que está devido e devolve os e-mails prontos
   // ==========================================================
   if (corpo.acao === "pegar") {
-    const { data, error } = await clienteServico.rpc("emails_devidos", {
-      _limite: Number(corpo.limite) || LIMITE_PADRAO,
-    });
+    // Preso a 1..50, como no SQL: a soma das duas filas nunca passa do que o
+    // Apps Script pediu - e ele pede o que a cota do dia ainda permite.
+    const limite = Math.min(Math.max(Math.trunc(Number(corpo.limite)) || LIMITE_PADRAO, 1), 50);
+    const { data, error } = await clienteServico.rpc("emails_devidos", { _limite: limite });
     if (error) {
       console.error(`emails_devidos falhou [${error.code ?? ""}]: ${error.message}`);
       return responder(500, { ok: false, erro: "falha_fila" });
     }
-
     const devidos = (data ?? []) as Devido[];
-    // Só contagens no log: endereço de revisor não vai para log nenhum.
-    if (devidos.length > 0) console.log(`pegar: ${devidos.length} e-mail(s) reservado(s).`);
+
+    // Os resultados aos autores ocupam o que sobrar do lote. Revisor
+    // primeiro: designação e lembrete correm contra um prazo.
+    let resultados: Resultado[] = [];
+    if (devidos.length < limite) {
+      const r = await clienteServico.rpc("resultados_devidos", {
+        _limite: limite - devidos.length,
+      });
+      if (r.error) {
+        // ⚠ Sem 500 aqui: os e-mails aos revisores acima JÁ foram
+        // reservados, e uma resposta de erro os deixaria "sem confirmação"
+        // para sempre. Os resultados esperam a próxima busca.
+        console.error(`resultados_devidos falhou [${r.error.code ?? ""}]: ${r.error.message}`);
+      } else {
+        resultados = (r.data ?? []) as Resultado[];
+      }
+    }
+
+    // Só contagens no log: endereço de revisor ou de autor não vai para log nenhum.
+    if (devidos.length + resultados.length > 0) {
+      console.log(
+        `pegar: ${devidos.length} e-mail(s) a revisores e ${resultados.length} resultado(s) reservado(s).`,
+      );
+    }
 
     return responder(200, {
       ok: true,
       remetente: APP_NAME,
-      emails: devidos.map((d) => ({
-        id: d.envio_id,
-        tipo: d.tipo,
-        associacoes: d.associacoes,
-        para: d.revisor_email,
-        ...montarEmail(d, SITE_URL!),
-      })),
+      emails: [
+        ...devidos.map((d) => ({
+          id: d.envio_id,
+          tipo: d.tipo,
+          associacoes: d.associacoes,
+          para: d.revisor_email,
+          ...montarEmail(d, SITE_URL!),
+        })),
+        // Na ordem do SQL: o reenvio sai antes da correção, e assim por diante.
+        ...resultados.map((r) => ({
+          id: r.envio_id,
+          tipo: "resultado",
+          para: r.autor_email,
+          ...montarEmailResultado(r, SITE_URL!),
+        })),
+      ],
     });
   }
 

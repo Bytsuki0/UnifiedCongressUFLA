@@ -8,6 +8,7 @@ import {
   FileText,
   Gavel,
   Megaphone,
+  Presentation,
   Tags,
   Users,
   Video,
@@ -95,6 +96,13 @@ const SECOES: Secao[] = [
     descricao:
       "A vitrine de vídeos. Os trabalhos aprovados entram sozinhos; aqui vai o acervo antigo.",
     Icone: Video,
+  },
+  {
+    para: "/co-chairs/posteres",
+    titulo: "Pôsteres",
+    descricao:
+      "Os pôsteres que os autores dos trabalhos aprovados enviaram depois da divulgação dos resultados.",
+    Icone: Presentation,
   },
   {
     para: "/co-chairs/downloads",

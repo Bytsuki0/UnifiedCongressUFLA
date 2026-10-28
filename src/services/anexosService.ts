@@ -20,7 +20,7 @@ import {
  */
 
 /** As colunas de `trabalho_anexos` que as telas leem. */
-export const COLUNAS_ANEXO = "id, anexo_id, tipo, titulo, ordem, valor";
+export const COLUNAS_ANEXO = "id, anexo_id, tipo, titulo, ordem, valor, poster";
 
 /** Anexos entregues por um trabalho, na ordem em que as telas os mostram. */
 export async function listarAnexosDoTrabalho(
@@ -133,6 +133,73 @@ export async function descartarDoStorage(caminhos: string[]): Promise<void> {
   const alvos = caminhos.filter((c) => c && !/^https?:\/\//i.test(c));
   if (alvos.length === 0) return;
   await supabase.storage.from(PDF_BUCKET).remove(alvos);
+}
+
+/* -----------------------------------------------------------------
+ * Pôsteres (migration 20261027180000)
+ * ----------------------------------------------------------------- */
+
+/**
+ * Manda (ou troca) o pôster de um trabalho aprovado. É a mesma dança das
+ * escritas do autor: sobe o PDF, chama a RPC, apaga do Storage o arquivo
+ * que deixou de valer — e, se a RPC recusar, o que acabou de subir.
+ *
+ * Quem decide se pode é `enviar_posteres`: divulgação já passou, trabalho
+ * aprovado, exigência de pôster da categoria, arquivo na pasta do dono. A
+ * frase dela chega como `Error`.
+ */
+export async function enviarPosteres(args: {
+  trabalhoId: string;
+  posteres: AnexoDaCategoria[];
+  rascunho: RascunhoAnexos;
+  ownerId: string;
+}): Promise<void> {
+  const { payload, enviados } = await prepararAnexos({
+    exigencias: args.posteres,
+    rascunho: args.rascunho,
+    ownerId: args.ownerId,
+  });
+  const { data, error } = await supabase.rpc("enviar_posteres", {
+    _trabalho_id: args.trabalhoId,
+    _anexos: payload,
+  });
+  if (error) {
+    await descartarDoStorage(enviados);
+    throw new Error(error.message);
+  }
+  await descartarDoStorage(caminhosDevolvidos(data));
+}
+
+/** Um pôster entregue, como a aba dos co-chairs o lista. */
+export type PosterEntregue = {
+  id: string;
+  titulo: string;
+  /** Caminho no bucket `Pdfs`. */
+  valor: string;
+  /** Quando o arquivo EM VIGOR subiu — trocar o pôster atualiza a data. */
+  criado_em: string;
+  trabalho: {
+    id: string;
+    titulo: string;
+    autores: string;
+    categoria_id: string | null;
+    status: string;
+  } | null;
+};
+
+/**
+ * Todos os pôsteres entregues, do mais recente para trás. Só a organização
+ * lê todos (a RLS recorta o resto). O erro PROPAGA: quem vai imprimir os
+ * pôsteres não pode ler "nenhum entregue" por causa de uma falha de rede.
+ */
+export async function listarPosteres(): Promise<PosterEntregue[]> {
+  const { data, error } = await supabase
+    .from("trabalho_anexos")
+    .select("id, titulo, valor, criado_em, trabalho:trabalhos(id, titulo, autores, categoria_id, status)")
+    .eq("poster", true)
+    .order("criado_em", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PosterEntregue[];
 }
 
 /**

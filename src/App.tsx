@@ -82,6 +82,7 @@ import Categorias from "./pages/co-chairs/Categorias";
 import CoChairsCronograma from "./pages/co-chairs/Cronograma";
 import CoChairsAnais from "./pages/co-chairs/Anais";
 import CoChairsPitches from "./pages/co-chairs/Pitches";
+import CoChairsPosteres from "./pages/co-chairs/Posteres";
 import CoChairsAvisos from "./pages/co-chairs/Avisos";
 import CoChairsDownloads from "./pages/co-chairs/Downloads";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
@@ -258,6 +259,7 @@ const App = () => (
                 <Route path="cronograma" element={<CoChairsCronograma />} />
                 <Route path="anais" element={<CoChairsAnais />} />
                 <Route path="pitches" element={<CoChairsPitches />} />
+                <Route path="posteres" element={<CoChairsPosteres />} />
                 <Route path="avisos" element={<CoChairsAvisos />} />
                 {/* Saiu de /admin/configuracoes na 20260909120000, com a
                     policy de escrita junto (is_app_admin -> is_event_staff). */}

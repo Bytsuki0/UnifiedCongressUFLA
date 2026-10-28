@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { DialogoPoster } from "@/components/estudante/DialogoPoster";
 import { anexosPorTrabalho } from "@/services/anexosService";
-import type { AnexoDoTrabalho } from "@/lib/anexos";
+import { carregarResultadosDivulgados } from "@/services/configuracoesService";
+import { podeEnviarPoster, type AnexoDoTrabalho } from "@/lib/anexos";
 import {
   AGUARDANDO_CORRECAO,
   AGUARDANDO_REENVIO,
@@ -12,8 +15,10 @@ import {
   linhaDesfecho,
   statusBadge,
   statusLabel,
+  useExigencias,
   usePrazo,
   useTrabalhos,
+  type Submission,
 } from "./shared";
 
 /**
@@ -29,11 +34,17 @@ import {
  * Dos quatro cartões de número sobraram dois — "submissões ativas" e "total".
  * "Em avaliação" foi absorvido por "ativas" (para o autor é a mesma espera) e
  * "aprovadas" o autor lê na cor da própria tabela.
+ *
+ * O PÔSTER (migration 20261027180000) é enviado daqui, e não da submissão:
+ * o botão aparece na linha do trabalho aprovado cuja categoria pede pôster,
+ * depois da divulgação dos resultados.
  */
 const PapeisSubmetidos = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { trabalhos, loading, catNome } = useTrabalhos();
   const { prazo, aberto, fase } = usePrazo();
+  const { posteresDe } = useExigencias();
 
   const ativas = trabalhos.filter(t => estaAtiva(t.status));
   const aguardandoCorrecao = trabalhos.filter(t => t.status === AGUARDANDO_CORRECAO);
@@ -41,8 +52,10 @@ const PapeisSubmetidos = () => {
   // Quantos anexos cada trabalho entregou. Uma consulta só para a lista
   // inteira, não uma por linha. Falha de rede devolve mapa vazio e a
   // coluna mostra "—": a lista continua servindo para o que ela existe,
-  // que é acompanhar o andamento.
+  // que é acompanhar o andamento. `versaoAnexos` sobe a cada pôster
+  // enviado, para a linha passar a dizer "Trocar pôster".
   const [anexos, setAnexos] = useState<Record<string, AnexoDoTrabalho[]>>({});
+  const [versaoAnexos, setVersaoAnexos] = useState(0);
   useEffect(() => {
     let vivo = true;
     if (trabalhos.length === 0) return;
@@ -50,7 +63,18 @@ const PapeisSubmetidos = () => {
       .then(mapa => { if (vivo) setAnexos(mapa); })
       .catch(() => { if (vivo) setAnexos({}); });
     return () => { vivo = false; };
-  }, [trabalhos]);
+  }, [trabalhos, versaoAnexos]);
+
+  // A divulgação dos resultados já passou? Vem do servidor. `undefined`
+  // enquanto carrega (o botão do pôster não pisca); `null` é falha, "não
+  // sei", e não esconde nada — quem recusa é `enviar_posteres`.
+  const [divulgado, setDivulgado] = useState<boolean | null | undefined>(undefined);
+  useEffect(() => {
+    let vivo = true;
+    carregarResultadosDivulgados().then(d => { if (vivo) setDivulgado(d); });
+    return () => { vivo = false; };
+  }, []);
+  const [posterDe, setPosterDe] = useState<Submission | null>(null);
 
   return (
     <div className="section active">
@@ -189,8 +213,12 @@ const PapeisSubmetidos = () => {
                     t.status === PENDENTE && aberto !== false && !t.reenviado_em;
                   const podeCorrigir = t.status === AGUARDANDO_CORRECAO;
                   const podeReenviar = t.status === AGUARDANDO_REENVIO;
+                  const podePoster =
+                    divulgado !== undefined &&
+                    podeEnviarPoster(t.status, posteresDe(t.categoria_id), divulgado);
+                  const temPoster = (anexos[t.id] ?? []).some(a => a.poster);
                   const semAcao =
-                    !podeVerParecer && !podeEditar && !podeCorrigir && !podeReenviar;
+                    !podeVerParecer && !podeEditar && !podeCorrigir && !podeReenviar && !podePoster;
                   return (
                   <tr key={t.id} className={linhaDesfecho(t.status)}>
                     <td data-rotulo="TÍTULO" className="celula-titulo" style={{ fontWeight: "var(--fw-semibold)" }}>{t.titulo}</td>
@@ -243,6 +271,15 @@ const PapeisSubmetidos = () => {
                             Reenviar
                           </button>
                         )}
+                        {podePoster && (
+                          <button
+                            className={`btn ${temPoster ? "btn-outline" : "btn-primary"} btn-sm`}
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => setPosterDe(t)}
+                          >
+                            {temPoster ? "Trocar pôster" : "Enviar pôster"}
+                          </button>
+                        )}
                         {semAcao && "—"}
                       </div>
                     </td>
@@ -254,6 +291,20 @@ const PapeisSubmetidos = () => {
           </div>
         )}
       </div>
+
+      {posterDe && user && (
+        <DialogoPoster
+          trabalho={posterDe}
+          posteres={posteresDe(posterDe.categoria_id)}
+          atuais={(anexos[posterDe.id] ?? []).filter(a => a.poster)}
+          ownerId={user.id}
+          onFechar={() => setPosterDe(null)}
+          onEnviado={() => {
+            setPosterDe(null);
+            setVersaoAnexos(v => v + 1);
+          }}
+        />
+      )}
     </div>
   );
 };

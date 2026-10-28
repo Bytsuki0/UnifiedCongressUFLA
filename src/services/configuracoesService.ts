@@ -9,12 +9,14 @@ import { supabase } from "@/integrations/supabase/client";
  * servidor** (trigger `protect_trabalhos_fields` + RPC
  * `editar_submissao`).
  *
- * ⚠ Só os prazos têm regra de servidor: o de submissão trava o envio, e o
- * das avaliações (`revisoes_encerramento` + `alerta_horas`) move os e-mails
- * aos revisores (`emails_devidos`, migration 20261014120000). Os outros
- * campos são gravados para que o botão pare de mentir, mas ainda não travam
- * nada — quem for usar `max_coautores` ou `parecer_min_caracteres` precisa
- * escrever a trava em SQL junto, nunca no cliente.
+ * ⚠ Só as datas têm regra de servidor: o prazo de submissão trava o envio,
+ * o das avaliações (`revisoes_encerramento` + `alerta_horas`) move os
+ * e-mails aos revisores (`emails_devidos`, migration 20261014120000) e a
+ * divulgação (`resultados_divulgacao`) solta o e-mail de resultado de cada
+ * autor (`resultados_devidos`, migration 20261027120000). Os outros campos
+ * são gravados para que o botão pare de mentir, mas ainda não travam nada —
+ * quem for usar `max_coautores` ou `parecer_min_caracteres` precisa escrever
+ * a trava em SQL junto, nunca no cliente.
  */
 
 export type Configuracoes = {
@@ -33,6 +35,14 @@ export type Configuracoes = {
    * não trava parecer nenhum.
    */
   revisoes_encerramento: string | null;
+  /**
+   * Momento da divulgação dos resultados, hora de Brasília SEM fuso
+   * ('AAAA-MM-DDTHH:MM[:SS]', é o que o `datetime-local` grava e lê). A
+   * partir dele cada autor recebe UM e-mail com todos os seus trabalhos.
+   * Vazio = nada sai. ⚠ Nunca passar por `new Date`: sem fuso, o navegador
+   * o leria no fuso DELE.
+   */
+  resultados_divulgacao: string | null;
   edital: string;
   atualizado_em: string;
 };
@@ -60,7 +70,7 @@ export type PrazoSubmissoes = {
  * mudar.
  */
 const COLUNAS_DO_ADMIN =
-  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, edital, atualizado_em";
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, edital, atualizado_em";
 
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase
@@ -91,6 +101,55 @@ export async function carregarPrazoSubmissoes(): Promise<PrazoSubmissoes> {
     return { abertura: null, encerramento: null, aberto: true, hoje: "" };
   }
   return data[0];
+}
+
+/* ------------------------------------------------------------------
+ * Divulgação dos resultados (migration 20261027120000)
+ * ------------------------------------------------------------------
+ * Cada linha é UM e-mail de resultado: nasce 'reservado' quando o Apps
+ * Script busca a fila e é fechada como 'enviado' ou 'falha' com o que o
+ * Google respondeu — o mesmo ciclo de `envios_revisores`. Só o admin lê
+ * (o card mora em /admin/configuracoes).
+ * ----------------------------------------------------------------- */
+
+export type EnvioResultado = {
+  id: string;
+  autor_id: string;
+  autor_email: string;
+  autor_nome: string | null;
+  /** 1 reenvio · 2 correções · 3 aprovado · 4 reprovado. */
+  prioridade: number;
+  status: "reservado" | "enviado" | "falha";
+  erro: string | null;
+  criado_em: string;
+  concluido_em: string | null;
+};
+
+/**
+ * A divulgação dos resultados já passou? É o que abre o envio do pôster.
+ *
+ * Calculado NO SERVIDOR (`resultados_divulgados()`), nunca a partir da data
+ * com o relógio do navegador — mesmo motivo do `aberto` do prazo. A falha
+ * devolve `null` = "não sei", que não esconde o botão: quem recusa é
+ * `enviar_posteres`, com a frase certa.
+ */
+export async function carregarResultadosDivulgados(): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc("resultados_divulgados");
+  if (error || typeof data !== "boolean") return null;
+  return data;
+}
+
+/**
+ * O registro dos e-mails de resultado. O erro PROPAGA: quem acompanha a
+ * divulgação não pode ler "nenhum enviado" por causa de uma falha de rede.
+ */
+export async function listarEnviosResultados(): Promise<EnvioResultado[]> {
+  const { data, error } = await supabase
+    .from("envios_resultados")
+    .select("id, autor_id, autor_email, autor_nome, prioridade, status, erro, criado_em, concluido_em")
+    .order("criado_em", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as EnvioResultado[];
 }
 
 /* ------------------------------------------------------------------

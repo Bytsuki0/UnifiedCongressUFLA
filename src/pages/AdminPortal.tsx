@@ -16,14 +16,19 @@ import {
 } from "@/services/trabalhosService";
 import {
   carregarConfiguracoes,
+  listarEnviosResultados,
   salvarConfiguracoes,
   type Configuracoes,
+  type EnvioResultado,
 } from "@/services/configuracoesService";
+import { situacaoEnvio } from "@/services/revisorService";
+import { agoraEmLavras, autoresAguardandoDecisao, ultimoEnvioPorAutor } from "@/lib/resultados";
 import { toast } from "sonner";
 import { APP_SHORT } from "@/lib/brand";
 
 type Trabalho = {
   id: string;
+  owner_id: string | null;
   titulo: string;
   autores: string;
   categoria_id: string | null;
@@ -67,6 +72,12 @@ const AdminPortal = () => {
   // O encerramento das avaliações como está NO BANCO: só uma data NOVA no
   // passado pede confirmação (ela dispara o aviso de atraso no minuto seguinte).
   const [revisoesGravado, setRevisoesGravado] = useState<string | null>(null);
+  // Idem para a divulgação dos resultados: um momento NOVO no passado solta
+  // os e-mails de resultado no minuto seguinte, e eles não se desfazem.
+  const [resultadosGravado, setResultadosGravado] = useState<string | null>(null);
+  // O registro dos e-mails de resultado. `null` = carregando; "erro" nunca
+  // vira "nenhum enviado" na tela.
+  const [envios, setEnvios] = useState<EnvioResultado[] | "erro" | null>(null);
   const setCampo = <K extends keyof Configuracoes>(campo: K, valor: Configuracoes[K]) =>
     setConfig((c) => (c ? { ...c, [campo]: valor } : c));
 
@@ -79,8 +90,14 @@ const AdminPortal = () => {
         const lida = await carregarConfiguracoes();
         setConfig(lida);
         setRevisoesGravado(lida?.revisoes_encerramento ?? null);
+        setResultadosGravado(lida?.resultados_divulgacao ?? null);
       } catch {
         toast.error("Não foi possível carregar as configurações.");
+      }
+      try {
+        setEnvios(await listarEnviosResultados());
+      } catch {
+        setEnvios("erro");
       }
     };
     init();
@@ -229,10 +246,25 @@ const AdminPortal = () => {
         )) {
       return;
     }
+    // Mesma lógica para a divulgação, no formato do `datetime-local`
+    // (comparar as strings é comparar os momentos; ver `agoraEmLavras`).
+    const divulgacao = config.resultados_divulgacao?.slice(0, 16) ?? null;
+    if (divulgacao
+        && divulgacao !== resultadosGravado?.slice(0, 16)
+        && divulgacao <= agoraEmLavras()
+        && !confirm(
+          "O momento da divulgação escolhido já passou.\n\n" +
+          "Cada autor com todos os trabalhos decididos recebe o e-mail de resultado de " +
+          "congressoparaiso@ufla.br a partir do próximo minuto, e o envio não se desfaz. " +
+          "Salvar assim mesmo?"
+        )) {
+      return;
+    }
     setSalvandoConfig(true);
     try {
       await salvarConfiguracoes(config);
       setRevisoesGravado(config.revisoes_encerramento);
+      setResultadosGravado(config.resultados_divulgacao);
       toast.success("Configurações salvas. O prazo passa a valer imediatamente.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar.");
@@ -240,6 +272,21 @@ const AdminPortal = () => {
       setSalvandoConfig(false);
     }
   };
+
+  // Em que pé está a divulgação. O envio mais recente de cada autor decide:
+  // uma falha seguida de envio bem-sucedido não é problema de ninguém.
+  const ultimosEnvios = Array.isArray(envios) ? ultimoEnvioPorAutor(envios) : [];
+  const contarSituacao = (s: string) => ultimosEnvios.filter((e) => situacaoEnvio(e) === s).length;
+  const enviosComProblema = ultimosEnvios.filter((e) => {
+    const s = situacaoEnvio(e);
+    return s === "falha" || s === "sem_confirmacao";
+  });
+  const tentativasFalhas = (autorId: string) =>
+    Array.isArray(envios) ? envios.filter((e) => e.autor_id === autorId && e.status === "falha").length : 0;
+  const aguardandoDecisao = autoresAguardandoDecisao(
+    trabalhos,
+    new Set(ultimosEnvios.filter((e) => e.status !== "falha").map((e) => e.autor_id)),
+  );
 
   const stats = {
     total: trabalhos.length,
@@ -594,6 +641,82 @@ const AdminPortal = () => {
                     <div className="config-display">EQUIVALE A {config.alerta_horas}h ≈ {(config.alerta_horas / 24).toFixed(1)} dias</div>
                   </div>
                 </div>
+              </div>
+
+              <div className="config-card">
+                <div className="config-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span className="config-title">Divulgação dos Resultados</span>
+                </div>
+
+                {/* Regra de servidor (`resultados_devidos`, migration
+                    20261027120000). O texto abaixo repete as decisões do
+                    usuário: um e-mail por autor, só depois da última
+                    decisão dele, na ordem de urgência. */}
+                <div className="alert alert-info alert-admin" style={{ marginBottom: "var(--space-4)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <div>
+                    <strong>NESTE MOMENTO CADA AUTOR RECEBE UM E-MAIL</strong> de congressoparaiso@ufla.br
+                    com todos os seus trabalhos: o resultado e a média das notas de cada um. O e-mail de um
+                    autor só sai quando <strong>todos</strong> os trabalhos dele têm decisão, e saem primeiro
+                    os reenvios solicitados, depois os aprovados com correções, os aprovados e os reprovados.
+                    Horário de Brasília. <strong>Campo vazio = nenhum e-mail.</strong> Cada autor recebe uma
+                    única vez: mudar a data depois não reenvia. O portal continua mostrando cada decisão
+                    assim que ela é registrada. <strong>No mesmo momento abre o envio de pôsteres</strong>{" "}
+                    dos trabalhos aprovados, nas categorias com um anexo marcado como pôster.
+                  </div>
+                </div>
+
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-divulgacao">Momento da Divulgação</label>
+                    {/* Sem fuso, de propósito: o servidor lê o valor como
+                        hora de Brasília. `.slice(0, 16)` tira os segundos que
+                        o banco devolve. */}
+                    <input
+                      type="datetime-local"
+                      id="cfg-divulgacao"
+                      className="form-input"
+                      value={config.resultados_divulgacao?.slice(0, 16) ?? ""}
+                      onChange={e => setCampo("resultados_divulgacao", e.target.value || null)}
+                    />
+                  </div>
+                </div>
+
+                {envios === null ? (
+                  <div className="config-display">CARREGANDO O REGISTRO DOS E-MAILS...</div>
+                ) : envios === "erro" ? (
+                  <div className="alert alert-warning alert-admin">
+                    Não foi possível carregar o registro dos e-mails de resultado.
+                  </div>
+                ) : (
+                  <>
+                    <div className="config-display">
+                      {contarSituacao("enviado")} ENVIADO(S) · {contarSituacao("enviando")} SAINDO AGORA ·{" "}
+                      {enviosComProblema.length} COM PROBLEMA · {aguardandoDecisao} AUTOR(ES) AGUARDANDO DECISÃO
+                    </div>
+                    {enviosComProblema.length > 0 && (
+                      <ul style={{ margin: "var(--space-3) 0 0", paddingLeft: 20, fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
+                        {enviosComProblema.map((e) => (
+                          <li key={e.id}>
+                            <strong>{e.autor_nome ? `${e.autor_nome} (${e.autor_email})` : e.autor_email}</strong>:{" "}
+                            {situacaoEnvio(e) === "sem_confirmacao"
+                              ? "reservado sem confirmação do Apps Script. O e-mail pode ou não ter saído, e não é tentado de novo."
+                              : `${e.erro ?? "falha sem motivo registrado"}${
+                                  tentativasFalhas(e.autor_id) >= 3
+                                    ? " (3 tentativas, não é tentado de novo)"
+                                    : " (é tentado de novo no próximo minuto)"
+                                }`}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
               </div>
             </div>
             )}

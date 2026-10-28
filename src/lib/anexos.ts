@@ -44,6 +44,14 @@ export type AnexoDaCategoria = {
    * concordar.
    */
   obrigatorio: boolean;
+  /**
+   * Pôster (só PDF, migration 20261027180000): fica FORA da submissão — as
+   * quatro telas do autor nunca o mostram. O autor o envia depois da
+   * divulgação dos resultados, pela lista de trabalhos, e só se o trabalho
+   * foi aprovado (`podeEnviarPoster`). Nunca é obrigatório: o CHECK do
+   * banco recusa a combinação.
+   */
+  poster: boolean;
   ordem: number;
 };
 
@@ -63,6 +71,12 @@ export type AnexoDoTrabalho = {
   ordem: number;
   /** Caminho no bucket `Pdfs` (tipo 'pdf') ou URL do YouTube (tipo 'video'). */
   valor: string;
+  /**
+   * Cópia da exigência, como `tipo` e `titulo`: o pôster continua pôster
+   * mesmo depois que a exigência é apagada. Só `enviar_posteres` grava
+   * uma linha assim, e a submissão nunca a apaga.
+   */
+  poster: boolean;
 };
 
 /** O que o formulário guarda para UMA exigência. */
@@ -106,13 +120,39 @@ export function valorAtual(
  * as mostram em modo leitura, avisando que a próxima gravação as
  * descarta — que é exatamente o que `aplicar_anexos` faz. Sem esse aviso
  * o arquivo sumiria sem explicação.
+ *
+ * Pôster nunca é órfão: a submissão não o escreve e por isso não o apaga.
+ * Avisar "será descartado" sobre ele seria mentir para quem foi aprovado
+ * com correções e já mandou o pôster.
  */
 export function anexosOrfaos(
   atuais: AnexoDoTrabalho[] | undefined,
   exigencias: AnexoDaCategoria[],
 ): AnexoDoTrabalho[] {
   const exigidos = new Set(exigencias.map((e) => e.id));
-  return ordenarAnexos((atuais ?? []).filter((a) => !a.anexo_id || !exigidos.has(a.anexo_id)));
+  return ordenarAnexos(
+    (atuais ?? []).filter((a) => !a.poster && (!a.anexo_id || !exigidos.has(a.anexo_id))),
+  );
+}
+
+/** Os desfechos que abrem o envio do pôster — o mesmo teste de `enviar_posteres`. */
+export const STATUS_COM_POSTER = ["aprovado", "aprovado_correcoes"];
+
+/**
+ * O botão do pôster aparece na linha do trabalho? A categoria tem de pedir
+ * pôster, o trabalho tem de estar aprovado e a divulgação dos resultados
+ * tem de ter passado.
+ *
+ * `divulgado` nulo é "não sei" (falha de rede) e não esconde o botão —
+ * mesma postura de `emailConfirmado` e do prazo: quem recusa é
+ * `enviar_posteres`, no servidor, com a frase certa.
+ */
+export function podeEnviarPoster(
+  status: string,
+  posteres: AnexoDaCategoria[],
+  divulgado: boolean | null,
+): boolean {
+  return posteres.length > 0 && STATUS_COM_POSTER.includes(status) && divulgado !== false;
 }
 
 /**

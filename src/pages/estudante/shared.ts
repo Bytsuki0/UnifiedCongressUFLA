@@ -213,6 +213,11 @@ export function usePrazo() {
  * Falha de rede devolve mapa vazio, e a consequência é benigna: o passo
  * de anexos não aparece e o servidor recusa a submissão incompleta com a
  * frase certa. O contrário — travar o formulário inteiro — seria pior.
+ *
+ * ⚠ `exigenciasDe` NUNCA devolve pôster: é ela que monta os campos da
+ * submissão, e o pôster é enviado depois, pela lista de trabalhos
+ * (`posteresDe`). O servidor recusa pôster na submissão de qualquer jeito
+ * (`aplicar_anexos`), mas a tela não deve nem pedir.
  */
 export function useExigencias() {
   const [porCategoria, setPorCategoria] = useState<Record<string, AnexoDaCategoria[]>>({});
@@ -229,11 +234,17 @@ export function useExigencias() {
 
   const exigenciasDe = useCallback(
     (categoriaId: string | null | undefined): AnexoDaCategoria[] =>
-      categoriaId ? (porCategoria[categoriaId] ?? []) : [],
+      categoriaId ? (porCategoria[categoriaId] ?? []).filter((a) => !a.poster) : [],
     [porCategoria],
   );
 
-  return { porCategoria, carregando, exigenciasDe };
+  const posteresDe = useCallback(
+    (categoriaId: string | null | undefined): AnexoDaCategoria[] =>
+      categoriaId ? (porCategoria[categoriaId] ?? []).filter((a) => a.poster) : [],
+    [porCategoria],
+  );
+
+  return { carregando, exigenciasDe, posteresDe };
 }
 
 /**

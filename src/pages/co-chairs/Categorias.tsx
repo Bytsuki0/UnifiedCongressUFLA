@@ -205,10 +205,15 @@ const Categorias = () => {
         titulo: anexo.titulo.trim(),
         descricao: anexo.descricao.trim(),
         obrigatorio: anexo.obrigatorio,
+        poster: anexo.poster,
       });
       toast.success("Anexo salvo.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar o anexo.");
+      // A recusa típica é a do banco ao trocar o modo pôster de uma
+      // exigência já entregue: sem recarregar, a linha continuaria
+      // mostrando a opção que NÃO foi gravada.
+      load();
     } finally {
       setAnexoOcupado(null);
     }
@@ -218,9 +223,12 @@ const Categorias = () => {
     const quantos = counts[cat.id] ?? 0;
     const aviso =
       `Remover "${anexo.titulo}" das exigências de ${cat.nome}?\n\n` +
-      "Os trabalhos já submetidos NÃO perdem o que enviaram — o arquivo continua " +
-      "visível para os revisores. Ele só é descartado se o autor salvar o trabalho " +
-      "de novo." +
+      (anexo.poster
+        ? "Os pôsteres já enviados NÃO são apagados — continuam na aba Pôsteres. " +
+          "Só deixa de ser possível enviar um novo."
+        : "Os trabalhos já submetidos NÃO perdem o que enviaram — o arquivo continua " +
+          "visível para os revisores. Ele só é descartado se o autor salvar o trabalho " +
+          "de novo.") +
       (quantos > 0 ? `\n\n${quantos} trabalho(s) usam esta categoria.` : "");
     if (!confirm(aviso)) return;
 
@@ -328,10 +336,14 @@ const Categorias = () => {
                   <h2 className="text-lg font-semibold">{cat.nome}</h2>
                   <p className="text-xs text-muted-foreground">
                     {counts[cat.id] ?? 0} trabalho(s) · {cat.criterios.length} critério(s) ·{" "}
-                    {cat.anexos.filter((a) => a.tipo === "pdf").length} PDF(s) ·{" "}
+                    {cat.anexos.filter((a) => a.tipo === "pdf" && !a.poster).length} PDF(s) ·{" "}
                     {cat.anexos.filter((a) => a.tipo === "video").length} vídeo(s)
-                    {cat.anexos.some((a) => !a.obrigatorio) &&
-                      ` · ${cat.anexos.filter((a) => !a.obrigatorio).length} opcional(is)`}
+                    {/* Pôster nunca é obrigatório, mas também não é "opcional"
+                        da submissão: conta à parte. */}
+                    {cat.anexos.some((a) => !a.obrigatorio && !a.poster) &&
+                      ` · ${cat.anexos.filter((a) => !a.obrigatorio && !a.poster).length} opcional(is)`}
+                    {cat.anexos.some((a) => a.poster) &&
+                      ` · ${cat.anexos.filter((a) => a.poster).length} pôster(es)`}
                   </p>
                 </div>
                 <Button
@@ -387,7 +399,9 @@ const Categorias = () => {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Cada linha vira um campo no formulário do autor e uma aba na tela do
                       revisor. Marque cada uma como obrigatória — sem ela a submissão não passa —
-                      ou opcional. Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
+                      ou opcional. Um PDF também pode ser pôster: ele sai da submissão e é
+                      enviado depois da divulgação dos resultados, só pelos trabalhos aprovados.
+                      Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
                     </p>
                   </div>
 
@@ -443,10 +457,14 @@ const Categorias = () => {
                             linha e uma gravação por campo daria três toasts
                             para uma edição só. */}
                         <RadioGroup
-                          value={anexo.obrigatorio ? "obrigatorio" : "opcional"}
+                          value={anexo.poster ? "poster" : anexo.obrigatorio ? "obrigatorio" : "opcional"}
                           onValueChange={(valor) =>
+                            // Pôster nunca é obrigatório: o CHECK do banco
+                            // recusa a combinação, então a tela já grava as
+                            // duas colunas juntas.
                             setAnexoCampo(cat.id, anexo.id, {
                               obrigatorio: valor === "obrigatorio",
+                              poster: valor === "poster",
                             })
                           }
                           aria-label={`Obrigatoriedade de ${anexo.titulo}`}
@@ -465,11 +483,23 @@ const Categorias = () => {
                             <RadioGroupItem value="opcional" aria-label="Opcional" />
                             Opcional
                           </label>
+                          {/* Só PDF: vídeo de apresentação já tem a vitrine
+                              de pitches. A troca é livre até a primeira
+                              entrega; depois o banco recusa (a frase vem no
+                              toast do "Salvar anexo"). */}
+                          {anexo.tipo === "pdf" && (
+                            <label className="flex cursor-pointer items-center gap-2 text-sm">
+                              <RadioGroupItem value="poster" aria-label="Pôster" />
+                              Pôster
+                            </label>
+                          )}
                         </RadioGroup>
                         <p className="text-xs text-muted-foreground">
-                          {anexo.obrigatorio
-                            ? "O autor não consegue enviar o trabalho sem este item."
-                            : "O campo aparece no formulário, mas pode ficar em branco."}
+                          {anexo.poster
+                            ? "Fica fora da submissão: o autor envia depois da divulgação dos resultados, pela lista de trabalhos, e só se o trabalho for aprovado."
+                            : anexo.obrigatorio
+                              ? "O autor não consegue enviar o trabalho sem este item."
+                              : "O campo aparece no formulário, mas pode ficar em branco."}
                         </p>
 
                         <Button

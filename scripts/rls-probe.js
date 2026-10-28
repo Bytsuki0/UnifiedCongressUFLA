@@ -94,6 +94,7 @@ const TABELAS = {
   configuracoes: "negada",
   criterios: "negada",
   decisoes_editoriais: "negada",
+  envios_resultados: "negada",
   envios_revisores: "negada",
   estudantes: "negada",
   minicourse_registrations: "negada",
@@ -148,6 +149,16 @@ const RPCS_NEGADAS = [
   ["solicitar_avisos_atribuicao", {}],
   ["emails_devidos", { _limite: 1 }],
   ["concluir_envios", { _resultados: [] }],
+  // Divulgação dos resultados (migration 20261027120000): a fila é da Edge
+  // Function, como a dos revisores — e a mesma ressalva vale, buscar é
+  // reservar. "Já divulgou?" é de quem tem sessão.
+  ["resultados_devidos", { _limite: 1 }],
+  ["resultados_divulgados", {}],
+  // Pôsteres (migration 20261027180000): escrita do autor, com sessão.
+  [
+    "enviar_posteres",
+    { _trabalho_id: "00000000-0000-0000-0000-000000000000", _anexos: [] },
+  ],
   // Parecer editorial (migration 20260820140000). A primeira é staff-only;
   // as outras duas exigem sessão do autor.
   [
