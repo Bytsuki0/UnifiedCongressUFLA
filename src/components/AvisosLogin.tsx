@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 import { useAvisos } from "@/contexts/AvisosContext";
 import { CorpoDoAviso } from "@/components/CorpoDoAviso";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -37,6 +39,31 @@ export const AvisosLogin = () => {
   }, [atual, marcarVisto]);
 
   if (!atual) return null;
+
+  // Banner: só a imagem, sem cartão branco nem botão "Entendi". 80% da
+  // largura no desktop, a largura inteira no celular; fecha pelo X azul.
+  // O X padrão do DialogContent (último filho) é escondido para não haver dois.
+  if (atual.tipo === "banner") {
+    return (
+      <Dialog open onOpenChange={(aberto) => !aberto && fechar()}>
+        {/* z-[110]: acima da barra lateral (z-index 100 no index.css). */}
+        <DialogContent
+          overlayClassName="z-[110]"
+          className="z-[110] w-screen max-w-none gap-0 border-0 bg-transparent p-0 shadow-none sm:w-[80vw] sm:rounded-none [&>button:last-child]:hidden"
+        >
+          <DialogTitle className="sr-only">{atual.titulo}</DialogTitle>
+          <CorpoDoAviso aviso={atual} imgClassName="block h-auto w-full max-h-[90dvh] object-contain" />
+          <DialogClose
+            className="absolute right-2 top-2 rounded-full bg-primary p-1.5 text-primary-foreground shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
+            title="Fechar"
+            aria-label="Fechar"
+          >
+            <X className="h-5 w-5" />
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={(aberto) => !aberto && fechar()}>

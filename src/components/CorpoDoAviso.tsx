@@ -16,7 +16,7 @@ import { TextoRico } from "@/components/TextoRico";
  * bucket é privado e a URL expira, então não há o que pré-carregar nem
  * o que guardar.
  */
-export const CorpoDoAviso = ({ aviso }: { aviso: Aviso }) => {
+export const CorpoDoAviso = ({ aviso, imgClassName = "w-full rounded-md" }: { aviso: Aviso; imgClassName?: string }) => {
   const [banner, setBanner] = useState<string | null>(null);
   const [tentou, setTentou] = useState(false);
 
@@ -45,7 +45,7 @@ export const CorpoDoAviso = ({ aviso }: { aviso: Aviso }) => {
       <img
         src={banner}
         alt={aviso.titulo}
-        className="w-full rounded-md"
+        className={imgClassName}
         /* O banner chega em tamanho de cartaz. `height: auto` com a
            largura do contêiner evita que uma imagem alta empurre os
            botões para fora da área rolável. */
