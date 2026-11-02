@@ -45,6 +45,7 @@ const abrir = (atuais: AnexoDoTrabalho[]) =>
       trabalho={{ id: "t1", titulo: "Meu trabalho" }}
       posteres={[POSTER]}
       atuais={atuais}
+      encerramento="20/11/2026"
       ownerId="u1"
       onFechar={() => {}}
       onEnviado={() => {}}

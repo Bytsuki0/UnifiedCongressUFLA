@@ -13,6 +13,8 @@ import { renderHook, waitFor } from "@testing-library/react";
  *   2. **O envio limpa o Storage nos dois sentidos**: o pôster trocado sai
  *      do bucket depois da gravação, e o arquivo recém-subido sai quando a
  *      RPC recusa — senão cada tentativa recusada deixaria um PDF pago.
+ *   3. **A janela de envio (20261102120000) falha como "não sei"**: erro de
+ *      rede vira `aberto: null`, que não esconde o botão — nunca `false`.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -34,6 +36,7 @@ vi.mock("@/services/categoriasService", () => ({
 
 import { useExigencias } from "@/pages/estudante/shared";
 import { enviarPosteres } from "@/services/anexosService";
+import { carregarPrazoPosteres } from "@/services/configuracoesService";
 import type { AnexoDaCategoria } from "@/lib/anexos";
 
 const exigencia = (id: string, poster: boolean): AnexoDaCategoria => ({
@@ -64,6 +67,20 @@ describe("useExigencias", () => {
     expect(result.current.exigenciasDe("c1").map((a) => a.id)).toEqual(["a1"]);
     expect(result.current.posteresDe("c1").map((a) => a.id)).toEqual(["p1"]);
     expect(result.current.posteresDe(null)).toEqual([]);
+  });
+});
+
+describe("carregarPrazoPosteres", () => {
+  it("devolve a janela do servidor", async () => {
+    const janela = { abertura: "2026-11-10", encerramento: "2026-11-20", aberto: false };
+    mocks.rpc.mockResolvedValue({ data: [janela], error: null });
+    expect(await carregarPrazoPosteres()).toEqual(janela);
+    expect(mocks.rpc).toHaveBeenCalledWith("prazo_posteres");
+  });
+
+  it("falha de rede é 'não sei' (aberto: null), nunca 'fechado'", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "Failed to fetch" } });
+    expect((await carregarPrazoPosteres()).aberto).toBeNull();
   });
 });
 

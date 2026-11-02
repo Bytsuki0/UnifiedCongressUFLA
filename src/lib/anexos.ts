@@ -46,8 +46,8 @@ export type AnexoDaCategoria = {
   obrigatorio: boolean;
   /**
    * Pôster (só PDF, migration 20261027180000): fica FORA da submissão — as
-   * quatro telas do autor nunca o mostram. O autor o envia depois da
-   * divulgação dos resultados, pela lista de trabalhos, e só se o trabalho
+   * quatro telas do autor nunca o mostram. O autor o envia pela lista de
+   * trabalhos, dentro da janela de envio de pôsteres, e só se o trabalho
    * foi aprovado (`podeEnviarPoster`). Nunca é obrigatório: o CHECK do
    * banco recusa a combinação.
    */
@@ -140,19 +140,19 @@ export const STATUS_COM_POSTER = ["aprovado", "aprovado_correcoes"];
 
 /**
  * O botão do pôster aparece na linha do trabalho? A categoria tem de pedir
- * pôster, o trabalho tem de estar aprovado e a divulgação dos resultados
- * tem de ter passado.
+ * pôster, o trabalho tem de estar aprovado e a janela de envio tem de estar
+ * aberta (`posteres_abertos()`, migration 20261102120000).
  *
- * `divulgado` nulo é "não sei" (falha de rede) e não esconde o botão —
+ * `aberto` nulo é "não sei" (falha de rede) e não esconde o botão —
  * mesma postura de `emailConfirmado` e do prazo: quem recusa é
  * `enviar_posteres`, no servidor, com a frase certa.
  */
 export function podeEnviarPoster(
   status: string,
   posteres: AnexoDaCategoria[],
-  divulgado: boolean | null,
+  aberto: boolean | null,
 ): boolean {
-  return posteres.length > 0 && STATUS_COM_POSTER.includes(status) && divulgado !== false;
+  return posteres.length > 0 && STATUS_COM_POSTER.includes(status) && aberto !== false;
 }
 
 /**

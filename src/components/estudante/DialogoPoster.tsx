@@ -34,6 +34,7 @@ export function DialogoPoster({
   trabalho,
   posteres,
   atuais,
+  encerramento,
   ownerId,
   onFechar,
   onEnviado,
@@ -43,6 +44,8 @@ export function DialogoPoster({
   posteres: AnexoDaCategoria[];
   /** Os pôsteres que o trabalho já entregou. */
   atuais: AnexoDoTrabalho[];
+  /** Último dia do envio, já formatado ('DD/MM/AAAA'); nulo esconde a linha. */
+  encerramento: string | null;
   ownerId: string;
   onFechar: () => void;
   onEnviado: () => void;
@@ -78,7 +81,10 @@ export function DialogoPoster({
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Pôster</DialogTitle>
-          <DialogDescription>{trabalho.titulo}</DialogDescription>
+          <DialogDescription>
+            {trabalho.titulo}
+            {encerramento && <><br />Envio aberto até {encerramento}, horário de Brasília.</>}
+          </DialogDescription>
         </DialogHeader>
 
         <CamposAnexos

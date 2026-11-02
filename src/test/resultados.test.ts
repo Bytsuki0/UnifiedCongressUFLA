@@ -50,6 +50,15 @@ describe("carregarConfiguracoes (painel do admin)", () => {
     await carregarConfiguracoes();
     expect(mocks.select.mock.calls[0][0] as string).toContain("resultados_divulgacao");
   });
+
+  // Mesmo motivo, para a janela dos pôsteres (20261102120000): fora do
+  // select, o SALVAR fecharia o envio gravando as duas datas vazias.
+  it("carrega a janela do envio de pôsteres", async () => {
+    await carregarConfiguracoes();
+    const colunas = mocks.select.mock.calls[0][0] as string;
+    expect(colunas).toContain("posteres_abertura");
+    expect(colunas).toContain("posteres_encerramento");
+  });
 });
 
 describe("listarEnviosResultados", () => {

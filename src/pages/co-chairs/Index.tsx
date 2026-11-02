@@ -101,7 +101,7 @@ const SECOES: Secao[] = [
     para: "/co-chairs/posteres",
     titulo: "Pôsteres",
     descricao:
-      "Os pôsteres que os autores dos trabalhos aprovados enviaram depois da divulgação dos resultados.",
+      "Os pôsteres que os autores dos trabalhos aprovados enviaram na janela de pôsteres.",
     Icone: Presentation,
   },
   {

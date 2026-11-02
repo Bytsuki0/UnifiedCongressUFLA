@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DialogoPoster } from "@/components/estudante/DialogoPoster";
 import { anexosPorTrabalho } from "@/services/anexosService";
-import { carregarResultadosDivulgados } from "@/services/configuracoesService";
+import { carregarPrazoPosteres, type PrazoPosteres } from "@/services/configuracoesService";
 import { podeEnviarPoster, type AnexoDoTrabalho } from "@/lib/anexos";
 import {
   AGUARDANDO_CORRECAO,
@@ -37,7 +37,7 @@ import {
  *
  * O PÔSTER (migration 20261027180000) é enviado daqui, e não da submissão:
  * o botão aparece na linha do trabalho aprovado cuja categoria pede pôster,
- * depois da divulgação dos resultados.
+ * enquanto a janela de envio de pôsteres está aberta (20261102120000).
  */
 const PapeisSubmetidos = () => {
   const navigate = useNavigate();
@@ -65,13 +65,13 @@ const PapeisSubmetidos = () => {
     return () => { vivo = false; };
   }, [trabalhos, versaoAnexos]);
 
-  // A divulgação dos resultados já passou? Vem do servidor. `undefined`
-  // enquanto carrega (o botão do pôster não pisca); `null` é falha, "não
+  // A janela do pôster está aberta? Vem do servidor. `undefined` enquanto
+  // carrega (o botão do pôster não pisca); `aberto: null` é falha, "não
   // sei", e não esconde nada — quem recusa é `enviar_posteres`.
-  const [divulgado, setDivulgado] = useState<boolean | null | undefined>(undefined);
+  const [prazoPoster, setPrazoPoster] = useState<PrazoPosteres | undefined>(undefined);
   useEffect(() => {
     let vivo = true;
-    carregarResultadosDivulgados().then(d => { if (vivo) setDivulgado(d); });
+    carregarPrazoPosteres().then(p => { if (vivo) setPrazoPoster(p); });
     return () => { vivo = false; };
   }, []);
   const [posterDe, setPosterDe] = useState<Submission | null>(null);
@@ -214,8 +214,8 @@ const PapeisSubmetidos = () => {
                   const podeCorrigir = t.status === AGUARDANDO_CORRECAO;
                   const podeReenviar = t.status === AGUARDANDO_REENVIO;
                   const podePoster =
-                    divulgado !== undefined &&
-                    podeEnviarPoster(t.status, posteresDe(t.categoria_id), divulgado);
+                    prazoPoster !== undefined &&
+                    podeEnviarPoster(t.status, posteresDe(t.categoria_id), prazoPoster.aberto);
                   const temPoster = (anexos[t.id] ?? []).some(a => a.poster);
                   const semAcao =
                     !podeVerParecer && !podeEditar && !podeCorrigir && !podeReenviar && !podePoster;
@@ -297,6 +297,7 @@ const PapeisSubmetidos = () => {
           trabalho={posterDe}
           posteres={posteresDe(posterDe.categoria_id)}
           atuais={(anexos[posterDe.id] ?? []).filter(a => a.poster)}
+          encerramento={prazoPoster?.encerramento ? formatarData(prazoPoster.encerramento) : null}
           ownerId={user.id}
           onFechar={() => setPosterDe(null)}
           onEnviado={() => {

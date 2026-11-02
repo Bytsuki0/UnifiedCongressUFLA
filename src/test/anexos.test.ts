@@ -340,7 +340,7 @@ describe("valorAtual e anexosOrfaos", () => {
 describe("podeEnviarPoster", () => {
   const exigencias = [poster("p1", 2)];
 
-  it("aprovado e aprovado com correções, numa categoria com pôster, depois da divulgação", () => {
+  it("aprovado e aprovado com correções, numa categoria com pôster, com a janela aberta", () => {
     expect(podeEnviarPoster("aprovado", exigencias, true)).toBe(true);
     expect(podeEnviarPoster("aprovado_correcoes", exigencias, true)).toBe(true);
   });
@@ -355,7 +355,7 @@ describe("podeEnviarPoster", () => {
     expect(podeEnviarPoster("aprovado", [], true)).toBe(false);
   });
 
-  it("antes da divulgação não há botão; 'não sei' (falha de rede) não esconde", () => {
+  it("janela fechada não tem botão; 'não sei' (falha de rede) não esconde", () => {
     expect(podeEnviarPoster("aprovado", exigencias, false)).toBe(false);
     expect(podeEnviarPoster("aprovado", exigencias, null)).toBe(true);
   });

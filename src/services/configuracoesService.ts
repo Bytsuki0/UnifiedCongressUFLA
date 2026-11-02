@@ -13,7 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
  * o das avaliações (`revisoes_encerramento` + `alerta_horas`) move os
  * e-mails aos revisores (`emails_devidos`, migration 20261014120000) e a
  * divulgação (`resultados_divulgacao`) solta o e-mail de resultado de cada
- * autor (`resultados_devidos`, migration 20261027120000). Os outros campos
+ * autor (`resultados_devidos`, migration 20261027120000) e a janela dos
+ * pôsteres abre e fecha `enviar_posteres` (migration 20261102120000). Os outros campos
  * são gravados para que o botão pare de mentir, mas ainda não travam nada —
  * quem for usar `max_coautores` ou `parecer_min_caracteres` precisa escrever
  * a trava em SQL junto, nunca no cliente.
@@ -43,6 +44,13 @@ export type Configuracoes = {
    * o leria no fuso DELE.
    */
   resultados_divulgacao: string | null;
+  /**
+   * Janela do envio de pôsteres, 'AAAA-MM-DD' nas duas pontas (inclusivas,
+   * horário de Brasília). ⚠ Vazia = envio FECHADO, o oposto do prazo de
+   * submissão; e o CHECK do banco recusa só uma das duas.
+   */
+  posteres_abertura: string | null;
+  posteres_encerramento: string | null;
   edital: string;
   atualizado_em: string;
 };
@@ -70,7 +78,7 @@ export type PrazoSubmissoes = {
  * mudar.
  */
 const COLUNAS_DO_ADMIN =
-  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, edital, atualizado_em";
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, posteres_abertura, posteres_encerramento, edital, atualizado_em";
 
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase
@@ -125,18 +133,25 @@ export type EnvioResultado = {
   concluido_em: string | null;
 };
 
-/**
- * A divulgação dos resultados já passou? É o que abre o envio do pôster.
- *
- * Calculado NO SERVIDOR (`resultados_divulgados()`), nunca a partir da data
- * com o relógio do navegador — mesmo motivo do `aberto` do prazo. A falha
- * devolve `null` = "não sei", que não esconde o botão: quem recusa é
- * `enviar_posteres`, com a frase certa.
- */
-export async function carregarResultadosDivulgados(): Promise<boolean | null> {
-  const { data, error } = await supabase.rpc("resultados_divulgados");
-  if (error || typeof data !== "boolean") return null;
-  return data;
+/** A janela do envio de pôsteres (migration 20261102120000). */
+export type PrazoPosteres = {
+  abertura: string | null;
+  encerramento: string | null;
+  /**
+   * Calculado NO SERVIDOR (`posteres_abertos()`), nunca a partir das datas
+   * com o relógio do navegador — mesmo motivo do `aberto` do prazo. `null`
+   * = falha, "não sei", que não esconde o botão: quem recusa é
+   * `enviar_posteres`, com a frase certa.
+   */
+  aberto: boolean | null;
+};
+
+export async function carregarPrazoPosteres(): Promise<PrazoPosteres> {
+  const { data, error } = await supabase.rpc("prazo_posteres");
+  if (error || !data || data.length === 0) {
+    return { abertura: null, encerramento: null, aberto: null };
+  }
+  return data[0];
 }
 
 /**

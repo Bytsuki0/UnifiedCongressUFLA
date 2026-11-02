@@ -385,6 +385,8 @@ export type Database = {
           id: boolean
           max_coautores: number
           parecer_min_caracteres: number
+          posteres_abertura: string | null
+          posteres_encerramento: string | null
           resultados_divulgacao: string | null
           revisoes_encerramento: string | null
           revisores_por_trabalho: number
@@ -399,6 +401,8 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          posteres_abertura?: string | null
+          posteres_encerramento?: string | null
           resultados_divulgacao?: string | null
           revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
@@ -413,6 +417,8 @@ export type Database = {
           id?: boolean
           max_coautores?: number
           parecer_min_caracteres?: number
+          posteres_abertura?: string | null
+          posteres_encerramento?: string | null
           resultados_divulgacao?: string | null
           revisoes_encerramento?: string | null
           revisores_por_trabalho?: number
@@ -1456,6 +1462,15 @@ export type Database = {
           email: string
           nome: string
           tipo: string
+        }[]
+      }
+      posteres_abertos: { Args: never; Returns: boolean }
+      prazo_posteres: {
+        Args: never
+        Returns: {
+          aberto: boolean
+          abertura: string
+          encerramento: string
         }[]
       }
       prazo_submissoes: {

@@ -47,8 +47,8 @@ const Posteres = () => {
           <Presentation className="h-6 w-6" /> Pôsteres
         </h1>
         <p className="text-muted-foreground">
-          Os pôsteres enviados pelos autores dos trabalhos aprovados. O envio abre no momento da
-          divulgação dos resultados (definido em Configurações, no Portal Admin) e só existe nas
+          Os pôsteres enviados pelos autores dos trabalhos aprovados. O envio fica aberto entre as
+          datas do card "Envio de Pôsteres" (Configurações, no Portal Admin) e só existe nas
           categorias com um anexo marcado como pôster. Quando o autor troca o arquivo, a data
           muda.
         </p>

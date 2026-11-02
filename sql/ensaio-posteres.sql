@@ -1,15 +1,16 @@
--- Ensaio revertido dos pôsteres (migration 20261027180000).
+-- Ensaio revertido dos pôsteres (migrations 20261027180000 e
+-- 20261102120000, a janela de envio).
 --
 -- Exercita a submissão (`aplicar_anexos`), o envio do pôster
 -- (`enviar_posteres`), a trava do modo pôster e a policy de leitura DE
 -- VERDADE, no banco de produção, e desfaz tudo: o bloco termina em RAISE
 -- EXCEPTION, que leva junto as contas, a categoria, o trabalho, as entregas
--- e a data de divulgação. Nenhum arquivo é criado no Storage: os caminhos
+-- e a janela de envio. Nenhum arquivo é criado no Storage: os caminhos
 -- aqui são só texto, e nenhuma das duas funções confere o bucket.
 --
 -- Como rodar: cole no SQL Editor do dashboard do Supabase (ou mande pela
--- Management API), DEPOIS de aplicar as migrations 20261027120000 e
--- 20261027180000. Aprovado = o erro final diz "ENSAIO OK". Qualquer outra
+-- Management API), DEPOIS de aplicar as migrations 20261027120000,
+-- 20261027180000 e 20261102120000. Aprovado = o erro final diz "ENSAIO OK". Qualquer outra
 -- mensagem é a asserção que falhou, e ela diz qual.
 --
 -- O mesmo arquivo roda no PGlite, sobre um stub do schema, antes da
@@ -114,17 +115,46 @@ BEGIN
     RAISE EXCEPTION 'FALHOU: item de pôster vazio trancou a submissão ou gravou algo (%).', v_msg;
   END IF;
 
-  -- 3. Antes da divulgação, nem aprovado manda pôster.
-  UPDATE public.configuracoes SET resultados_divulgacao = NULL WHERE id;
+  -- 3. Fora da janela, nem aprovado manda pôster: sem janela, antes dela
+  --    e depois dela. A divulgação já passou e não abre nada sozinha.
+  UPDATE public.configuracoes
+     SET resultados_divulgacao = (now() AT TIME ZONE 'America/Sao_Paulo') - interval '1 minute',
+         posteres_abertura = NULL, posteres_encerramento = NULL
+   WHERE id;
   UPDATE public.trabalhos SET status = 'aprovado' WHERE id = v_trab;
   IF pg_temp.recusa(v_dono, 'enviar_posteres', v_trab, jsonb_build_array(
        jsonb_build_object('anexo_id', v_poster, 'valor', v_dono || '/poster-1.pdf'))) IS NULL THEN
-    RAISE EXCEPTION 'FALHOU: pôster aceito antes da divulgação dos resultados.';
+    RAISE EXCEPTION 'FALHOU: pôster aceito sem janela de envio (a divulgação abriu sozinha?).';
+  END IF;
+  UPDATE public.configuracoes
+     SET posteres_abertura = public.data_local() + 1, posteres_encerramento = public.data_local() + 5
+   WHERE id;
+  IF pg_temp.recusa(v_dono, 'enviar_posteres', v_trab, jsonb_build_array(
+       jsonb_build_object('anexo_id', v_poster, 'valor', v_dono || '/poster-1.pdf'))) IS NULL THEN
+    RAISE EXCEPTION 'FALHOU: pôster aceito antes da abertura do envio.';
+  END IF;
+  UPDATE public.configuracoes
+     SET posteres_abertura = public.data_local() - 5, posteres_encerramento = public.data_local() - 1
+   WHERE id;
+  IF pg_temp.recusa(v_dono, 'enviar_posteres', v_trab, jsonb_build_array(
+       jsonb_build_object('anexo_id', v_poster, 'valor', v_dono || '/poster-1.pdf'))) IS NULL THEN
+    RAISE EXCEPTION 'FALHOU: pôster aceito depois do encerramento do envio.';
   END IF;
 
-  -- 4. Divulgado, mas reprovado: recusado.
+  -- ... e a janela só existe inteira e na ordem: o CHECK recusa o resto.
+  IF pg_temp.recusa_sql(
+       'UPDATE public.configuracoes SET posteres_abertura = data_local(), posteres_encerramento = NULL WHERE id') IS NULL THEN
+    RAISE EXCEPTION 'FALHOU: janela de pôster sem encerramento aceita (abriria para sempre).';
+  END IF;
+  IF pg_temp.recusa_sql(
+       'UPDATE public.configuracoes SET posteres_abertura = data_local(), posteres_encerramento = data_local() - 1 WHERE id') IS NULL THEN
+    RAISE EXCEPTION 'FALHOU: janela de pôster invertida aceita.';
+  END IF;
+
+  -- 4. Dentro da janela (as duas pontas são hoje: inclusivas), mas
+  --    reprovado: recusado.
   UPDATE public.configuracoes
-     SET resultados_divulgacao = (now() AT TIME ZONE 'America/Sao_Paulo') - interval '1 minute'
+     SET posteres_abertura = public.data_local(), posteres_encerramento = public.data_local()
    WHERE id;
   UPDATE public.trabalhos SET status = 'reprovado' WHERE id = v_trab;
   IF pg_temp.recusa(v_dono, 'enviar_posteres', v_trab, jsonb_build_array(

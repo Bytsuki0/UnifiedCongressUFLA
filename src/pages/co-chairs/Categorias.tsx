@@ -400,7 +400,7 @@ const Categorias = () => {
                       Cada linha vira um campo no formulário do autor e uma aba na tela do
                       revisor. Marque cada uma como obrigatória — sem ela a submissão não passa —
                       ou opcional. Um PDF também pode ser pôster: ele sai da submissão e é
-                      enviado depois da divulgação dos resultados, só pelos trabalhos aprovados.
+                      enviado na janela de pôsteres, só pelos trabalhos aprovados.
                       Sem nenhuma linha, a categoria não pede arquivo nem vídeo.
                     </p>
                   </div>
@@ -496,7 +496,7 @@ const Categorias = () => {
                         </RadioGroup>
                         <p className="text-xs text-muted-foreground">
                           {anexo.poster
-                            ? "Fica fora da submissão: o autor envia depois da divulgação dos resultados, pela lista de trabalhos, e só se o trabalho for aprovado."
+                            ? "Fica fora da submissão: o autor envia na janela de pôsteres (definida pelo admin), pela lista de trabalhos, e só se o trabalho for aprovado."
                             : anexo.obrigatorio
                               ? "O autor não consegue enviar o trabalho sem este item."
                               : "O campo aparece no formulário, mas pode ficar em branco."}
