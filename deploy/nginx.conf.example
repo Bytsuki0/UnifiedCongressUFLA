@@ -28,7 +28,7 @@ server {
 
     # Áreas autenticadas: bloqueio real de indexação (o robots.txt
     # sozinho não impede que a URL apareça na busca).
-    location ~ ^/(estudante|revisor|admin|co-chairs)(/|$) {
+    location ~ ^/(estudante|revisor|avaliacao|admin|co-chairs)(/|$) {
         add_header X-Robots-Tag "noindex, nofollow" always;
         try_files $uri /index.html;
     }

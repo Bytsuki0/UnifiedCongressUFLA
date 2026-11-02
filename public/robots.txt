@@ -14,6 +14,7 @@ User-agent: *
 # Áreas autenticadas
 Disallow: /estudante
 Disallow: /revisor
+Disallow: /avaliacao
 Disallow: /admin
 Disallow: /co-chairs
 

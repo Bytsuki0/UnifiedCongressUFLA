@@ -203,6 +203,44 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_evento: {
+        Row: {
+          avaliador_id: string
+          created_at: string
+          id: string
+          itens: Json
+          media: number
+          trabalho_id: string
+          updated_at: string
+        }
+        Insert: {
+          avaliador_id: string
+          created_at?: string
+          id?: string
+          itens?: Json
+          media: number
+          trabalho_id: string
+          updated_at?: string
+        }
+        Update: {
+          avaliador_id?: string
+          created_at?: string
+          id?: string
+          itens?: Json
+          media?: number
+          trabalho_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_evento_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliadores: {
         Row: {
           created_at: string
@@ -473,6 +511,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "criterios_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      criterios_evento: {
+        Row: {
+          categoria_id: string
+          created_at: string
+          id: string
+          ordem: number
+          titulo: string
+        }
+        Insert: {
+          categoria_id: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo: string
+        }
+        Update: {
+          categoria_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "criterios_evento_categoria_id_fkey"
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "categorias"
@@ -1287,6 +1357,10 @@ export type Database = {
           url: string
         }[]
       }
+      avaliar_trabalho_evento: {
+        Args: { _notas: Json; _trabalho_id: string }
+        Returns: undefined
+      }
       close_event_and_issue_certificates: {
         Args: { _carga_horaria: number; _event_id: string; _event_type: string }
         Returns: {
@@ -1538,6 +1612,16 @@ export type Database = {
         Returns: string
       }
       submissoes_abertas: { Args: never; Returns: boolean }
+      trabalhos_para_avaliacao: {
+        Args: never
+        Returns: {
+          autores: string
+          categoria_id: string
+          em_conflito: boolean
+          id: string
+          titulo: string
+        }[]
+      }
       verify_and_mark_certificate: {
         Args: { _code: string }
         Returns: {

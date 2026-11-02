@@ -30,6 +30,8 @@
   X-Robots-Tag: noindex, nofollow
 /revisor/*
   X-Robots-Tag: noindex, nofollow
+/avaliacao/*
+  X-Robots-Tag: noindex, nofollow
 /admin/*
   X-Robots-Tag: noindex, nofollow
 /co-chairs/*

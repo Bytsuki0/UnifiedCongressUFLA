@@ -7,9 +7,11 @@ import {
   Download,
   FileText,
   Gavel,
+  ListChecks,
   Megaphone,
   Presentation,
   Tags,
+  Trophy,
   Users,
   Video,
   type LucideIcon,
@@ -58,6 +60,18 @@ const SECOES: Secao[] = [
     descricao:
       "Categorias, critérios de análise e quais anexos cada uma exige na submissão.",
     Icone: Tags,
+  },
+  {
+    para: "/co-chairs/criterios-evento",
+    titulo: "Critérios do Evento",
+    descricao: "Os critérios da avaliação ao vivo do congresso, por categoria.",
+    Icone: ListChecks,
+  },
+  {
+    para: "/co-chairs/resultados-evento",
+    titulo: "Resultados da Avaliação",
+    descricao: "O ranking das notas dadas no portal Avaliação, por categoria.",
+    Icone: Trophy,
   },
   {
     para: "/co-chairs/atribuicoes",

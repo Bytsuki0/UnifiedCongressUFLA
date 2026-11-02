@@ -80,6 +80,29 @@ const Layout = () => {
               Categorias
             </NavLink>
 
+            <NavLink to="/co-chairs/criterios-evento" title="Critérios do Evento" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <line x1="10" y1="6" x2="21" y2="6"/>
+                <line x1="10" y1="12" x2="21" y2="12"/>
+                <line x1="10" y1="18" x2="21" y2="18"/>
+                <polyline points="3 6 4 7 6 5"/>
+                <polyline points="3 12 4 13 6 11"/>
+                <polyline points="3 18 4 19 6 17"/>
+              </svg>
+              Critérios do Evento
+            </NavLink>
+
+            <NavLink to="/co-chairs/resultados-evento" title="Resultados da Avaliação" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <path d="M8 21h8"/>
+                <path d="M12 17v4"/>
+                <path d="M7 4h10v5a5 5 0 0 1-10 0z"/>
+                <path d="M17 5h3v2a3 3 0 0 1-3 3"/>
+                <path d="M7 5H4v2a3 3 0 0 0 3 3"/>
+              </svg>
+              Resultados da Avaliação
+            </NavLink>
+
             <NavLink to="/co-chairs/cronograma" title="Cronograma" className={({ isActive }) => navItem(isActive)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                 <rect x="3" y="4" width="18" height="18" rx="2"/>

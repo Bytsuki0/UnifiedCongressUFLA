@@ -69,6 +69,11 @@ import RevisorAtribuicoes from "./pages/revisor/Atribuicoes";
 import RevisorAvaliacao from "./pages/revisor/Avaliacao";
 import RevisorArquivo from "./pages/revisor/Arquivo";
 
+// Avaliação ao vivo — notas dadas durante o congresso, sob /avaliacao
+import AvaliacaoLayout from "./components/avaliacao/Layout";
+import AvaliacaoTrabalhos from "./pages/avaliacao/Trabalhos";
+import AvaliacaoAvaliar from "./pages/avaliacao/Avaliar";
+
 // Co-chairs ("Gestão de Co-Chairs") — agrupadas em co-chairs/.
 // Atenção: as URLs aqui NÃO têm prefixo (/dashboard, /trabalhos, ...).
 import Layout from "./components/co-chairs/Layout";
@@ -88,6 +93,8 @@ import CoChairsDownloads from "./pages/co-chairs/Downloads";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
 import ParecerEditorial from "./pages/co-chairs/ParecerEditorial";
 import ParecerEditorialDetalhe from "./pages/co-chairs/ParecerEditorialDetalhe";
+import CoChairsCriteriosEvento from "./pages/co-chairs/CriteriosEvento";
+import CoChairsResultadosEvento from "./pages/co-chairs/ResultadosEvento";
 
 // Cache compartilhado do React Query — instanciado uma única vez fora do
 // componente para não ser recriado a cada render.
@@ -236,6 +243,17 @@ const App = () => (
               </Route>
             </Route>
 
+            {/* Avaliação ao vivo: mesmos papéis do Revisor, sem distribuição —
+                quem avalia busca o trabalho. Quem recusa é a RPC. */}
+            <Route element={<ProtectedRoute allowedRoles={["professor", "avaliador", "admin"]} />}>
+              <Route path="/avaliacao" element={<AvaliacaoLayout />}>
+                <Route index element={<Navigate to="/avaliacao/minhas" replace />} />
+                <Route path="minhas" element={<AvaliacaoTrabalhos minhas />} />
+                <Route path="buscar" element={<AvaliacaoTrabalhos />} />
+                <Route path="avaliar/:id" element={<AvaliacaoAvaliar />} />
+              </Route>
+            </Route>
+
             {/* Admin portal: admin only. Cada seção tem URL própria
                 (/admin/papeis, /admin/conflitos, ...). */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
@@ -256,6 +274,8 @@ const App = () => (
                 <Route path="trabalhos/:id" element={<TrabalhoDetalhe />} />
                 <Route path="trabalhos/:id/editar" element={<TrabalhoForm />} />
                 <Route path="categorias" element={<Categorias />} />
+                <Route path="criterios-evento" element={<CoChairsCriteriosEvento />} />
+                <Route path="resultados-evento" element={<CoChairsResultadosEvento />} />
                 <Route path="cronograma" element={<CoChairsCronograma />} />
                 <Route path="anais" element={<CoChairsAnais />} />
                 <Route path="pitches" element={<CoChairsPitches />} />

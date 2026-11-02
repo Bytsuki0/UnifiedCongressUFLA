@@ -258,6 +258,13 @@ function montarInventario({ porEmail, porDono }) {
     envios_revisores: `
       SELECT * FROM public.envios_revisores
       WHERE ${porEmail("revisor_email")} ORDER BY criado_em`,
+    // Sai por CASCADE de dois lados (a conta de quem avaliou e o trabalho
+    // avaliado), sem passo de remoção próprio — mas entra no backup.
+    avaliacoes_evento: `
+      SELECT ae.* FROM public.avaliacoes_evento ae
+      JOIN public.trabalhos t ON t.id = ae.trabalho_id
+      WHERE ${porDono("ae.avaliador_id")} OR ${porDono("t.owner_id")}
+      ORDER BY ae.created_at`,
     profiles: `
       SELECT * FROM public.profiles
       WHERE ${porEmail("email")} ORDER BY email`,

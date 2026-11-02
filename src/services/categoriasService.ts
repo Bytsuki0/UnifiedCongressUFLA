@@ -286,19 +286,27 @@ export async function excluirCategoria(id: string): Promise<void> {
 }
 
 /**
+ * As duas listas de critérios têm o mesmo formato: `criterios` é a do
+ * parecer de /revisor, `criterios_evento` a da avaliação ao vivo
+ * (/co-chairs/criterios-evento).
+ */
+export type TabelaCriterios = "criterios" | "criterios_evento";
+
+/**
  * Grava os critérios de uma categoria: atualiza os que já têm id e insere
  * os novos, renumerando a ordem pela posição atual na lista.
  */
 export async function salvarCriterios(
   categoriaId: string,
   criterios: Criterio[],
+  tabela: TabelaCriterios = "criterios",
 ): Promise<void> {
   const resultados = await Promise.all(
     criterios.map((cr, i) => {
       const payload = { ordem: i + 1, titulo: cr.titulo.trim() };
       return cr.id
-        ? supabase.from("criterios").update(payload).eq("id", cr.id)
-        : supabase.from("criterios").insert({ ...payload, categoria_id: categoriaId });
+        ? supabase.from(tabela).update(payload).eq("id", cr.id)
+        : supabase.from(tabela).insert({ ...payload, categoria_id: categoriaId });
     }),
   );
   const falha = resultados.find((r) => r.error);
@@ -306,7 +314,10 @@ export async function salvarCriterios(
 }
 
 /** Remove um critério já persistido. Critério ainda não salvo não chega aqui. */
-export async function excluirCriterio(id: string): Promise<void> {
-  const { error } = await supabase.from("criterios").delete().eq("id", id);
+export async function excluirCriterio(
+  id: string,
+  tabela: TabelaCriterios = "criterios",
+): Promise<void> {
+  const { error } = await supabase.from(tabela).delete().eq("id", id);
   if (error) throw error;
 }

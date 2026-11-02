@@ -43,6 +43,12 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/revisor/avaliacao/:id", "Avaliação"],
   ["/revisor/arquivo", "Arquivo"],
 
+  // Avaliação ao vivo
+  ["/avaliacao/avaliar/:id", "Avaliar trabalho"],
+  ["/avaliacao/buscar", "Buscar trabalhos"],
+  ["/avaliacao/minhas", "Minhas avaliações"],
+  ["/avaliacao", "Avaliação"],
+
   // Portal Admin
   ["/admin/papeis", "Papéis de acesso"],
   ["/admin/usuarios", "Usuários"],
@@ -60,6 +66,8 @@ export const TITULOS: ReadonlyArray<readonly [string, string]> = [
   ["/co-chairs/trabalhos/:id", "Detalhe do trabalho"],
   ["/co-chairs/trabalhos", "Trabalhos"],
   ["/co-chairs/categorias", "Categorias"],
+  ["/co-chairs/criterios-evento", "Critérios do evento"],
+  ["/co-chairs/resultados-evento", "Resultados da avaliação"],
   ["/co-chairs/cronograma", "Cronograma"],
   ["/co-chairs/anais", "Anais do congresso"],
   ["/co-chairs/pitches", "Pitches"],
