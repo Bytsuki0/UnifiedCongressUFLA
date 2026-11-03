@@ -5,9 +5,11 @@ import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
 import { CarrosselTemplates } from "@/components/publico/CarrosselTemplates";
 import { RodapePublico } from "@/components/publico/RodapePublico";
 import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
+import { ImagemProgramacao } from "@/components/cronograma/ImagemProgramacao";
 import { ListaAnais } from "@/components/publico/ListaAnais";
 import { CartaoPitch } from "@/components/publico/CartaoPitch";
 import { useCronograma } from "@/hooks/use-cronograma";
+import { useProgramacao } from "@/hooks/use-programacao";
 import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 import { useAnais } from "@/hooks/use-anais";
 import { usePitches } from "@/hooks/use-pitches";
@@ -27,6 +29,7 @@ const Landing = () => {
   const { itens, carregando } = useCronograma();
   const { anais } = useAnais();
   const { pitches } = usePitches();
+  const programacao = useProgramacao();
 
   // O efeito de sombra da barra superior mudou de dono: mora em
   // <CabecalhoPublico>, que /cronograma também usa. Aqui ficou só a
@@ -44,7 +47,7 @@ const Landing = () => {
     // no DOM quando a busca volta, e o observer é montado uma vez. Sem
     // reobservar, os blocos `.reveal` de lá ficariam parados em opacity
     // 0 — invisíveis para sempre. Quem já revelou mantém a classe.
-  }, [itens, anais, pitches]);
+  }, [itens, anais, pitches, programacao]);
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff" }}>
@@ -100,6 +103,21 @@ const Landing = () => {
 
             <div className="reveal">
               <ListaCronograma itens={itens} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Programação — some quando a organização não subiu o arquivo. */}
+      {programacao && (
+        <section className="cronograma-section" id="programacao">
+          <div className="cronograma-inner">
+            <div className="reveal">
+              <div className="section-overline">PROGRAMAÇÃO</div>
+              <h2 className="section-title">Programação do evento.</h2>
+            </div>
+            <div className="reveal">
+              <ImagemProgramacao programacao={programacao} />
             </div>
           </div>
         </section>

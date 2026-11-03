@@ -11,6 +11,55 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 /**
+ * O PDF como IMAGEM: as páginas empilhadas na largura do contêiner, altura
+ * natural, sem camada de texto nem moldura — a programação do evento.
+ * Diferente do PdfViewer, não ocupa caixa fixa: cresce com o documento.
+ *
+ * O canvas sai com o dobro da densidade da tela para a pinça do celular
+ * ampliar sem borrar (teto 4 — canvas grande demais estoura a memória do
+ * iOS).
+ */
+export function PdfComoImagem({ url, alt }: { url: string; alt: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [numPages, setNumPages] = useState(0);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} role="img" aria-label={alt}>
+      {width > 0 && (
+        <Document
+          file={url}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          loading={null}
+          error={null}
+        >
+          {Array.from({ length: numPages }, (_, i) => (
+            <Page
+              key={i}
+              pageNumber={i + 1}
+              width={width}
+              devicePixelRatio={Math.min(4, (window.devicePixelRatio || 1) * 2)}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+            />
+          ))}
+        </Document>
+      )}
+    </div>
+  );
+}
+
+/**
  * Visualizador de PDF renderizado em canvas (pdf.js), portanto abre o arquivo
  * DENTRO do sistema — nunca dispara download do navegador, independentemente da
  * configuração do usuário ou do Content-Disposition do arquivo no bucket.

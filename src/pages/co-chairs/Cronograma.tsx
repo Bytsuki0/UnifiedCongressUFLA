@@ -9,6 +9,14 @@ import {
   type ItemCronograma,
 } from "@/services/cronogramaService";
 import {
+  buscarProgramacao,
+  enviarProgramacao,
+  MAX_PROGRAMACAO_BYTES,
+  removerProgramacao,
+  type Programacao,
+} from "@/services/programacaoService";
+import { ImagemProgramacao } from "@/components/cronograma/ImagemProgramacao";
+import {
   corDoTexto,
   CORES_SUGERIDAS,
   diasNoPeriodo,
@@ -95,6 +103,9 @@ const Cronograma = () => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [aExcluir, setAExcluir] = useState<ItemCronograma | null>(null);
+  const [programacao, setProgramacao] = useState<Programacao | null>(null);
+  const [enviandoProgramacao, setEnviandoProgramacao] = useState(false);
+  const [removendoProgramacao, setRemovendoProgramacao] = useState(false);
 
   const hoje = hojeLocal();
 
@@ -109,9 +120,48 @@ const Cronograma = () => {
     }
   };
 
+  const carregarProgramacao = async () => {
+    try {
+      setProgramacao(await buscarProgramacao());
+    } catch {
+      toast.error("Erro ao carregar a programação.");
+    }
+  };
+
   useEffect(() => {
     carregar();
+    carregarProgramacao();
   }, []);
+
+  const publicarProgramacao = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    // Cortesia: quem recusa é o `file_size_limit` do bucket.
+    if (arquivo.size > MAX_PROGRAMACAO_BYTES) {
+      toast.error("O arquivo passa de 10 MB.");
+      return;
+    }
+    setEnviandoProgramacao(true);
+    try {
+      await enviarProgramacao(arquivo);
+      toast.success("Programação publicada.");
+      await carregarProgramacao();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao enviar a programação.");
+    } finally {
+      setEnviandoProgramacao(false);
+    }
+  };
+
+  const confirmarRemocaoProgramacao = async () => {
+    try {
+      await removerProgramacao();
+      toast.success("Programação removida.");
+      setProgramacao(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao remover a programação.");
+    }
+    setRemovendoProgramacao(false);
+  };
 
   const salvar = async () => {
     if (!editor) return;
@@ -253,6 +303,65 @@ const Cronograma = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Programação: um arquivo só. Enviar outro substitui o atual. */}
+      <Card className="shadow-[var(--shadow-card)]">
+        <CardHeader className="space-y-0 pb-3">
+          <h2 className="text-lg font-semibold">Programação do evento</h2>
+          <p className="text-xs text-muted-foreground">
+            PNG, JPEG ou PDF de até 10 MB. Aparece como imagem na página inicial, em{" "}
+            <strong>/cronograma</strong> e no portal do autor. Enviar outro arquivo substitui o
+            atual.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="programacao-arquivo" className="sr-only">
+              Arquivo da programação
+            </Label>
+            <Input
+              id="programacao-arquivo"
+              type="file"
+              accept="image/png,image/jpeg,application/pdf"
+              disabled={enviandoProgramacao}
+              className="max-w-sm"
+              onChange={(e) => {
+                publicarProgramacao(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {enviandoProgramacao && <span className="text-sm text-muted-foreground">Enviando...</span>}
+            {programacao && !enviandoProgramacao && (
+              <Button variant="outline" size="sm" onClick={() => setRemovendoProgramacao(true)}>
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Remover
+              </Button>
+            )}
+          </div>
+          {programacao ? (
+            <ImagemProgramacao programacao={programacao} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma programação publicada — a seção não aparece para o visitante.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={removendoProgramacao} onOpenChange={setRemovendoProgramacao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover a programação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O arquivo sai da página inicial, de /cronograma e do portal do autor. Esta ação não
+              pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarRemocaoProgramacao}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Diálogo: novo item / edição */}
       <Dialog open={!!editor} onOpenChange={(aberto) => !aberto && setEditor(null)}>
