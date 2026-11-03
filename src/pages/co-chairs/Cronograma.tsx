@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { EditorTextoRico } from "@/components/EditorTextoRico";
+import { TextoRico } from "@/components/TextoRico";
 import {
   Dialog,
   DialogContent,
@@ -231,7 +232,7 @@ const Cronograma = () => {
                       {item.data_fim !== item.data_inicio &&
                         ` · ${diasNoPeriodo(item.data_inicio, item.data_fim)} dias`}
                     </p>
-                    {item.descricao && <p className="text-sm">{item.descricao}</p>}
+                    <TextoRico texto={item.descricao} className="text-sm" />
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button variant="outline" size="sm" onClick={() => setEditor(editorDe(item))}>
@@ -333,12 +334,12 @@ const Cronograma = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="cron-desc">Descrição</Label>
-                <Textarea
+                <EditorTextoRico
                   id="cron-desc"
-                  rows={3}
-                  value={editor.descricao}
+                  rows={4}
+                  valor={editor.descricao}
                   placeholder="O que acontece nesse período. Aparece abaixo do nome, na lista."
-                  onChange={(e) => setEditor({ ...editor, descricao: e.target.value })}
+                  onChange={(descricao) => setEditor({ ...editor, descricao })}
                 />
               </div>
 

@@ -1224,6 +1224,7 @@ export type Database = {
           data_submissao: string
           id: string
           orientador_email: string | null
+          orientador_nome: string | null
           owner_id: string | null
           palavras_chave: string[]
           reenviado_em: string | null
@@ -1241,6 +1242,7 @@ export type Database = {
           data_submissao?: string
           id?: string
           orientador_email?: string | null
+          orientador_nome?: string | null
           owner_id?: string | null
           palavras_chave?: string[]
           reenviado_em?: string | null
@@ -1258,6 +1260,7 @@ export type Database = {
           data_submissao?: string
           id?: string
           orientador_email?: string | null
+          orientador_nome?: string | null
           owner_id?: string | null
           palavras_chave?: string[]
           reenviado_em?: string | null
@@ -1429,6 +1432,10 @@ export type Database = {
       editar_submissao: {
         Args: {
           _anexos?: Json
+          _autores: string
+          _coautores: Json
+          _orientador_email: string
+          _orientador_nome: string
           _palavras_chave: string[]
           _titulo: string
           _trabalho_id: string
@@ -1573,6 +1580,7 @@ export type Database = {
           _categoria_id: string
           _coautores: Json
           _orientador_email: string
+          _orientador_nome: string
           _palavras_chave: string[]
           _titulo: string
           _trabalho_id: string
@@ -1606,6 +1614,7 @@ export type Database = {
           _categoria_id: string
           _coautores: Json
           _orientador_email: string
+          _orientador_nome: string
           _palavras_chave: string[]
           _titulo: string
         }

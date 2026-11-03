@@ -16,7 +16,7 @@ const NovaSubmissao = () => {
   const { exigenciasDe } = useExigencias();
 
   const [form, setForm] = useState({
-    titulo: "", categoria: "", orientador: "",
+    titulo: "", categoria: "", orientador: "", orientadorNome: "",
     // Digitadas como texto separado por vírgula; viram lista só no envio.
     palavrasChave: "",
   });
@@ -70,6 +70,7 @@ const NovaSubmissao = () => {
         categoriaId: form.categoria,
         autores,
         orientadorEmail: form.orientador.trim() || null,
+        orientadorNome: form.orientadorNome.trim() || null,
         coautores,
         ownerId: user.id,
         exigencias,
@@ -200,6 +201,11 @@ const NovaSubmissao = () => {
             <div className="step-card-header">
               <div className="step-number">02</div>
               <div><div className="step-title">Autoria</div></div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="orientador-nome">Nome do Orientador</label>
+              <input type="text" id="orientador-nome" className="form-input" placeholder="Nome completo" value={form.orientadorNome} onChange={e => setForm(f => ({ ...f, orientadorNome: e.target.value }))} />
             </div>
 
             <div className="form-group">

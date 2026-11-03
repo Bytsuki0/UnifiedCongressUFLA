@@ -29,6 +29,8 @@ export type NovoTrabalho = {
   categoriaId: string;
   autores: string;
   orientadorEmail: string | null;
+  /** Um nome só, ao lado do e-mail. Não entra no conflito de interesse. */
+  orientadorNome: string | null;
   coautores: Coautor[];
   ownerId: string;
   /** O que a categoria escolhida exige. Pode ser lista vazia. */
@@ -285,6 +287,7 @@ export async function submeterTrabalho(input: NovoTrabalho): Promise<string> {
     _categoria_id: input.categoriaId,
     _autores: input.autores,
     _orientador_email: input.orientadorEmail,
+    _orientador_nome: input.orientadorNome,
     _coautores: input.coautores,
     _anexos: payload,
   });
@@ -302,6 +305,10 @@ export type EditarSubmissaoInput = {
   ownerId: string;
   titulo: string;
   palavrasChave: string[];
+  autores: string;
+  orientadorEmail: string | null;
+  orientadorNome: string | null;
+  coautores: Coautor[];
   /** O que a categoria do trabalho exige. */
   exigencias: AnexoDaCategoria[];
   /** O que o autor preencheu. PDF sem arquivo novo = manter o atual. */
@@ -317,6 +324,10 @@ export type EditarSubmissaoInput = {
  * apontando para os arquivos velhos e o que sobra é upload órfão, que é
  * melhor do que um trabalho sem PDF.
  *
+ * Autoria (orientador e coautores) vai junto desde 20261103140000: a RPC
+ * grava e APAGA as associações de revisor que caírem em conflito com a
+ * autoria nova. Categoria continua travada.
+ *
  * Quem recusa fora do prazo, fora do status 'pendente' ou de dono
  * errado é a RPC `editar_submissao`, não esta função.
  */
@@ -331,6 +342,10 @@ export async function editarSubmissao(input: EditarSubmissaoInput): Promise<void
     _trabalho_id: input.trabalhoId,
     _titulo: input.titulo,
     _palavras_chave: input.palavrasChave,
+    _autores: input.autores,
+    _orientador_email: input.orientadorEmail,
+    _orientador_nome: input.orientadorNome,
+    _coautores: input.coautores,
     _anexos: payload,
   });
   if (error) {

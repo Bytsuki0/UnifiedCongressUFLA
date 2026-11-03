@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { DialogoPoster } from "@/components/estudante/DialogoPoster";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { excluirTrabalhos } from "@/services/trabalhosService";
 import { anexosPorTrabalho } from "@/services/anexosService";
 import { carregarPrazoPosteres, type PrazoPosteres } from "@/services/configuracoesService";
 import { podeEnviarPoster, type AnexoDoTrabalho } from "@/lib/anexos";
@@ -42,7 +54,7 @@ import {
 const PapeisSubmetidos = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { trabalhos, loading, catNome } = useTrabalhos();
+  const { trabalhos, loading, catNome, reload } = useTrabalhos();
   const { prazo, aberto, fase } = usePrazo();
   const { posteresDe } = useExigencias();
 
@@ -75,6 +87,23 @@ const PapeisSubmetidos = () => {
     return () => { vivo = false; };
   }, []);
   const [posterDe, setPosterDe] = useState<Submission | null>(null);
+
+  // Exclusão pelo autor: quem recusa é a policy "trabalhos delete"
+  // (pendente, nunca reenviado, prazo aberto). Recusa do RLS não vira
+  // erro — volta 0 linhas —, por isso a contagem de `excluirTrabalhos`.
+  const [paraExcluir, setParaExcluir] = useState<Submission | null>(null);
+  async function confirmarExclusao() {
+    if (!paraExcluir) return;
+    try {
+      const n = await excluirTrabalhos([paraExcluir.id]);
+      if (n === 0) toast.error("Não foi possível excluir: o prazo encerrou ou a avaliação já começou.");
+      else toast.success("Submissão excluída.");
+    } catch {
+      toast.error("Erro ao excluir a submissão.");
+    }
+    setParaExcluir(null);
+    reload();
+  }
 
   return (
     <div className="section active">
@@ -253,6 +282,15 @@ const PapeisSubmetidos = () => {
                             Editar
                           </button>
                         )}
+                        {podeEditar && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            style={{ padding: "4px 10px", fontSize: 11 }}
+                            onClick={() => setParaExcluir(t)}
+                          >
+                            Excluir
+                          </button>
+                        )}
                         {podeCorrigir && (
                           <button
                             className="btn btn-primary btn-sm"
@@ -306,6 +344,22 @@ const PapeisSubmetidos = () => {
           }}
         />
       )}
+
+      <AlertDialog open={!!paraExcluir} onOpenChange={(o) => !o && setParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir submissão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{paraExcluir?.titulo}” e os arquivos enviados com ele serão apagados. Esta ação não
+              pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusao}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

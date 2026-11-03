@@ -156,7 +156,9 @@ const ParecerEditorialDetalhe = () => {
           </div>
           <div>
             <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Orientador</h3>
-            <p className="text-sm">{trabalho.orientador_email || "—"}</p>
+            <p className="text-sm">
+              {[trabalho.orientador_nome, trabalho.orientador_email].filter(Boolean).join(" · ") || "—"}
+            </p>
           </div>
           <div>
             <h3 className="mb-1 text-sm font-semibold text-muted-foreground">Coautores</h3>

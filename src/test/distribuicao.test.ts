@@ -71,6 +71,7 @@ describe("submeterTrabalho", () => {
       categoriaId: "c1",
       autores: "Alguém",
       orientadorEmail: "orientador@ufla.br",
+      orientadorNome: "Prof. Orientador",
       coautores: [],
       exigencias: EXIGENCIAS,
       anexos: {
@@ -103,6 +104,7 @@ describe("submeterTrabalho", () => {
       categoriaId: "c1",
       autores: "Alguém",
       orientadorEmail: null,
+      orientadorNome: null,
       coautores: [],
       exigencias: EXIGENCIAS,
       anexos: {
@@ -138,6 +140,7 @@ describe("submeterTrabalho", () => {
         categoriaId: "c1",
         autores: "Alguém",
         orientadorEmail: null,
+        orientadorNome: null,
         coautores: [],
         exigencias: [EXIGENCIAS[0]],
         anexos: { a1: { arquivo: new File(["x"], "arq.pdf", { type: "application/pdf" }) } },

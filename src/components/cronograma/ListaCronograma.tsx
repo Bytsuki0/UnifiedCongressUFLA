@@ -1,5 +1,6 @@
 import type { ItemCronograma } from "@/services/cronogramaService";
 import { corDoTexto, estadoDoPeriodo, hojeLocal, rotuloPeriodo } from "@/lib/cronograma";
+import { TextoRico } from "@/components/TextoRico";
 
 /**
  * O cronograma, só de leitura: uma lista de períodos em ordem
@@ -63,7 +64,7 @@ export const ListaCronograma = ({ itens, carregando = false }: Props) => {
             </div>
 
             <h3 className="cronograma-item-titulo">{item.titulo}</h3>
-            {item.descricao && <p className="cronograma-item-desc">{item.descricao}</p>}
+            <TextoRico texto={item.descricao} className="cronograma-item-desc" />
           </li>
         );
       })}

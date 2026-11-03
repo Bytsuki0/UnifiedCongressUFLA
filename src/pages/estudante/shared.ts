@@ -26,6 +26,7 @@ export type Submission = {
   data_submissao: string;
   created_at: string;
   orientador_email?: string | null;
+  orientador_nome?: string | null;
   coautores?: Coautor[] | null;
   correcoes_enviadas_em?: string | null;
   /** Rodada corrente de avaliação. Sobe a cada reenvio ("resubmeter"). */

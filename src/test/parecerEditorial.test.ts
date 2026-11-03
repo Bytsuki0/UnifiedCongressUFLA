@@ -36,6 +36,7 @@ import {
   registrarParecerEditorial,
   reenviarTrabalho,
 } from "@/services/parecerEditorialService";
+import { editarSubmissao } from "@/services/trabalhosService";
 
 beforeEach(() => {
   mocks.rpc.mockReset();
@@ -167,6 +168,7 @@ describe("reenviarTrabalho", () => {
       palavrasChave: ["a", "b"],
       autores: "Ana, Bruno",
       orientadorEmail: "orientador@ufla.br",
+      orientadorNome: "Prof. Orientador",
       coautores: [{ nome: "Bruno", email: "bruno@ufla.br" }],
       categoriaId: "c2",
       exigencias: [
@@ -189,6 +191,7 @@ describe("reenviarTrabalho", () => {
     expect(args._autores).toBe("Ana, Bruno");
     expect(args._categoria_id).toBe("c2");
     expect(args._orientador_email).toBe("orientador@ufla.br");
+    expect(args._orientador_nome).toBe("Prof. Orientador");
     expect(args._coautores).toEqual([{ nome: "Bruno", email: "bruno@ufla.br" }]);
     // Sem arquivo novo, `valor: null` diz à RPC para manter o que está
     // gravado — é o que preserva o comportamento do `_pdf_url` ausente.
@@ -210,6 +213,7 @@ describe("reenviarTrabalho", () => {
         palavrasChave: ["a"],
         autores: "Ana",
         orientadorEmail: null,
+        orientadorNome: null,
         coautores: [],
         categoriaId: "c1",
         exigencias: [
@@ -234,5 +238,36 @@ describe("reenviarTrabalho", () => {
     const apagados = mocks.remove.mock.calls.flatMap(([lista]) => lista as string[]);
     expect(apagados).toHaveLength(1);
     expect(apagados[0].startsWith("u1/")).toBe(true);
+  });
+});
+
+describe("editarSubmissao", () => {
+  // Desde 20261103140000 a edição dentro do prazo abre AUTORIA — a RPC
+  // refaz o conflito de interesse —, mas a categoria segue travada.
+  it("envia autoria e orientador, nunca categoria", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+
+    await editarSubmissao({
+      trabalhoId: "t1",
+      ownerId: "u1",
+      titulo: "T",
+      palavrasChave: ["a"],
+      autores: "Ana, Bruno",
+      orientadorEmail: "o@ufla.br",
+      orientadorNome: "Prof. O",
+      coautores: [{ nome: "Bruno", email: "b@ufla.br" }],
+      exigencias: [],
+      anexos: {},
+    });
+
+    const [nome, args] = mocks.rpc.mock.calls[0];
+    expect(nome).toBe("editar_submissao");
+    expect(args).toMatchObject({
+      _autores: "Ana, Bruno",
+      _orientador_email: "o@ufla.br",
+      _orientador_nome: "Prof. O",
+      _coautores: [{ nome: "Bruno", email: "b@ufla.br" }],
+    });
+    expect(args).not.toHaveProperty("_categoria_id");
   });
 });

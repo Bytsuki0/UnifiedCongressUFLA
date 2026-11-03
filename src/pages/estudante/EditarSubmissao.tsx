@@ -29,17 +29,14 @@ import {
  * "aprovado com correções" e ignora o prazo; esta abre com 'pendente' e
  * só dentro da janela de submissão.
  *
- * Mesmo conjunto de campos das duas — título, palavras-chave e os anexos
- * que a categoria exige. Autoria e categoria ficam travadas mesmo com o
- * prazo aberto, e não por descuido: a distribuição de revisores sai do
- * orientador e dos coautores (é assim que o conflito de interesse é
- * barrado) e os critérios do parecer saem da categoria. Um co-chair pode
- * já ter confirmado a distribuição deste trabalho a qualquer momento —
- * trocar autoria depois invalidaria em silêncio a checagem de conflito
- * que escolheu aqueles revisores.
+ * Título, palavras-chave, AUTORIA (orientador e coautores, desde
+ * 20261103140000) e os anexos que a categoria exige. Um co-chair pode já
+ * ter confirmado revisores escolhidos contra a autoria antiga; por isso
+ * `editar_submissao` refaz a checagem de conflito e apaga as associações
+ * que caírem em conflito com a autoria nova.
  *
- * ⚠ A categoria travada é o que garante que as EXIGÊNCIAS de anexo não
- * mudam no meio da edição: trocá-la trocaria os campos do formulário.
+ * ⚠ A CATEGORIA continua travada: é ela que define as EXIGÊNCIAS de anexo
+ * e os critérios do parecer, e trocá-la trocaria os campos do formulário.
  * Só o reenvio (`Reenvio.tsx`) abre esse caminho.
  *
  * Quem recusa de fato é a RPC `editar_submissao`. Esta tela só evita que
@@ -55,6 +52,9 @@ const EditarSubmissao = () => {
   const [trabalho, setTrabalho] = useState<Submission | null>(null);
   const [titulo, setTitulo] = useState("");
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
+  const [orientador, setOrientador] = useState("");
+  const [orientadorNome, setOrientadorNome] = useState("");
+  const [coautores, setCoautores] = useState<Coautor[]>([{ nome: "", email: "" }]);
   const [atuais, setAtuais] = useState<AnexoDoTrabalho[]>([]);
   const [anexos, setAnexos] = useState<RascunhoAnexos>({});
   const [loading, setLoading] = useState(true);
@@ -79,6 +79,9 @@ const EditarSubmissao = () => {
     setTrabalho(sub);
     setTitulo(sub.titulo ?? "");
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
+    setOrientador(sub.orientador_email ?? "");
+    setOrientadorNome(sub.orientador_nome ?? "");
+    setCoautores(sub.coautores?.length ? sub.coautores : [{ nome: "", email: "" }]);
     setAtuais(await listarAnexosDoTrabalho(sub.id).catch(() => []));
     setLoading(false);
   }, [id, user, navigate]);
@@ -113,6 +116,14 @@ const EditarSubmissao = () => {
       return;
     }
 
+    const limpos = coautores
+      .map((c) => ({ nome: (c.nome ?? "").trim(), email: (c.email ?? "").trim() }))
+      .filter((c) => c.nome || c.email);
+    const autores = [
+      user.nome ?? "Autor",
+      ...limpos.filter((c) => c.nome).map((c) => c.nome),
+    ].join(", ");
+
     setSalvando(true);
     try {
       await editarSubmissao({
@@ -120,6 +131,10 @@ const EditarSubmissao = () => {
         ownerId: user.id,
         titulo: titulo.trim(),
         palavrasChave,
+        autores,
+        orientadorEmail: orientador.trim() || null,
+        orientadorNome: orientadorNome.trim() || null,
+        coautores: limpos,
         exigencias,
         anexos,
       });
@@ -221,7 +236,10 @@ const EditarSubmissao = () => {
     );
   }
 
-  const coautores = (trabalho?.coautores ?? []).filter((c) => c.nome || c.email);
+  const setCoautor = (i: number, campo: keyof Coautor, valor: string) =>
+    setCoautores((anterior) =>
+      anterior.map((c, idx) => (idx === i ? { ...c, [campo]: valor } : c)),
+    );
 
   return (
     <div className="section active">
@@ -278,33 +296,40 @@ const EditarSubmissao = () => {
             <div className="step-card-header">
               <div className="step-number">02</div>
               <div>
-                <div className="step-title">Autoria e Categoria</div>
-                <div className="step-subtitle">Travadas, definiram os revisores sorteados e os critérios da avaliação</div>
+                <div className="step-title">Autoria</div>
+                <div className="step-subtitle">Orientador e coautores ficam impedidos de avaliar este trabalho</div>
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">E-mail do Orientador</label>
-              <input type="text" className="form-input" value={trabalho?.orientador_email ?? "—"} disabled readOnly />
+              <label className="form-label" htmlFor="editar-orientador-nome">Nome do Orientador</label>
+              <input type="text" id="editar-orientador-nome" className="form-input" placeholder="Nome completo" value={orientadorNome} onChange={(e) => setOrientadorNome(e.target.value)} />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Coautores</label>
-              {coautores.length === 0 ? (
-                <input type="text" className="form-input" value="Nenhum coautor informado" disabled readOnly />
-              ) : (
-                coautores.map((c, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    className="form-input"
-                    style={{ marginBottom: 8 }}
-                    value={[c.nome, c.email].filter(Boolean).join(" · ")}
-                    disabled
-                    readOnly
-                  />
-                ))
-              )}
+              <label className="form-label" htmlFor="editar-orientador">E-mail do Orientador</label>
+              <input type="email" id="editar-orientador" className="form-input" placeholder="orientador@ufla.br" value={orientador} onChange={(e) => setOrientador(e.target.value)} />
+            </div>
+
+            <div className="coauthor-section">
+              <div className="coauthor-header">
+                <span className="coauthor-label">Coautores</span>
+                <button type="button" className="coauthor-add" onClick={() => setCoautores((a) => [...a, { nome: "", email: "" }])}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Adicionar
+                </button>
+              </div>
+              {coautores.map((c, i) => (
+                <div className="coauthor-row" key={i}>
+                  <input type="text" className="form-input" placeholder="Nome completo" value={c.nome ?? ""} onChange={(e) => setCoautor(i, "nome", e.target.value)} />
+                  <input type="email" className="form-input" placeholder="email@ufla.br" value={c.email ?? ""} onChange={(e) => setCoautor(i, "email", e.target.value)} />
+                  {coautores.length > 1 && (
+                    <button type="button" className="coauthor-remove" title="Remover coautor" onClick={() => setCoautores((a) => a.filter((_, j) => j !== i))}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

@@ -183,6 +183,7 @@ const RPCS_NEGADAS = [
       _palavras_chave: ["sonda"],
       _autores: "sonda",
       _orientador_email: null,
+      _orientador_nome: null,
       _coautores: [],
       _categoria_id: "00000000-0000-0000-0000-000000000000",
       _anexos: [],
@@ -200,6 +201,7 @@ const RPCS_NEGADAS = [
       _categoria_id: "00000000-0000-0000-0000-000000000000",
       _autores: "sonda",
       _orientador_email: null,
+      _orientador_nome: null,
       _coautores: [],
       _anexos: [],
     },
@@ -220,13 +222,17 @@ const RPCS_NEGADAS = [
   // 20260819120000 já havia substituído. O PostgREST devolvia PGRST202
   // ("função não encontrada") e a sonda anotava "negada" sem ter testado
   // permissão nenhuma — exatamente a cegueira contra a qual o comentário
-  // acima adverte. Assinatura atual: 20260904120000.
+  // acima adverte. Assinatura atual: 20261103140000.
   [
     "editar_submissao",
     {
       _trabalho_id: "00000000-0000-0000-0000-000000000000",
       _titulo: "sonda",
       _palavras_chave: ["sonda"],
+      _autores: "sonda",
+      _orientador_email: null,
+      _orientador_nome: null,
+      _coautores: [],
       _anexos: [],
     },
   ],

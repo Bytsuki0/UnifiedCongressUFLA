@@ -329,6 +329,7 @@ export type ReenviarTrabalhoInput = {
   palavrasChave: string[];
   autores: string;
   orientadorEmail: string | null;
+  orientadorNome: string | null;
   coautores: { nome?: string; email?: string }[];
   categoriaId: string;
   /** O que a categoria ESCOLHIDA AGORA exige — pode não ser a de antes. */
@@ -368,6 +369,7 @@ export async function reenviarTrabalho(input: ReenviarTrabalhoInput): Promise<vo
     _palavras_chave: input.palavrasChave,
     _autores: input.autores,
     _orientador_email: input.orientadorEmail,
+    _orientador_nome: input.orientadorNome,
     _coautores: input.coautores,
     _categoria_id: input.categoriaId,
     _anexos: payload,

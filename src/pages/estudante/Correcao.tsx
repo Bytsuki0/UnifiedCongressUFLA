@@ -242,6 +242,11 @@ const Correcao = () => {
             </div>
 
             <div className="form-group">
+              <label className="form-label">Nome do Orientador</label>
+              <input type="text" className="form-input" value={trabalho?.orientador_nome ?? "—"} disabled readOnly />
+            </div>
+
+            <div className="form-group">
               <label className="form-label">E-mail do Orientador</label>
               <input type="text" className="form-input" value={trabalho?.orientador_email ?? "—"} disabled readOnly />
             </div>

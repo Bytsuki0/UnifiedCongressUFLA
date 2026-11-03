@@ -60,6 +60,7 @@ const Reenvio = () => {
   const [palavrasChaveTexto, setPalavrasChaveTexto] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [orientador, setOrientador] = useState("");
+  const [orientadorNome, setOrientadorNome] = useState("");
   const [coautores, setCoautores] = useState<Coautor[]>([{ nome: "", email: "" }]);
   const [atuais, setAtuais] = useState<AnexoDoTrabalho[]>([]);
   const [anexos, setAnexos] = useState<RascunhoAnexos>({});
@@ -91,6 +92,7 @@ const Reenvio = () => {
     setPalavrasChaveTexto(formatarPalavrasChave(sub.palavras_chave));
     setCategoriaId(sub.categoria_id ?? "");
     setOrientador(sub.orientador_email ?? "");
+    setOrientadorNome(sub.orientador_nome ?? "");
     setCoautores(lista.length > 0 ? lista : [{ nome: "", email: "" }]);
     setAtuais(await listarAnexosDoTrabalho(sub.id).catch(() => []));
 
@@ -175,6 +177,7 @@ const Reenvio = () => {
         palavrasChave: parsePalavrasChave(palavrasChaveTexto),
         autores,
         orientadorEmail: orientador.trim() || null,
+        orientadorNome: orientadorNome.trim() || null,
         coautores: limpos,
         categoriaId,
         exigencias,
@@ -339,6 +342,11 @@ const Reenvio = () => {
                 <div className="step-title">Autoria</div>
                 <div className="step-subtitle">Editável no reenvio — os avaliadores novos são escolhidos a partir daqui</div>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="reenvio-orientador-nome">Nome do Orientador</label>
+              <input type="text" id="reenvio-orientador-nome" className="form-input" value={orientadorNome} onChange={(e) => setOrientadorNome(e.target.value)} />
             </div>
 
             <div className="form-group">
