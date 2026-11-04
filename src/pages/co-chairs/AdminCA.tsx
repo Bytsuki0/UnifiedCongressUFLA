@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Eraser, Save, Undo2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarClock, Eraser, FileUp, Save, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AGENDA_VAZIA,
@@ -7,10 +7,12 @@ import {
   calcularMudancas,
   estadoLinha,
   hora,
+  importarCsvAgenda,
   ultimoEnvioPorTrabalho,
   type Agenda,
   type EnvioApresentacao,
   type EstadoLinha,
+  type PendenteCsv,
 } from "@/lib/apresentacoes";
 import { filtrarTrabalhos } from "@/lib/avaliacaoEvento";
 import {
@@ -102,6 +104,20 @@ function formularioDe(dados: DadosAdminCA) {
 
 const plural = (n: number, um: string, varios: string) => (n === 1 ? um : varios);
 
+/**
+ * O texto do arquivo: UTF-8 se for válido, senão Windows-1252 — o "CSV"
+ * padrão do Excel em pt-BR. Lido como UTF-8, todo título acentuado viraria
+ * lixo e nenhum casaria.
+ */
+async function lerTextoCsv(arquivo: File): Promise<string> {
+  const bytes = await arquivo.arrayBuffer();
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder("windows-1252").decode(bytes);
+  }
+}
+
 const AdminCA = () => {
   const [dados, setDados] = useState<DadosAdminCA | null>(null);
   const [erro, setErro] = useState(false);
@@ -111,6 +127,8 @@ const AdminCA = () => {
   const [termo, setTermo] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [pendentes, setPendentes] = useState<PendenteCsv[]>([]);
+  const arquivoRef = useRef<HTMLInputElement>(null);
 
   const carregar = async () => {
     try {
@@ -201,6 +219,30 @@ const AdminCA = () => {
     const formulario = formularioDe(dados);
     setEditadas(formulario.editadas);
     setTipos(formulario.tipos);
+    setPendentes([]);
+  };
+
+  /**
+   * O CSV só PREENCHE o formulário — o Salvar e a confirmação continuam
+   * sendo o único caminho até o banco e o e-mail. Trabalho fora do CSV fica
+   * como estava; linha que não casou volta numa lista, para a mão.
+   */
+  const importarCsv = async (arquivo: File | undefined) => {
+    if (!arquivo || !dados) return;
+    try {
+      const { agendas, pendentes: naoAplicadas } = importarCsvAgenda(await lerTextoCsv(arquivo), dados.trabalhos);
+      setEditadas((prev) => ({ ...prev, ...agendas }));
+      setPendentes(naoAplicadas);
+      const n = Object.keys(agendas).length;
+      const p = naoAplicadas.length;
+      toast.success(
+        `${n} ${plural(n, "trabalho preenchido", "trabalhos preenchidos")} pelo CSV` +
+          (p > 0 ? `, ${p} ${plural(p, "linha", "linhas")} para preencher à mão` : "") +
+          ". Confira e clique em Salvar.",
+      );
+    } catch {
+      toast.error("Não foi possível ler o arquivo CSV.");
+    }
   };
 
   const pedirConfirmacao = () => {
@@ -329,6 +371,26 @@ const AdminCA = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <input
+            ref={arquivoRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            aria-label="Arquivo CSV do cronograma"
+            onChange={(e) => {
+              importarCsv(e.target.files?.[0]);
+              // Sem isto, escolher o mesmo arquivo de novo não dispara o onChange.
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => arquivoRef.current?.click()}
+            disabled={!dados || salvando}
+            title="Preenche dia, horário e sala pelo título do trabalho. Nada é salvo até clicar em Salvar."
+          >
+            <FileUp className="mr-2 h-4 w-4" /> Importar CSV
+          </Button>
           <Button variant="outline" onClick={descartar} disabled={!temMudanca || salvando}>
             <Undo2 className="mr-2 h-4 w-4" /> Descartar alterações
           </Button>
@@ -342,6 +404,11 @@ const AdminCA = () => {
         Ao salvar, quem submeteu cada trabalho com informação nova — agendado agora, ou com dia,
         horário, sala ou tipo de apresentação alterado — recebe um e-mail de congressoparaiso@ufla.br.
         Coautores não recebem. Tirar um trabalho do cronograma (limpar a linha) não manda e-mail.
+        <br />
+        <strong>Importar CSV</strong>: uma linha por trabalho, nas colunas{" "}
+        <em>título; dia (DD/MM/AAAA); início; fim; sala</em>, com horas em 24h (HH:MM). O título
+        precisa ser igual ao do trabalho submetido. A importação só preenche a tela: confira e clique
+        em Salvar.
       </div>
 
       {erro ? (
@@ -382,6 +449,35 @@ const AdminCA = () => {
               ))}
             </select>
           </div>
+
+          {pendentes.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <strong className="text-destructive">
+                  {pendentes.length}{" "}
+                  {plural(pendentes.length, "linha do CSV não foi aplicada", "linhas do CSV não foram aplicadas")} —
+                  preencha esses trabalhos à mão
+                </strong>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => setPendentes([])}
+                  aria-label="Fechar a lista do CSV"
+                  title="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {pendentes.map((p) => (
+                  <li key={p.linha}>
+                    linha {p.linha} · "{p.titulo || "(sem título)"}" — {p.motivo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {temMudanca && (
             <p className="text-sm">

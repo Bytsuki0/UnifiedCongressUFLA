@@ -122,7 +122,7 @@ const Landing = () => {
               <h2 className="section-title">Cronograma de apresentações.</h2>
               <p className="section-description">
                 Dia, horário, sala e formato de apresentação de cada trabalho aprovado, com busca
-                por título e por autor.
+                por título.
               </p>
             </div>
 

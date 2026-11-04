@@ -228,6 +228,13 @@ com o **cronograma do evento** (`/cronograma`), a lista de datas do congresso.
   cronograma também não. Falha volta sozinha à fila até a 3ª; o selo de cada
   linha dessa aba diz na fila, enviado ou falhou. O diálogo do Salvar mostra
   antes quantos autores vão ser avisados.
+- **Importar CSV** (botão no AdminCA): `título; dia (DD/MM/AAAA); início; fim;
+  sala`, horas em 24h, `;` ou `,`, UTF-8 ou o "CSV" Windows-1252 do Excel.
+  Casa pelo título exato (sem acento, caixa ou espaço sobrando) entre os
+  aprovados; o que não casa, ou não presta, volta numa lista para preencher à
+  mão. ⚠ Só **preenche a tela** — nada é gravado nem enviado até o Salvar, que
+  passa pela mesma confirmação. Lado puro em `importarCsvAgenda`
+  (`src/lib/apresentacoes.ts`).
 - Ensaio revertido da regra, no banco de produção: `sql/ensaio-apresentacoes.sql`.
 
 ---

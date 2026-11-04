@@ -22,6 +22,7 @@
  *
  * Uso:
  *   npm run backup:conferir -- supabase/backups/2026-08-08-16-30
+ *   npm run backup:conferir -- <pasta> --manter   # deixa o container no ar
  */
 
 import { spawnSync } from "child_process";
@@ -238,11 +239,15 @@ try {
     "postgres:16",
   ]);
 
-  // Espera o banco aceitar conexão.
+  // Espera o banco aceitar conexão — por TCP, de propósito. A imagem oficial
+  // roda o initdb num servidor TEMPORÁRIO só no socket Unix e o derruba com
+  // "fast shutdown" logo depois; pelo socket o pg_isready aprovava esse
+  // servidor, as migrations caíam no meio e a recontagem dava "the database
+  // system is shutting down". Só o servidor definitivo escuta em TCP.
   let pronto = false;
   for (let i = 0; i < 30; i++) {
     await new Promise((r) => setTimeout(r, 2000));
-    if (docker(["exec", CONTAINER, "pg_isready", "-U", "postgres"]).code === 0) {
+    if (docker(["exec", CONTAINER, "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]).code === 0) {
       pronto = true;
       break;
     }
@@ -465,11 +470,17 @@ try {
 } catch (err) {
   falhou(`restauração falhou: ${err.message.slice(0, 200)}`);
 } finally {
-  try {
-    docker(["rm", "-f", CONTAINER]);
-    console.log("  container removido");
-  } catch {
-    console.log(`  ATENÇÃO: remova à mão -> docker rm -f ${CONTAINER}`);
+  // --manter: o banco restaurado fica no ar para ensaiar SQL antes da produção.
+  if (process.argv.includes("--manter")) {
+    console.log(`  container MANTIDO: ${CONTAINER} (banco restore_test) — tem PII.`);
+    console.log(`  remova ao terminar: docker rm -f ${CONTAINER}`);
+  } else {
+    try {
+      docker(["rm", "-f", CONTAINER]);
+      console.log("  container removido");
+    } catch {
+      console.log(`  ATENÇÃO: remova à mão -> docker rm -f ${CONTAINER}`);
+    }
   }
 }
 

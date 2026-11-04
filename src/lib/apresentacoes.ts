@@ -14,6 +14,7 @@
  */
 
 import { rotuloDia } from "@/lib/cronograma";
+import { normalizar } from "@/lib/avaliacaoEvento";
 
 /** Uma linha de `apresentacoes_publicas()`. */
 export type ApresentacaoPublica = {
@@ -220,4 +221,149 @@ export function avisoPendente(
     (e) => e.status === "falha" && Date.parse(e.criado_em) >= Date.parse(solicitado),
   ).length;
   return falhas >= MAX_FALHAS_AVISO ? "desistiu" : "na_fila";
+}
+
+// ------------------------------------------------------------
+// Importar CSV no AdminCA
+// ------------------------------------------------------------
+// O CSV só PREENCHE o formulário: nada é gravado e nenhum e-mail sai até o
+// Salvar, que passa pela confirmação de sempre. Colunas por posição:
+// título; dia (DD/MM/AAAA); início; fim; sala (HH:MM, 24h).
+
+/** Uma linha do CSV com o número da linha do arquivo onde ela começa (para o aviso). */
+export type LinhaCsv = { numero: number; campos: string[] };
+
+/**
+ * CSV com aspas (`"a; b"`, `""` dentro de aspas), CRLF e linhas em branco
+ * puladas. O separador é `;` quando a 1ª linha tem mais `;` que `,` — o
+ * Excel em pt-BR salva com `;`, e título de trabalho vive cheio de vírgula.
+ */
+export function linhasCsv(texto: string): LinhaCsv[] {
+  if (texto.charCodeAt(0) === 0xfeff) texto = texto.slice(1); // BOM
+  const primeira = texto.split(/\r?\n/, 1)[0] ?? "";
+  const sep = (primeira.split(";").length > primeira.split(",").length) ? ";" : ",";
+
+  const linhas: LinhaCsv[] = [];
+  let campos: string[] = [];
+  let campo = "";
+  let aspas = false;
+  let numero = 1;
+  let inicio = 1;
+  const fecharLinha = () => {
+    campos.push(campo);
+    if (campos.some((c) => c.trim())) linhas.push({ numero: inicio, campos });
+    campos = [];
+    campo = "";
+  };
+
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (aspas) {
+      if (c === '"' && texto[i + 1] === '"') {
+        campo += '"';
+        i++;
+      } else if (c === '"') aspas = false;
+      else {
+        if (c === "\n") numero++;
+        campo += c;
+      }
+    } else if (c === '"') aspas = true;
+    else if (c === sep) {
+      campos.push(campo);
+      campo = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      fecharLinha();
+      inicio = ++numero;
+    } else campo += c;
+  }
+  fecharLinha();
+  return linhas;
+}
+
+/**
+ * 'D/M/AAAA' → 'AAAA-MM-DD', ou null se o dia não existe (31/02). A
+ * conferência é por `Date.UTC`, nunca `new Date('AAAA-MM-DD')` (ver o topo).
+ */
+export function dataDeBr(texto: string): string | null {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto.trim());
+  if (!m) return null;
+  const [d, mes, ano] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const utc = new Date(Date.UTC(ano, mes - 1, d));
+  if (utc.getUTCFullYear() !== ano || utc.getUTCMonth() !== mes - 1 || utc.getUTCDate() !== d) return null;
+  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+}
+
+/** 'H:MM', 'HH:MM' ou 'HH:MM:SS' (o Excel às vezes põe os segundos), 24h → 'HH:MM'. */
+export function horaDe(texto: string): string | null {
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(texto.trim());
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  return `${m[1].padStart(2, "0")}:${m[2]}`;
+}
+
+/** Uma linha do CSV que não preencheu nada: o trabalho fica para a mão. */
+export type PendenteCsv = { linha: number; titulo: string; motivo: string };
+
+/** Título comparável: sem acento, sem caixa, espaços colapsados. */
+const chaveTitulo = (t: string) => normalizar(t).replace(/\s+/g, " ").trim();
+
+/** O teto da sala no CHECK da coluna: passar dele derrubaria o lote inteiro no Salvar. */
+const MAX_SALA = 120;
+
+/**
+ * Casa cada linha do CSV com um trabalho listado no AdminCA (só aprovados)
+ * pelo título EXATO, tirados acento, caixa e espaços. Nada de aproximação:
+ * casar errado agendaria — e mandaria e-mail para — o autor errado.
+ *
+ * Fim antes do início entra como veio: o `estadoLinha` da tela já pinta a
+ * linha e trava o Salvar, não precisa de regra nova aqui.
+ */
+export function importarCsvAgenda(
+  texto: string,
+  trabalhos: { id: string; titulo: string }[],
+): { agendas: Record<string, Agenda>; pendentes: PendenteCsv[] } {
+  const porTitulo = new Map<string, string[]>();
+  for (const t of trabalhos) {
+    const chave = chaveTitulo(t.titulo);
+    porTitulo.set(chave, [...(porTitulo.get(chave) ?? []), t.id]);
+  }
+
+  const linhas = linhasCsv(texto);
+  // Cabeçalho: a 1ª linha cujo "dia" não é data.
+  if (linhas.length > 0 && !dataDeBr(linhas[0].campos[1] ?? "")) linhas.shift();
+
+  const agendas: Record<string, Agenda> = {};
+  const pendentes: PendenteCsv[] = [];
+  const vistos = new Set<string>();
+
+  for (const { numero, campos } of linhas) {
+    const [titulo = "", dia = "", inicio = "", fim = "", sala = ""] = campos.map((c) => c.trim());
+    const pendente = (motivo: string) => pendentes.push({ linha: numero, titulo, motivo });
+    const ids = porTitulo.get(chaveTitulo(titulo)) ?? [];
+    if (ids.length === 0) {
+      pendente("título não encontrado entre os trabalhos aprovados");
+      continue;
+    }
+    if (ids.length > 1) {
+      pendente("título igual ao de mais de um trabalho");
+      continue;
+    }
+    // Repetido conta mesmo se a 1ª linha era inválida: não dá para saber qual das duas valia.
+    if (vistos.has(ids[0])) {
+      pendente("título repetido no CSV");
+      continue;
+    }
+    vistos.add(ids[0]);
+
+    const data = dataDeBr(dia);
+    const horaInicio = horaDe(inicio);
+    const horaFim = horaDe(fim);
+    if (!data) pendente("dia inválido (use DD/MM/AAAA)");
+    else if (!horaInicio || !horaFim) pendente("horário inválido (use HH:MM, 24h)");
+    else if (!sala) pendente("sala vazia");
+    else if (sala.length > MAX_SALA) pendente(`sala com mais de ${MAX_SALA} caracteres`);
+    else agendas[ids[0]] = { data, hora_inicio: horaInicio, hora_fim: horaFim, sala };
+  }
+
+  return { agendas, pendentes };
 }

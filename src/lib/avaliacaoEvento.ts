@@ -25,7 +25,7 @@ export type MinhaAvaliacao = {
 };
 
 // Sem isto, "joao" nunca acharia "João" — e a busca é por nome de autor.
-const normalizar = (s: string) =>
+export const normalizar = (s: string) =>
   s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 /** Categoria vazia = todas; termo procura no título e nos autores. */

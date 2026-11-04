@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { filtrarTrabalhos } from "@/lib/avaliacaoEvento";
+import { normalizar } from "@/lib/avaliacaoEvento";
 import { rotuloData, rotuloHorario, type ApresentacaoPublica } from "@/lib/apresentacoes";
 
 /**
- * O cronograma de apresentações, só de leitura: busca por título ou autor e
- * a tabela com título, autores, dia, horário, sala e tipo.
+ * O cronograma de apresentações, só de leitura: busca por título e a tabela
+ * com título, autores, dia, horário, sala e tipo.
  *
- * Componente ÚNICO das telas que o exibem — /apresentacoes (sem sessão) e
- * /estudante/apresentacoes —, como a <ListaCronograma> do cronograma do
- * evento: duas cópias divergiriam no primeiro ajuste. O AdminCA não usa
- * este componente: lá cada linha é um formulário.
+ * Componente ÚNICO das telas que o exibem — /apresentacoes (sem sessão, e
+ * para onde a chamada da landing leva) e /estudante/apresentacoes —, como a
+ * <ListaCronograma> do cronograma do evento: duas cópias divergiriam no
+ * primeiro ajuste. O AdminCA não usa este componente: lá cada linha é um
+ * formulário.
  *
- * A busca é a de /avaliacao/buscar (`filtrarTrabalhos`): sem acento e sem
- * caixa, porque é por nome de autor — "joao" tem de achar "João".
+ * A busca ignora acento e caixa (`normalizar`): "cafe" acha "Café".
  */
 
 /**
@@ -94,7 +94,8 @@ export const ListaApresentacoes = ({ itens, carregando = false }: Props) => {
     );
   }
 
-  const linhas = filtrarTrabalhos(itens, { categoriaId: "", termo });
+  const busca = normalizar(termo.trim());
+  const linhas = busca ? itens.filter((a) => normalizar(a.titulo).includes(busca)) : itens;
 
   return (
     <>
@@ -107,8 +108,8 @@ export const ListaApresentacoes = ({ itens, carregando = false }: Props) => {
           <input
             type="search"
             className="search-input"
-            placeholder="Buscar por título ou autor..."
-            aria-label="Buscar por título ou autor"
+            placeholder="Buscar por título..."
+            aria-label="Buscar por título"
             value={termo}
             onChange={(e) => setTermo(e.target.value)}
           />

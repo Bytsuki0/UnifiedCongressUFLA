@@ -107,13 +107,29 @@ async function consultar(sql) {
   return JSON.parse(texto);
 }
 
-/** Escapa um valor para virar literal SQL no arquivo de restauração. */
-function literalSQL(v) {
-  if (v === null || v === undefined) return "NULL";
-  if (typeof v === "number") return String(v);
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  if (typeof v === "object") return `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
-  return `'${String(v).replace(/'/g, "''")}'`;
+/**
+ * Uma linha do snapshot vira INSERT por jsonb_populate_record.
+ *
+ * Antes cada valor virava literal, e todo objeto/array saía `::jsonb`. Só que
+ * a Management API devolve coluna ARRAY do Postgres (text[], uuid[]) também
+ * como array JSON, e `'[...]'::jsonb` não entra em uuid[]: o restore abortava
+ * com "is of type uuid[] but expression is of type jsonb" — `palavras_chave`
+ * e `trabalhos_ids` deixavam QUALQUER backup irrestaurável. Pelo JSON não dá
+ * para distinguir array de jsonb (e o --regerar-sql roda sem rede para
+ * perguntar o tipo); o populate_record usa o tipo da PRÓPRIA tabela de
+ * destino: array JSON vira array do Postgres em coluna ARRAY e segue jsonb em
+ * coluna jsonb.
+ *
+ * As colunas vão listadas (e citadas) nos dois lados: coluna que não está no
+ * snapshot fica fora do INSERT e recebe o DEFAULT, não o NULL do populate.
+ */
+function insertSQL(tabela, colunas, linha) {
+  const cols = colunas.map((c) => `"${c}"`).join(", ");
+  const json = JSON.stringify(linha).replace(/'/g, "''");
+  return (
+    `INSERT INTO public.${tabela} (${cols}) SELECT ${cols} ` +
+    `FROM jsonb_populate_record(NULL::public.${tabela}, '${json}'::jsonb);`
+  );
 }
 
 fs.mkdirSync(DESTINO, { recursive: true });
@@ -225,13 +241,10 @@ for (const tabela of tabelas) {
     const colunas = Object.keys(linhas[0]);
     partesSQL.push(`-- ${tabela} (${linhas.length} linhas)`);
     for (const linha of linhas) {
-      const valores = colunas.map((c) => literalSQL(linha[c])).join(", ");
       // Sem ON CONFLICT DO NOTHING: a tabela acabou de ser esvaziada, então
       // conflito aqui significaria snapshot inconsistente — tem de gritar,
       // não ser engolido em silêncio.
-      partesSQL.push(
-        `INSERT INTO public.${tabela} (${colunas.join(", ")}) VALUES (${valores});`,
-      );
+      partesSQL.push(insertSQL(tabela, colunas, linha));
     }
     partesSQL.push("");
   }

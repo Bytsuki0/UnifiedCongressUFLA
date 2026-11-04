@@ -32,8 +32,12 @@ import {
   AGENDA_VAZIA,
   avisoPendente,
   calcularMudancas,
+  dataDeBr,
   estadoLinha,
   hora,
+  horaDe,
+  importarCsvAgenda,
+  linhasCsv,
   rotuloData,
   rotuloHorario,
   ultimoEnvioPorTrabalho,
@@ -232,5 +236,80 @@ describe("apresentacoesService", () => {
       metodo: "in",
       args: ["status", ["aprovado", "aprovado_correcoes"]],
     });
+  });
+});
+
+describe("importar CSV no AdminCA", () => {
+  it("lê `;` e `,`, aspas com o separador dentro, `\"\"` e CRLF, pulando linha em branco", () => {
+    expect(linhasCsv('a;"b; c";d\r\n\r\n"diz ""oi""";e')).toEqual([
+      { numero: 1, campos: ["a", "b; c", "d"] },
+      { numero: 3, campos: ['diz "oi"', "e"] },
+    ]);
+    // O BOM do "CSV UTF-8" do Excel não pode grudar no 1º título.
+    expect(linhasCsv(String.fromCharCode(0xfeff) + "Hortas;x")).toEqual([{ numero: 1, campos: ["Hortas", "x"] }]);
+    expect(linhasCsv('"Café, clima",20/11/2026\n')).toEqual([
+      { numero: 1, campos: ["Café, clima", "20/11/2026"] },
+    ]);
+  });
+
+  it("converte o dia DD/MM/AAAA sem passar por new Date, e recusa dia que não existe", () => {
+    expect(dataDeBr("5/11/2026")).toBe("2026-11-05");
+    expect(dataDeBr(" 20/11/2026 ")).toBe("2026-11-20");
+    expect(dataDeBr("31/02/2026")).toBeNull();
+    expect(dataDeBr("2026-11-20")).toBeNull();
+  });
+
+  it("aceita hora 24h com ou sem segundos e recusa fora da faixa", () => {
+    expect(horaDe("9:05")).toBe("09:05");
+    expect(horaDe("14:00:00")).toBe("14:00");
+    expect(horaDe("24:00")).toBeNull();
+    expect(horaDe("14:60")).toBeNull();
+    expect(horaDe("2pm")).toBeNull();
+  });
+
+  const TRABALHOS = [
+    { id: "t1", titulo: "Robótica na Escola" },
+    { id: "t2", titulo: "Café e clima" },
+    { id: "t3", titulo: "Hortas" },
+    { id: "t4", titulo: "hortas " },
+  ];
+
+  it("casa pelo título sem acento, caixa ou espaço sobrando, e pula o cabeçalho", () => {
+    const csv = [
+      "Título;Dia;Início;Fim;Sala",
+      "  robotica   na escola ;20/11/2026;14:00;14:15; Sala 101 ",
+    ].join("\n");
+    expect(importarCsvAgenda(csv, TRABALHOS)).toEqual({
+      agendas: { t1: { data: "2026-11-20", hora_inicio: "14:00", hora_fim: "14:15", sala: "Sala 101" } },
+      pendentes: [],
+    });
+  });
+
+  it("o que não casa ou não presta volta para a mão, com o motivo e a linha do arquivo", () => {
+    const csv = [
+      "Título inexistente;20/11/2026;14:00;14:15;Sala 1",
+      "Hortas;20/11/2026;14:00;14:15;Sala 1",
+      "Café e clima;31/02/2026;14:00;14:15;Sala 1",
+      "Café e clima;20/11/2026;14:00;14:15;Sala 1",
+      "Robótica na escola;20/11/2026;25:00;14:15;Sala 1",
+    ].join("\n");
+    const { agendas, pendentes } = importarCsvAgenda(csv, TRABALHOS);
+    expect(agendas).toEqual({});
+    expect(pendentes).toEqual([
+      { linha: 1, titulo: "Título inexistente", motivo: "título não encontrado entre os trabalhos aprovados" },
+      { linha: 2, titulo: "Hortas", motivo: "título igual ao de mais de um trabalho" },
+      { linha: 3, titulo: "Café e clima", motivo: "dia inválido (use DD/MM/AAAA)" },
+      // A 1ª linha do mesmo título era inválida: não dá para saber qual das duas valia.
+      { linha: 4, titulo: "Café e clima", motivo: "título repetido no CSV" },
+      { linha: 5, titulo: "Robótica na escola", motivo: "horário inválido (use HH:MM, 24h)" },
+    ]);
+  });
+
+  it("sala vazia ou acima do CHECK do banco não entra — derrubaria o lote no Salvar", () => {
+    const csv = ["Café e clima;20/11/2026;14:00;14:15;  ", `Robótica na escola;20/11/2026;14:00;14:15;${"x".repeat(121)}`].join("\n");
+    expect(importarCsvAgenda(csv, TRABALHOS).pendentes.map((p) => p.motivo)).toEqual([
+      "sala vazia",
+      "sala com mais de 120 caracteres",
+    ]);
   });
 });

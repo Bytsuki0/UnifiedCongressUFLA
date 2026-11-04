@@ -23,7 +23,7 @@ const Apresentacoes = () => {
           <h1 className="page-title">Cronograma de Apresentações</h1>
           <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-secondary)" }}>
             Dia, horário, sala e formato de apresentação de cada trabalho aprovado. Busque pelo
-            título ou pelo nome de um autor.
+            título do trabalho.
           </p>
         </div>
 

@@ -57,3 +57,7 @@ segredos/
 .agents
 .claude
 skills-lock.json
+
+# CSVs do cronograma de apresentações para o Importar CSV do AdminCA
+# (dados da organização, gerados à mão — não versionar).
+cronograma-csv/

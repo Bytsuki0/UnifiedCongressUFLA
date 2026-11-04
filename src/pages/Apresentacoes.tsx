@@ -30,7 +30,7 @@ const Apresentacoes = () => {
           <h1 className="section-title">Cronograma de apresentações.</h1>
           <p className="section-description">
             Dia, horário, sala e formato de apresentação de cada trabalho aprovado. Busque pelo
-            título ou pelo nome de um autor.
+            título do trabalho.
           </p>
 
           <ListaApresentacoes itens={itens} carregando={carregando} />

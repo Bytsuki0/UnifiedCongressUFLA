@@ -149,6 +149,36 @@ describe("AdminCA", () => {
     expect(mocks.salvarCronogramaApresentacoes).not.toHaveBeenCalled();
   });
 
+  it("importar CSV só preenche a tela: o que não casou volta numa lista, e nada é salvo sem o Salvar", async () => {
+    mocks.salvarCronogramaApresentacoes.mockResolvedValue(1);
+    await abrir();
+
+    // Em Windows-1252, como o "CSV" padrão do Excel pt-BR: lido como UTF-8,
+    // o "é" viraria lixo e "Café e clima" não casaria.
+    const csv = "Título;Dia;Início;Fim;Sala\nCAFÉ E CLIMA;20/11/2026;9:00;9:15;Sala 2\nTrabalho fantasma;20/11/2026;10:00;10:15;Sala 2\n";
+    const bytes = Uint8Array.from(csv, (c) => c.charCodeAt(0));
+    const arquivo = new File([bytes], "cronograma.csv", { type: "text/csv" });
+    // O jsdom 20 não tem Blob.arrayBuffer(); todo navegador tem.
+    Object.assign(arquivo, { arrayBuffer: async () => bytes.buffer });
+    fireEvent.change(screen.getByLabelText("Arquivo CSV do cronograma"), { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(screen.getByLabelText("Sala da apresentação de Café e clima")).toHaveValue("Sala 2"));
+    expect(screen.getByLabelText("Início da apresentação de Café e clima")).toHaveValue("09:00");
+    expect(screen.getByText("novo")).toBeTruthy();
+    expect(screen.getByText(/linha 3 · "Trabalho fantasma" — título não encontrado/)).toBeTruthy();
+    expect(mocks.salvarCronogramaApresentacoes).not.toHaveBeenCalled();
+
+    fireEvent.click(botaoSalvar());
+    const dialogo = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(mocks.salvarCronogramaApresentacoes).toHaveBeenCalledWith(
+        [],
+        [{ trabalho_id: "t2", data: "2026-11-20", hora_inicio: "09:00", hora_fim: "09:15", sala: "Sala 2" }],
+      ),
+    );
+  });
+
   it("limpar um trabalho agendado o tira do cronograma, sem e-mail", async () => {
     mocks.salvarCronogramaApresentacoes.mockResolvedValue(0);
     await abrir();
