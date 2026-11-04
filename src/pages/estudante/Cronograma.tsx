@@ -1,7 +1,5 @@
 import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
 import { useCronograma } from "@/hooks/use-cronograma";
-import { ImagemProgramacao } from "@/components/cronograma/ImagemProgramacao";
-import { useProgramacao } from "@/hooks/use-programacao";
 
 /**
  * Cronograma dentro do Portal do Estudante.
@@ -13,7 +11,6 @@ import { useProgramacao } from "@/hooks/use-programacao";
  */
 const Cronograma = () => {
   const { itens, carregando } = useCronograma();
-  const programacao = useProgramacao();
 
   return (
     <div className="section active">
@@ -29,15 +26,6 @@ const Cronograma = () => {
         <div className="card">
           <ListaCronograma itens={itens} carregando={carregando} />
         </div>
-
-        {programacao && (
-          <div className="card" style={{ marginTop: "var(--space-6)" }}>
-            <h2 style={{ fontSize: "var(--fs-h4)", fontWeight: "var(--fw-semibold)", marginBottom: "var(--space-4)" }}>
-              Programação do evento
-            </h2>
-            <ImagemProgramacao programacao={programacao} />
-          </div>
-        )}
       </div>
     </div>
   );

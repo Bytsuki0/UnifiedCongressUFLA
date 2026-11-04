@@ -2,7 +2,7 @@
 -- Programação do evento
 -- ============================================================
 -- A organização sobe UM arquivo (PNG, JPEG ou PDF) em
--- /co-chairs/cronograma, e a landing, /cronograma e /estudante/cronograma
+-- /co-chairs/cronograma, e a landing, /programacao e /estudante/programacao
 -- o exibem como imagem.
 --
 -- Sem tabela, e é de propósito: o arquivo em vigor é o objeto MAIS

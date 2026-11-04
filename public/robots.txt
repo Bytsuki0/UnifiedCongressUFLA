@@ -36,8 +36,8 @@ Disallow: /trabalhos
 Disallow: /categorias
 Disallow: /atribuicoes
 
-# Público: / , /login , /cadastro , /cronograma , /anais , /pitches
-# Cronograma, anais e pitches são conteúdo público de verdade e devem
+# Público: / , /login , /cadastro , /cronograma , /programacao , /anais , /pitches
+# Cronograma, programação, anais e pitches são conteúdo público de verdade e devem
 # ser indexados — é o que um interessado procura antes de se cadastrar.
 # Por isso NÃO entram na lista de Disallow acima, e nem em vercel.json /
 # _headers como noindex.

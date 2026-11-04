@@ -3,8 +3,6 @@ import { CabecalhoPublico } from "@/components/publico/CabecalhoPublico";
 import { RodapePublico } from "@/components/publico/RodapePublico";
 import { ListaCronograma } from "@/components/cronograma/ListaCronograma";
 import { useCronograma } from "@/hooks/use-cronograma";
-import { ImagemProgramacao } from "@/components/cronograma/ImagemProgramacao";
-import { useProgramacao } from "@/hooks/use-programacao";
 
 /**
  * Cronograma — página pública, aberta ANTES do login.
@@ -20,7 +18,6 @@ import { useProgramacao } from "@/hooks/use-programacao";
  */
 const Cronograma = () => {
   const { itens, carregando } = useCronograma();
-  const programacao = useProgramacao();
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff", minHeight: "100vh" }}>
@@ -35,13 +32,6 @@ const Cronograma = () => {
           </p>
 
           <ListaCronograma itens={itens} carregando={carregando} />
-
-          {programacao && (
-            <div className="mt-12">
-              <h2 className="section-title">Programação do evento.</h2>
-              <ImagemProgramacao programacao={programacao} />
-            </div>
-          )}
 
           <div className="cronograma-rodape-acoes">
             <Link to="/cadastro" className="btn btn-primary">CADASTRAR-SE</Link>

@@ -39,6 +39,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import CronogramaPublico from "./pages/Cronograma";
+import ProgramacaoPublica from "./pages/Programacao";
 import AnaisPublico from "./pages/Anais";
 import PitchesPublico from "./pages/Pitches";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
@@ -59,6 +60,7 @@ import EstudanteReenvio from "./pages/estudante/Reenvio";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
 import EstudanteCronograma from "./pages/estudante/Cronograma";
+import EstudanteProgramacao from "./pages/estudante/Programacao";
 import EstudanteAvisos from "./pages/estudante/Avisos";
 
 // Painel do Revisor — uma página por função, sob /revisor
@@ -152,6 +154,9 @@ const App = () => (
                 seção; esta rota é o destino da aba CRONOGRAMA. Os dados
                 vêm da RPC `cronograma_publico()`, aberta a `anon`. */}
             <Route path="/cronograma" element={<CronogramaPublico />} />
+            {/* Programação: o arquivo (imagem/PDF) que a organização sobe
+                em /co-chairs/cronograma. Pública e indexável, como o cronograma. */}
+            <Route path="/programacao" element={<ProgramacaoPublica />} />
             {/* Anais e Pitches: as outras duas rotas públicas que
                 servem CONTEÚDO. Anais são as publicações do congresso;
                 Pitches é a vitrine de vídeos — os dos trabalhos
@@ -221,6 +226,7 @@ const App = () => (
                 {/* Mesma lista de /cronograma, para quem já entrou não
                     ter de sair do portal para conferir um prazo. */}
                 <Route path="cronograma" element={<EstudanteCronograma />} />
+                <Route path="programacao" element={<EstudanteProgramacao />} />
                 {/* Os avisos de login endereçados a quem está logado, numa
                     página fixa — o pop-up some quando é fechado. */}
                 <Route path="avisos" element={<EstudanteAvisos />} />

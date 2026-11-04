@@ -114,6 +114,12 @@ export const CabecalhoPublico = () => {
           CRONOGRAMA
         </NavLink>
         <NavLink
+          to="/programacao"
+          className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
+        >
+          PROGRAMAÇÃO
+        </NavLink>
+        <NavLink
           to="/anais"
           className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
         >

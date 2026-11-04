@@ -29,7 +29,7 @@ const Landing = () => {
   const { itens, carregando } = useCronograma();
   const { anais } = useAnais();
   const { pitches } = usePitches();
-  const programacao = useProgramacao();
+  const { programacao } = useProgramacao();
 
   // O efeito de sombra da barra superior mudou de dono: mora em
   // <CabecalhoPublico>, que /cronograma também usa. Aqui ficou só a

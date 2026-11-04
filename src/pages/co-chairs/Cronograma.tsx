@@ -309,9 +309,9 @@ const Cronograma = () => {
         <CardHeader className="space-y-0 pb-3">
           <h2 className="text-lg font-semibold">Programação do evento</h2>
           <p className="text-xs text-muted-foreground">
-            PNG, JPEG ou PDF de até 10 MB. Aparece como imagem na página inicial, em{" "}
-            <strong>/cronograma</strong> e no portal do autor. Enviar outro arquivo substitui o
-            atual.
+            PNG, JPEG ou PDF de até 10 MB. Aparece como imagem na página inicial, na aba{" "}
+            <strong>/programacao</strong> e na aba Programação do portal do autor. Enviar outro
+            arquivo substitui o atual.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -352,7 +352,7 @@ const Cronograma = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover a programação?</AlertDialogTitle>
             <AlertDialogDescription>
-              O arquivo sai da página inicial, de /cronograma e do portal do autor. Esta ação não
+              O arquivo sai da página inicial, de /programacao e do portal do autor. Esta ação não
               pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
