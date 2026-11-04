@@ -50,8 +50,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 /**
- * Gestão do cronograma — a lista de datas que a landing, /cronograma e
- * /estudante/cronograma exibem.
+ * Gestão do cronograma do evento — a lista de datas que a landing,
+ * /cronograma e /estudante/cronograma exibem. (O cronograma de
+ * APRESENTAÇÕES, de cada trabalho, é outra tela: o AdminCA.)
  *
  * Era um calendário: a organização publicava meses e pintava dia por dia.
  * Agora é uma lista, e cada item carrega o período inteiro. Some com isso
@@ -229,17 +230,61 @@ const Cronograma = () => {
             <CalendarDays className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Cronograma</h1>
+            <h1 className="text-2xl font-bold">Cronograma do Evento</h1>
             <p className="text-sm text-muted-foreground">
               Cada item tem um nome, uma cor e um período. A lista aparece na página inicial, em{" "}
               <strong>/cronograma</strong> e no portal do autor, sempre em ordem cronológica.
             </p>
           </div>
         </div>
-        <Button onClick={() => setEditor(editorNovo())}>
-          <Plus className="mr-2 h-4 w-4" /> Novo item
-        </Button>
+        
       </div>
+{/* Programação: um arquivo só. Enviar outro substitui o atual. */}
+      <Card className="shadow-[var(--shadow-card)]">
+        <CardHeader className="space-y-0 pb-3">
+          <h2 className="text-lg font-semibold">Programação do evento</h2>
+          <p className="text-xs text-muted-foreground">
+            PNG, JPEG ou PDF de até 10 MB. Aparece como imagem na página inicial, na aba{" "}
+            <strong>/programacao</strong> e na aba Programação do portal do autor. Enviar outro
+            arquivo substitui o atual.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="programacao-arquivo" className="sr-only">
+              Arquivo da programação
+            </Label>
+            <Input
+              id="programacao-arquivo"
+              type="file"
+              accept="image/png,image/jpeg,application/pdf"
+              disabled={enviandoProgramacao}
+              className="max-w-sm"
+              onChange={(e) => {
+                publicarProgramacao(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {enviandoProgramacao && <span className="text-sm text-muted-foreground">Enviando...</span>}
+            {programacao && !enviandoProgramacao && (
+              <Button variant="outline" size="sm" onClick={() => setRemovendoProgramacao(true)}>
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Remover
+              </Button>
+            )}
+          </div>
+          {programacao ? (
+            <ImagemProgramacao programacao={programacao} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma programação publicada — a seção não aparece para o visitante.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button onClick={() => setEditor(editorNovo())}>
+          <Plus className="mr-2 h-4 w-4" /> Novo item
+      </Button>
 
       {carregando ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -251,6 +296,8 @@ const Cronograma = () => {
           </CardContent>
         </Card>
       ) : (
+        
+        
         <Card className="shadow-[var(--shadow-card)]">
           <CardHeader className="space-y-0 pb-3">
             <h2 className="text-lg font-semibold">Datas publicadas</h2>
@@ -304,48 +351,7 @@ const Cronograma = () => {
         </Card>
       )}
 
-      {/* Programação: um arquivo só. Enviar outro substitui o atual. */}
-      <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader className="space-y-0 pb-3">
-          <h2 className="text-lg font-semibold">Programação do evento</h2>
-          <p className="text-xs text-muted-foreground">
-            PNG, JPEG ou PDF de até 10 MB. Aparece como imagem na página inicial, na aba{" "}
-            <strong>/programacao</strong> e na aba Programação do portal do autor. Enviar outro
-            arquivo substitui o atual.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor="programacao-arquivo" className="sr-only">
-              Arquivo da programação
-            </Label>
-            <Input
-              id="programacao-arquivo"
-              type="file"
-              accept="image/png,image/jpeg,application/pdf"
-              disabled={enviandoProgramacao}
-              className="max-w-sm"
-              onChange={(e) => {
-                publicarProgramacao(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-            {enviandoProgramacao && <span className="text-sm text-muted-foreground">Enviando...</span>}
-            {programacao && !enviandoProgramacao && (
-              <Button variant="outline" size="sm" onClick={() => setRemovendoProgramacao(true)}>
-                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Remover
-              </Button>
-            )}
-          </div>
-          {programacao ? (
-            <ImagemProgramacao programacao={programacao} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma programação publicada — a seção não aparece para o visitante.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+    
 
       <AlertDialog open={removendoProgramacao} onOpenChange={setRemovendoProgramacao}>
         <AlertDialogContent>

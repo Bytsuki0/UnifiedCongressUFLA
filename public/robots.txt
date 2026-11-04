@@ -36,13 +36,18 @@ Disallow: /trabalhos
 Disallow: /categorias
 Disallow: /atribuicoes
 
-# Público: / , /login , /cadastro , /cronograma , /programacao , /anais , /pitches
-# Cronograma, programação, anais e pitches são conteúdo público de verdade e devem
-# ser indexados — é o que um interessado procura antes de se cadastrar.
+# Público: / , /login , /cadastro , /cronograma , /apresentacoes , /programacao ,
+# /anais , /pitches
+# Cronograma do evento, cronograma de apresentações, programação, anais e pitches
+# são conteúdo público de verdade e devem ser indexados — é o que um interessado
+# procura antes de se cadastrar.
 # Por isso NÃO entram na lista de Disallow acima, e nem em vercel.json /
 # _headers como noindex.
 #
 # Os pitches publicam título, autores e vídeo de trabalho APROVADO, e só
 # desses: quem decide o que sai por ali é a RPC `pitches_publicos()`,
 # não este arquivo. Ver a migration 20260907120000.
+# O cronograma de apresentações publica título, autores, dia, horário, sala e
+# formato de trabalho APROVADO e agendado: quem decide é a RPC
+# `apresentacoes_publicas()`. Ver a migration 20261104120000.
 # (/confirmar-email também é público, mas fica fora do índice — ver acima)

@@ -3,21 +3,24 @@
 // ------------------------------------------------------------
 // Ponte entre o Apps Script da conta congressoparaiso@ufla.br
 // (apps-script/emails-revisores.gs) e as filas do banco: a dos revisores
-// (migration 20261014120000) e, desde a 20261027120000, a do resultado da
-// avaliação aos AUTORES. O nome ficou "emails-revisores" porque trocá-lo
-// exigiria editar a Propriedade URL_FUNCAO do Apps Script.
+// (migration 20261014120000), desde a 20261027120000 a do resultado da
+// avaliação aos AUTORES e, desde a 20261104120000, a do cronograma de
+// apresentações (dia, horário, sala e formato, também aos autores). O nome
+// ficou "emails-revisores" porque trocá-lo exigiria editar a Propriedade
+// URL_FUNCAO do Apps Script.
 // Quem chama é SÓ o Apps Script, a cada minuto; nenhum navegador fala com
 // esta função, por isso ela não tem CORS. O Brevo continua com a
 // verificação de e-mail e a redefinição de senha.
 //
 // O que mora aqui é o TEXTO dos e-mails. Quem recebe o quê, e quando, é
-// regra do SQL (`emails_devidos`, `resultados_devidos`); quem envia é o
-// Apps Script (MailApp).
+// regra do SQL (`emails_devidos`, `resultados_devidos`,
+// `apresentacoes_devidas`); quem envia é o Apps Script (MailApp).
 //
 // Cada e-mail reservado é uma linha de `envios_revisores` (migration
-// 20261026120000) ou de `envios_resultados` (20261027120000), e o Apps
-// Script a fecha por `concluir` com o resultado do MailApp — os ids são
-// UUIDs, e `concluir_envios` acha cada um na tabela certa.
+// 20261026120000), de `envios_resultados` (20261027120000) ou de
+// `envios_apresentacoes` (20261104120000), e o Apps Script a fecha por
+// `concluir` com o resultado do MailApp — os ids são UUIDs, e
+// `concluir_envios` acha cada um na tabela certa.
 //
 // ⚠ DEPLOY COM `verify_jwt: false` (ver scripts/deploy-functions.js): o
 //   Apps Script não tem JWT do Supabase. Quem autentica é o cabeçalho
@@ -71,6 +74,29 @@ type Resultado = {
   prioridade: number;
   /** Já na ordem de urgência, do SQL. `media` nula = trabalho sem nota. */
   trabalhos: { titulo: string; status: string; media: number | null; pareceres: number }[];
+};
+
+/** Uma linha de `apresentacoes_devidas()`: o e-mail de UM autor, com os trabalhos dele que mudaram. */
+type Apresentacao = {
+  /** A linha de `envios_apresentacoes` que o Apps Script fecha em `concluir`. */
+  envio_id: string;
+  autor_email: string;
+  autor_nome: string | null;
+  /**
+   * Na ordem do SQL (dia, início, título). `data` é 'AAAA-MM-DD' e as horas
+   * 'HH:MM'; `tipo` vazio = a categoria ainda não tem formato definido.
+   * `alteracao` = o autor já tinha recebido um e-mail deste trabalho.
+   */
+  trabalhos: {
+    titulo: string;
+    categoria: string;
+    tipo: string;
+    data: string;
+    hora_inicio: string;
+    hora_fim: string;
+    sala: string;
+    alteracao: boolean;
+  }[];
 };
 
 /** Resposta JSON. `erro` é um código estável, como nas functions do Brevo. */
@@ -310,6 +336,87 @@ function montarEmailResultado(r: Resultado, siteUrl: string) {
 }
 
 // ------------------------------------------------------------
+// Cronograma de apresentações, aos autores (migration 20261104120000)
+// ------------------------------------------------------------
+// UM e-mail por autor por lote, com os trabalhos dele que ganharam
+// informação nova no AdminCA: agendados agora ou alterados. Só o dono do
+// trabalho recebe - coautor não, como decidido com o usuário.
+
+function montarEmailApresentacao(a: Apresentacao, siteUrl: string) {
+  const nome = a.autor_nome?.trim() || null;
+  const saudacao = nome ? `Olá, ${nome}!` : "Olá!";
+  const link = `${siteUrl.replace(/\/+$/, "")}/estudante/apresentacoes`;
+  const n = a.trabalhos.length;
+  const alterou = a.trabalhos.some((t) => t.alteracao);
+
+  // A mudança precisa aparecer já na caixa de entrada: quem leu o primeiro
+  // e-mail não abre o segundo se o assunto for igual.
+  const assunto = alterou
+    ? `Atualização da sua apresentação - ${APP_NAME}`
+    : `Sua apresentação no ${APP_NAME}`;
+  const titulo = n === 1 ? "Sua apresentação no congresso" : "Suas apresentações no congresso";
+  const abertura = alterou
+    ? n === 1
+      ? `O cronograma de apresentações do ${APP_NAME} mudou. Confira os dados do seu trabalho:`
+      : `O cronograma de apresentações do ${APP_NAME} mudou. Confira os dados dos seus ${n} trabalhos:`
+    : n === 1
+      ? `A apresentação do seu trabalho no ${APP_NAME} foi agendada:`
+      : `As apresentações dos seus ${n} trabalhos no ${APP_NAME} foram agendadas:`;
+  const fecho =
+    "O cronograma completo, com todos os trabalhos, está no portal, na aba Cronograma de Apresentações.";
+
+  const blocos = a.trabalhos.map((t) => ({
+    titulo: t.titulo,
+    linhas: [
+      ...(t.tipo ? [`Formato: ${t.tipo}`] : []),
+      `Dia: ${dataBr(t.data)}`,
+      `Horário: ${t.hora_inicio} às ${t.hora_fim} (horário de Brasília)`,
+      `Sala: ${t.sala}`,
+    ],
+    alteracao: t.alteracao,
+  }));
+
+  const texto = [
+    saudacao,
+    "",
+    abertura,
+    "",
+    ...blocos.flatMap((b) => [
+      `- ${b.titulo}${b.alteracao ? " (alterado)" : ""}`,
+      ...b.linhas.map((l) => `  ${l}`),
+      "",
+    ]),
+    fecho,
+    "",
+    `Abra o portal: ${link}`,
+    "",
+    RODAPE,
+    `${APP_NAME} - ${APP_TAGLINE}`,
+  ].join("\n");
+
+  const itens = blocos
+    .map(
+      (b) =>
+        `<li style="margin:0 0 12px;"><strong>${escapar(b.titulo)}</strong>` +
+        (b.alteracao ? ` <em>(alterado)</em>` : "") +
+        b.linhas.map((l) => `<br>${escapar(l)}`).join("") +
+        `</li>`,
+    )
+    .join("");
+  const html = moldura(
+    titulo,
+    `<p style="margin:0 0 16px;line-height:1.6;">${escapar(saudacao)}</p>
+        <p style="margin:0 0 12px;line-height:1.6;">${escapar(abertura)}</p>
+        <ul style="margin:0 0 20px;padding-left:20px;line-height:1.6;">${itens}</ul>
+        <p style="margin:0 0 24px;line-height:1.6;">${escapar(fecho)}</p>`,
+    link,
+    "Ver o cronograma de apresentações",
+  );
+
+  return { assunto, html, texto };
+}
+
+// ------------------------------------------------------------
 // Handler
 // ------------------------------------------------------------
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -360,7 +467,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // acao: "pegar" - reserva o que está devido e devolve os e-mails prontos
   // ==========================================================
   if (corpo.acao === "pegar") {
-    // Preso a 1..50, como no SQL: a soma das duas filas nunca passa do que o
+    // Preso a 1..50, como no SQL: a soma das três filas nunca passa do que o
     // Apps Script pediu - e ele pede o que a cota do dia ainda permite.
     const limite = Math.min(Math.max(Math.trunc(Number(corpo.limite)) || LIMITE_PADRAO, 1), 50);
     const { data, error } = await clienteServico.rpc("emails_devidos", { _limite: limite });
@@ -387,10 +494,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // O cronograma de apresentações ocupa o que ainda sobrar: informativo,
+    // não corre contra prazo nenhum.
+    let apresentacoes: Apresentacao[] = [];
+    const resta = limite - devidos.length - resultados.length;
+    if (resta > 0) {
+      const a = await clienteServico.rpc("apresentacoes_devidas", { _limite: resta });
+      if (a.error) {
+        // ⚠ Sem 500, pelo mesmo motivo dos resultados: o que já foi
+        // reservado acima ficaria "sem confirmação" para sempre.
+        console.error(`apresentacoes_devidas falhou [${a.error.code ?? ""}]: ${a.error.message}`);
+      } else {
+        apresentacoes = (a.data ?? []) as Apresentacao[];
+      }
+    }
+
     // Só contagens no log: endereço de revisor ou de autor não vai para log nenhum.
-    if (devidos.length + resultados.length > 0) {
+    if (devidos.length + resultados.length + apresentacoes.length > 0) {
       console.log(
-        `pegar: ${devidos.length} e-mail(s) a revisores e ${resultados.length} resultado(s) reservado(s).`,
+        `pegar: ${devidos.length} e-mail(s) a revisores, ${resultados.length} resultado(s) e ` +
+          `${apresentacoes.length} apresentação(ões) reservado(s).`,
       );
     }
 
@@ -411,6 +534,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
           tipo: "resultado",
           para: r.autor_email,
           ...montarEmailResultado(r, SITE_URL!),
+        })),
+        ...apresentacoes.map((a) => ({
+          id: a.envio_id,
+          tipo: "apresentacao",
+          para: a.autor_email,
+          ...montarEmailApresentacao(a, SITE_URL!),
         })),
       ],
     });

@@ -26,6 +26,14 @@ describe("títulos de página", () => {
     ["/co-chairs/posteres", "Pôsteres"],
     ["/co-chairs/criterios-evento", "Critérios do evento"],
     ["/co-chairs/resultados-evento", "Resultados da avaliação"],
+    // "Cronograma" virou "Cronograma do evento" quando chegou o de
+    // apresentações; as URLs ficaram.
+    ["/cronograma", "Cronograma do evento"],
+    ["/estudante/cronograma", "Cronograma do evento"],
+    ["/co-chairs/cronograma", "Cronograma do evento"],
+    ["/apresentacoes", "Cronograma de apresentações"],
+    ["/estudante/apresentacoes", "Cronograma de apresentações"],
+    ["/co-chairs/admin-ca", "Editar cronograma de apresentação"],
     ["/avaliacao/minhas", "Minhas avaliações"],
     ["/avaliacao/buscar", "Buscar trabalhos"],
     ["/avaliacao/avaliar/abc-123", "Avaliar trabalho"],

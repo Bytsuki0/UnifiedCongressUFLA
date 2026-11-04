@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
+  CalendarClock,
   CalendarDays,
   ClipboardList,
   Download,
@@ -87,9 +88,16 @@ const SECOES: Secao[] = [
   },
   {
     para: "/co-chairs/cronograma",
-    titulo: "Cronograma",
+    titulo: "Cronograma do Evento",
     descricao: "As datas do congresso, publicadas na página inicial e em /cronograma.",
     Icone: CalendarDays,
+  },
+  {
+    para: "/co-chairs/admin-ca",
+    titulo: "Editar Cronograma de Apresentação",
+    descricao:
+      "Dia, horário, sala e tipo de apresentação de cada trabalho aprovado. Ao salvar, os autores recebem e-mail.",
+    Icone: CalendarClock,
   },
   {
     para: "/co-chairs/anais",

@@ -11,15 +11,15 @@ import { APP_MARK, APP_TAGLINE } from "@/lib/brand";
  * `#landing-header`. Duas cópias divergiriam no primeiro item de menu
  * novo, então o efeito veio junto e o id ficou local ao componente.
  *
- * CRONOGRAMA, ANAIS e PITCHES são a navegação de conteúdo daqui — as
- * três rotas públicas que mostram algo em vez de pedir login. O resto do
- * sistema exige sessão.
+ * CRONOGRAMA DO EVENTO, APRESENTAÇÕES, PROGRAMAÇÃO, ANAIS e PITCHES são a
+ * navegação de conteúdo daqui — as rotas públicas que mostram algo em vez
+ * de pedir login. O resto do sistema exige sessão.
  *
- * No celular os cinco botões viram uma gaveta: enfileirados eles pedem
- * ~640px numa tela de 360px, e `.btn` é `white-space: nowrap`, então não
- * havia quebra — a barra simplesmente estourava. Os rótulos ficam por
- * extenso mesmo lá dentro, porque são CONTROLES: texto interativo não
- * vira ícone (ver a regra do `.rotulo-icone` no index.css).
+ * Em tela estreita os botões viram uma gaveta: enfileirados eles não cabem,
+ * e `.btn` é `white-space: nowrap`, então não havia quebra — a barra
+ * simplesmente estourava. Os rótulos ficam por extenso mesmo lá dentro,
+ * porque são CONTROLES: texto interativo não vira ícone (ver a regra do
+ * `.rotulo-icone` no index.css).
  */
 export const CabecalhoPublico = () => {
   const [menuAberto, setMenuAberto] = useState(false);
@@ -111,7 +111,15 @@ export const CabecalhoPublico = () => {
           to="/cronograma"
           className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
         >
-          CRONOGRAMA
+          CRONOGRAMA DO EVENTO
+        </NavLink>
+        {/* O cronograma de apresentações. Rótulo curto de propósito: a barra
+            já não cabia com o nome inteiro, e a página diz o resto. */}
+        <NavLink
+          to="/apresentacoes"
+          className={({ isActive }) => `btn btn-ghost${isActive ? " ativo" : ""}`}
+        >
+          APRESENTAÇÕES
         </NavLink>
         <NavLink
           to="/programacao"

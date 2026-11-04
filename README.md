@@ -190,6 +190,11 @@ mora em SQL (migration `20261014120000`):
   avaliações (23h59, Brasília), para quem ainda deve parecer;
 - **atraso**: uma vez, quando o prazo vence.
 
+A mesma fila leva também dois e-mails aos **autores**: o resultado da
+avaliação (migration `20261027120000`) e o **cronograma de apresentações**
+(`20261104120000`, ver abaixo). Revisor sai primeiro em cada lote; o
+cronograma ocupa o que sobrar.
+
 Instalação do Apps Script no cabeçalho do próprio `.gs`; o segredo
 compartilhado entra com `npm run config:secrets` (`SEGREDO_FILA_EMAILS`). A
 senha da conta fica em `segredos/` (fora do git) e nenhum código a lê.
@@ -197,6 +202,33 @@ senha da conta fica em `segredos/` (fora do git) e nenhum código a lê.
 Na mesma tela ficam os **links de download** (modelos de artigo, normas,
 edital, manual do revisor…). Eles saem por uma RPC que devolve só as colunas
 de link, porque a landing e o `/login` são páginas públicas, sem sessão.
+
+### Cronograma de apresentações (CA)
+
+Dia, horário, sala e formato de apresentação de cada trabalho **aprovado**
+(`aprovado` e `aprovado_correcoes`), migration `20261104120000`. Não confundir
+com o **cronograma do evento** (`/cronograma`), a lista de datas do congresso.
+
+- **Gestão**: aba **Editar Cronograma de Apresentação** dos co-chairs
+  (`/co-chairs/admin-ca`; no código, AdminCA), com cartão no Painel. Cada
+  trabalho recebe dia, início, fim e sala; cada **categoria** recebe o tipo de
+  apresentação (texto livre — "Pôster", "Apresentação oral"), que todo
+  trabalho dela herda por junção. Tudo sai num clique só, o **Salvar**, pela
+  RPC `salvar_cronograma_apresentacoes` — uma transação: linha recusada aborta
+  o lote, com a frase dizendo qual trabalho.
+- **Leitura**: `/apresentacoes` (pública, com chamada na landing e o item
+  APRESENTAÇÕES no cabeçalho) e `/estudante/apresentacoes`, com busca por
+  título e autor. As duas leem `apresentacoes_publicas()`, aberta a `anon`;
+  com sessão ela marca em `meu` os trabalhos que a conta **submeteu**, e o
+  portal do autor os mostra num quadro de destaque antes da lista.
+- **E-mail**: ao salvar, o **dono** (quem submeteu; coautor não) de cada
+  trabalho com informação nova — agendado agora, ou com dia, horário, sala ou
+  tipo da categoria alterado — recebe um e-mail pela fila da conta UFLA
+  (`apresentacoes_devidas`). Salvar sem mudança não manda nada; tirar do
+  cronograma também não. Falha volta sozinha à fila até a 3ª; o selo de cada
+  linha dessa aba diz na fila, enviado ou falhou. O diálogo do Salvar mostra
+  antes quantos autores vão ser avisados.
+- Ensaio revertido da regra, no banco de produção: `sql/ensaio-apresentacoes.sql`.
 
 ---
 

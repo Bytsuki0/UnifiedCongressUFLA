@@ -9,6 +9,7 @@ import { ImagemProgramacao } from "@/components/cronograma/ImagemProgramacao";
 import { ListaAnais } from "@/components/publico/ListaAnais";
 import { CartaoPitch } from "@/components/publico/CartaoPitch";
 import { useCronograma } from "@/hooks/use-cronograma";
+import { useApresentacoes } from "@/hooks/use-apresentacoes";
 import { useProgramacao } from "@/hooks/use-programacao";
 import { useArquivosDownload } from "@/hooks/use-arquivos-download";
 import { useAnais } from "@/hooks/use-anais";
@@ -27,6 +28,7 @@ const PITCHES_NA_LANDING = 4;
 const Landing = () => {
   const { arquivos } = useArquivosDownload("estudante");
   const { itens, carregando } = useCronograma();
+  const { itens: apresentacoes } = useApresentacoes();
   const { anais } = useAnais();
   const { pitches } = usePitches();
   const { programacao } = useProgramacao();
@@ -47,7 +49,7 @@ const Landing = () => {
     // no DOM quando a busca volta, e o observer é montado uma vez. Sem
     // reobservar, os blocos `.reveal` de lá ficariam parados em opacity
     // 0 — invisíveis para sempre. Quem já revelou mantém a classe.
-  }, [itens, anais, pitches, programacao]);
+  }, [itens, apresentacoes, anais, pitches, programacao]);
 
   return (
     <div style={{ fontFamily: "var(--font-family)", background: "#fff" }}>
@@ -87,15 +89,15 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Cronograma — some inteiro quando a organização ainda não
-          publicou nada. Uma lista de datas vazia na página inicial diria
+      {/* Cronograma do evento — some inteiro quando a organização ainda
+          não publicou nada. Uma lista de datas vazia na página inicial diria
           menos que nada: sugeriria que o congresso não tem datas. */}
       {!carregando && itens.length > 0 && (
         <section className="cronograma-section" id="cronograma">
           <div className="cronograma-inner">
             <div className="reveal">
               <div className="section-overline">DATAS IMPORTANTES</div>
-              <h2 className="section-title">Cronograma do congresso.</h2>
+              <h2 className="section-title">Cronograma do evento.</h2>
               <p className="section-description">
                 Prazos de submissão, avaliação e realização do evento, em ordem cronológica.
               </p>
@@ -103,6 +105,33 @@ const Landing = () => {
 
             <div className="reveal">
               <ListaCronograma itens={itens} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Cronograma de apresentações — só a CHAMADA, com a lista atrás de
+          /apresentacoes, como os pitches: uma tabela de centenas de
+          trabalhos aqui empurraria para baixo tudo o que vem depois dela.
+          Some enquanto nenhum trabalho foi agendado. */}
+      {apresentacoes.length > 0 && (
+        <section className="cronograma-section" id="apresentacoes">
+          <div className="cronograma-inner">
+            <div className="reveal">
+              <div className="section-overline">APRESENTAÇÕES</div>
+              <h2 className="section-title">Cronograma de apresentações.</h2>
+              <p className="section-description">
+                Dia, horário, sala e formato de apresentação de cada trabalho aprovado, com busca
+                por título e por autor.
+              </p>
+            </div>
+
+            <div className="cronograma-rodape-acoes reveal">
+              <Link to="/apresentacoes" className="btn btn-outline">
+                {apresentacoes.length === 1
+                  ? "VER A APRESENTAÇÃO"
+                  : `VER AS ${apresentacoes.length} APRESENTAÇÕES`}
+              </Link>
             </div>
           </div>
         </section>

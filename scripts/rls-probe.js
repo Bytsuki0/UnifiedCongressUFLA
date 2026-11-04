@@ -83,6 +83,7 @@ const falhou = (msg) => {
 const TABELAS = {
   _migrations: "negada",
   allowed_email_domains: "negada",
+  apresentacoes: "negada",
   arquivos_download: "negada",
   attendances: "negada",
   avaliacoes: "negada",
@@ -96,6 +97,7 @@ const TABELAS = {
   criterios: "negada",
   criterios_evento: "negada",
   decisoes_editoriais: "negada",
+  envios_apresentacoes: "negada",
   envios_resultados: "negada",
   envios_revisores: "negada",
   estudantes: "negada",
@@ -156,6 +158,11 @@ const RPCS_NEGADAS = [
   // reservar. "Já divulgou?" é de quem tem sessão.
   ["resultados_devidos", { _limite: 1 }],
   ["resultados_divulgados", {}],
+  // Cronograma de apresentações (migration 20261104120000): o Salvar do
+  // AdminCA exige sessão (e a organização, conferida lá dentro); a fila é da
+  // Edge Function — e a mesma ressalva vale, buscar é reservar.
+  ["salvar_cronograma_apresentacoes", { _tipos: [], _apresentacoes: [] }],
+  ["apresentacoes_devidas", { _limite: 1 }],
   // Pôsteres (migration 20261027180000): escrita do autor, com sessão.
   [
     "enviar_posteres",
@@ -281,6 +288,27 @@ const COLUNAS_ARQUIVOS_DOWNLOAD = [
   "descricao",
 ];
 
+/**
+ * As únicas colunas que `apresentacoes_publicas()` tem direito de devolver
+ * (migration 20261104120000). Mesma lógica de COLUNAS_ARQUIVOS_DOWNLOAD: a
+ * função é aberta a `anon` de propósito (a landing e /apresentacoes) e é a
+ * única janela pública para dentro de `trabalhos` e `apresentacoes`. O risco
+ * é devolver demais — o `owner_id` ou o e-mail do autor de cada trabalho.
+ */
+const COLUNAS_APRESENTACOES = [
+  "id",
+  "titulo",
+  "autores",
+  "categoria_id",
+  "categoria",
+  "tipo",
+  "data",
+  "hora_inicio",
+  "hora_fim",
+  "sala",
+  "meu",
+];
+
 // ---------------------------------------------------------------------
 // Fase 1 — leitura anônima de cada tabela
 // ---------------------------------------------------------------------
@@ -365,6 +393,30 @@ for (const [nome, args, aceitavel] of RPCS_INOCUAS) {
       falhou(`arquivos_download_publicos(): expõe além do previsto → ${extras.join(", ")}`);
     } else {
       ok("arquivos_download_publicos(): executável por anon, devolve só os campos da tela");
+    }
+  }
+}
+
+// apresentacoes_publicas(): pública por desenho, como a de cima. Além do
+// formato, `meu` sem sessão tem de ser false em TODA linha — `auth.uid()` é
+// NULL para o visitante, e um `true` aqui diria de quem é cada trabalho.
+{
+  const { data, error } = await anon.rpc("apresentacoes_publicas");
+  if (error) {
+    falhou(
+      `apresentacoes_publicas(): deveria executar como anon e não executou ` +
+        `(${error.code || error.message}) — a migration 20261104120000 já subiu?`
+    );
+  } else {
+    const extras = Object.keys(data?.[0] ?? {}).filter(
+      (k) => !COLUNAS_APRESENTACOES.includes(k)
+    );
+    if (extras.length) {
+      falhou(`apresentacoes_publicas(): expõe além do previsto → ${extras.join(", ")}`);
+    } else if ((data ?? []).some((linha) => linha.meu !== false)) {
+      falhou("apresentacoes_publicas(): marcou trabalho como \"meu\" para quem não tem sessão");
+    } else {
+      ok("apresentacoes_publicas(): executável por anon, devolve só os campos da tela");
     }
   }
 }

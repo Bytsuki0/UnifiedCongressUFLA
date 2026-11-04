@@ -30,14 +30,14 @@ export const ListaCronograma = ({ itens, carregando = false }: Props) => {
   const hoje = hojeLocal();
 
   if (carregando) {
-    return <p className="cronograma-aviso">Carregando cronograma...</p>;
+    return <p className="cronograma-aviso">Carregando o cronograma do evento...</p>;
   }
 
   if (itens.length === 0) {
     return (
       <p className="cronograma-aviso">
-        O cronograma ainda não foi publicado. Assim que a organização definir as datas, elas
-        aparecem aqui.
+        O cronograma do evento ainda não foi publicado. Assim que a organização definir as datas,
+        elas aparecem aqui.
       </p>
     );
   }

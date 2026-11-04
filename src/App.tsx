@@ -39,6 +39,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import CronogramaPublico from "./pages/Cronograma";
+import ApresentacoesPublico from "./pages/Apresentacoes";
 import ProgramacaoPublica from "./pages/Programacao";
 import AnaisPublico from "./pages/Anais";
 import PitchesPublico from "./pages/Pitches";
@@ -60,6 +61,7 @@ import EstudanteReenvio from "./pages/estudante/Reenvio";
 import EstudanteDetalhe from "./pages/estudante/DetalheTrabalho";
 import EstudanteTemplates from "./pages/estudante/Templates";
 import EstudanteCronograma from "./pages/estudante/Cronograma";
+import EstudanteApresentacoes from "./pages/estudante/Apresentacoes";
 import EstudanteProgramacao from "./pages/estudante/Programacao";
 import EstudanteAvisos from "./pages/estudante/Avisos";
 
@@ -87,6 +89,7 @@ import TrabalhoForm from "./pages/co-chairs/TrabalhoForm";
 import TrabalhoDetalhe from "./pages/co-chairs/TrabalhoDetalhe";
 import Categorias from "./pages/co-chairs/Categorias";
 import CoChairsCronograma from "./pages/co-chairs/Cronograma";
+import CoChairsAdminCA from "./pages/co-chairs/AdminCA";
 import CoChairsAnais from "./pages/co-chairs/Anais";
 import CoChairsPitches from "./pages/co-chairs/Pitches";
 import CoChairsPosteres from "./pages/co-chairs/Posteres";
@@ -148,12 +151,17 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
-            {/* Cronograma: pública e SEM sessão de propósito — é a
+            {/* Cronograma do evento: pública e SEM sessão de propósito — é a
                 informação que o visitante procura antes de decidir se
                 vai se cadastrar. A landing traz a mesma lista numa
-                seção; esta rota é o destino da aba CRONOGRAMA. Os dados
-                vêm da RPC `cronograma_publico()`, aberta a `anon`. */}
+                seção; esta rota é o destino da aba CRONOGRAMA DO EVENTO.
+                Os dados vêm da RPC `cronograma_publico()`, aberta a `anon`. */}
             <Route path="/cronograma" element={<CronogramaPublico />} />
+            {/* Cronograma de apresentações: dia, horário, sala e formato
+                de cada trabalho aprovado, montado em /co-chairs/admin-ca.
+                Pública e indexável como o cronograma do evento; os dados
+                vêm da RPC `apresentacoes_publicas()`, aberta a `anon`. */}
+            <Route path="/apresentacoes" element={<ApresentacoesPublico />} />
             {/* Programação: o arquivo (imagem/PDF) que a organização sobe
                 em /co-chairs/cronograma. Pública e indexável, como o cronograma. */}
             <Route path="/programacao" element={<ProgramacaoPublica />} />
@@ -226,6 +234,9 @@ const App = () => (
                 {/* Mesma lista de /cronograma, para quem já entrou não
                     ter de sair do portal para conferir um prazo. */}
                 <Route path="cronograma" element={<EstudanteCronograma />} />
+                {/* A lista de /apresentacoes com o trabalho do autor num
+                    quadro de destaque — a RPC sabe quem está logado. */}
+                <Route path="apresentacoes" element={<EstudanteApresentacoes />} />
                 <Route path="programacao" element={<EstudanteProgramacao />} />
                 {/* Os avisos de login endereçados a quem está logado, numa
                     página fixa — o pop-up some quando é fechado. */}
@@ -283,6 +294,9 @@ const App = () => (
                 <Route path="criterios-evento" element={<CoChairsCriteriosEvento />} />
                 <Route path="resultados-evento" element={<CoChairsResultadosEvento />} />
                 <Route path="cronograma" element={<CoChairsCronograma />} />
+                {/* Editar Cronograma de Apresentação (no código, AdminCA). Salvar
+                    aqui manda e-mail aos autores (migration 20261104120000). */}
+                <Route path="admin-ca" element={<CoChairsAdminCA />} />
                 <Route path="anais" element={<CoChairsAnais />} />
                 <Route path="pitches" element={<CoChairsPitches />} />
                 <Route path="posteres" element={<CoChairsPosteres />} />

@@ -1711,15 +1711,19 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
 
 .header-menu-toggle svg { width: 20px; height: 20px; }
 
-/* ---- Menu público vira gaveta no celular ----
-   Os cinco botões pedem ~640px em fila e `.btn` é `white-space: nowrap`:
-   não havia quebra, a barra estourava. Aqui eles empilham num painel sob o
-   cabeçalho, **com o texto** — são controles, e texto interativo não vira
-   ícone (ver `.rotulo-icone`).
+/* ---- Menu público vira gaveta em tela estreita ----
+   Os sete botões (CRONOGRAMA DO EVENTO e APRESENTAÇÕES entre eles) pedem
+   ~1140px em fila, e `.btn` é `white-space: nowrap`: não há quebra, a barra
+   estoura — e antes de estourar ela espreme a marca até quebrar em linhas.
+   Com a marca (~245px) e o respiro das bordas, a fila só cabe inteira a
+   partir de ~1460px (medido no Chrome em 2026-11-04); abaixo disso eles
+   empilham num painel sob o cabeçalho, **com o texto** — são controles, e
+   texto interativo não vira ícone (ver `.rotulo-icone`). Botão novo na
+   barra = medir de novo e mover este número.
 
    O painel é `position: absolute` dentro do `.landing-header`, que já é
    `position: fixed` e portanto serve de bloco de contenção. */
-@media (max-width: 768px) {
+@media (max-width: 1480px) {
   .header-menu-toggle { display: inline-flex; }
 
   .header-nav {
@@ -1748,6 +1752,19 @@ body[data-sidebar="recolhida"] .sidebar-toggle svg { transform: rotate(180deg); 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+/* No desktop estreito a gaveta vira um painel sob o botão, alinhado à
+   direita: de ponta a ponta, num monitor de 1366px, cada botão viraria uma
+   faixa de mais de um metro de largura. */
+@media (min-width: 769px) and (max-width: 1480px) {
+  .header-nav {
+    left: auto;
+    right: 40px;
+    width: 320px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
   }
 }
 
@@ -2815,6 +2832,32 @@ a.login-left-logo:hover .logo-name { color: var(--white); }
 }
 
 .cronograma-rodape-acoes { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* ---- Cronograma de apresentações: o quadro do autor ----
+   Em /estudante/apresentacoes, o trabalho que a conta submeteu, num quadro
+   antes da lista completa (que reaproveita `.toolbar` e `.table`). A cor é
+   a da MARCA, como o selo "Em andamento" do cronograma do evento: "este é o
+   seu" é um estado do sistema, não um atributo do trabalho. */
+.apresentacoes-destaque {
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
+}
+
+.apresentacoes-destaque-titulo {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+}
+
+.apresentacoes-destaque-texto {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+}
 
 /* ---- Anais do Congresso (landing e /anais) ----
    Uma lista de publicações: título, a referência de onde/quando saiu, e

@@ -83,6 +83,53 @@ export type Database = {
         }
         Relationships: []
       }
+      apresentacoes: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          aviso_reservado_em: string | null
+          aviso_solicitado_em: string | null
+          data: string
+          hora_fim: string
+          hora_inicio: string
+          id: string
+          sala: string
+          trabalho_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          aviso_reservado_em?: string | null
+          aviso_solicitado_em?: string | null
+          data: string
+          hora_fim: string
+          hora_inicio: string
+          id?: string
+          sala: string
+          trabalho_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          aviso_reservado_em?: string | null
+          aviso_solicitado_em?: string | null
+          data?: string
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+          sala?: string
+          trabalho_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apresentacoes_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: true
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arquivos_download: {
         Row: {
           criado_em: string
@@ -350,16 +397,19 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          tipo_apresentacao: string
         }
         Insert: {
           created_at?: string
           id?: string
           nome: string
+          tipo_apresentacao?: string
         }
         Update: {
           created_at?: string
           id?: string
           nome?: string
+          tipo_apresentacao?: string
         }
         Relationships: []
       }
@@ -623,6 +673,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      envios_apresentacoes: {
+        Row: {
+          autor_email: string
+          autor_id: string
+          autor_nome: string | null
+          concluido_em: string | null
+          criado_em: string
+          erro: string | null
+          id: string
+          status: string
+          trabalhos: Json
+          trabalhos_ids: string[]
+        }
+        Insert: {
+          autor_email: string
+          autor_id: string
+          autor_nome?: string | null
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          status?: string
+          trabalhos: Json
+          trabalhos_ids: string[]
+        }
+        Update: {
+          autor_email?: string
+          autor_id?: string
+          autor_nome?: string | null
+          concluido_em?: string | null
+          criado_em?: string
+          erro?: string | null
+          id?: string
+          status?: string
+          trabalhos?: Json
+          trabalhos_ids?: string[]
+        }
+        Relationships: []
       }
       envios_resultados: {
         Row: {
@@ -1349,6 +1438,31 @@ export type Database = {
         Returns: string[]
       }
       aplicar_decisao: { Args: { _trabalho_id: string }; Returns: string }
+      apresentacoes_devidas: {
+        Args: { _limite?: number }
+        Returns: {
+          autor_email: string
+          autor_nome: string
+          envio_id: string
+          trabalhos: Json
+        }[]
+      }
+      apresentacoes_publicas: {
+        Args: never
+        Returns: {
+          autores: string
+          categoria: string
+          categoria_id: string
+          data: string
+          hora_fim: string
+          hora_inicio: string
+          id: string
+          meu: boolean
+          sala: string
+          tipo: string
+          titulo: string
+        }[]
+      }
       arquivos_download_publicos: {
         Args: never
         Returns: {
@@ -1603,6 +1717,10 @@ export type Database = {
       }
       resultados_divulgados: { Args: never; Returns: boolean }
       revisores_por_trabalho: { Args: never; Returns: number }
+      salvar_cronograma_apresentacoes: {
+        Args: { _apresentacoes?: Json; _tipos?: Json }
+        Returns: number
+      }
       solicitar_avisos_atribuicao: {
         Args: { _reenviar?: boolean }
         Returns: number
