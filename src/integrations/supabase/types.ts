@@ -468,6 +468,8 @@ export type Database = {
         Row: {
           alerta_horas: number
           atualizado_em: string
+          avaliacao_abertura: string | null
+          avaliacao_encerramento: string | null
           atualizado_por: string | null
           edital: string
           id: boolean
@@ -484,6 +486,8 @@ export type Database = {
         Insert: {
           alerta_horas?: number
           atualizado_em?: string
+          avaliacao_abertura?: string | null
+          avaliacao_encerramento?: string | null
           atualizado_por?: string | null
           edital?: string
           id?: boolean
@@ -500,6 +504,8 @@ export type Database = {
         Update: {
           alerta_horas?: number
           atualizado_em?: string
+          avaliacao_abertura?: string | null
+          avaliacao_encerramento?: string | null
           atualizado_por?: string | null
           edital?: string
           id?: boolean
@@ -1433,6 +1439,18 @@ export type Database = {
           url: string
         }[]
       }
+      anexos_para_avaliacao: {
+        Args: { _trabalho_id: string }
+        Returns: {
+          anexo_id: string
+          id: string
+          ordem: number
+          poster: boolean
+          tipo: string
+          titulo: string
+          valor: string
+        }[]
+      }
       aplicar_anexos: {
         Args: { _anexos: Json; _trabalho_id: string }
         Returns: string[]
@@ -1474,6 +1492,7 @@ export type Database = {
           url: string
         }[]
       }
+      avaliacao_aberta: { Args: never; Returns: boolean }
       avaliar_trabalho_evento: {
         Args: { _notas: Json; _trabalho_id: string }
         Returns: undefined
@@ -1619,6 +1638,15 @@ export type Database = {
         }[]
       }
       papeis_efetivos: { Args: never; Returns: string[] }
+      periodo_avaliacao: {
+        Args: never
+        Returns: {
+          aberto: boolean
+          abertura: string
+          encerramento: string
+          hoje: string
+        }[]
+      }
       parecer_editorial_do_meu_trabalho: {
         Args: { _trabalho_id: string }
         Returns: {

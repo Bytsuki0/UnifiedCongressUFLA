@@ -123,7 +123,6 @@ export async function listarTrabalhosDoAutorComCategorias(ownerId: string | null
  */
 export type PayloadTrabalho = {
   titulo: string;
-  resumo: string;
   autores: string;
   categoria_id: string;
   data_submissao: string;

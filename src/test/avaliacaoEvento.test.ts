@@ -17,7 +17,12 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { filtrarTrabalhos, rankingPorCategoria } from "@/lib/avaliacaoEvento";
-import { avaliarTrabalhoEvento, carregarAvaliacaoEvento } from "@/services/avaliacaoEventoService";
+import {
+  avaliarTrabalhoEvento,
+  carregarAvaliacaoEvento,
+  carregarPeriodoAvaliacao,
+  listarPdfsParaAvaliacao,
+} from "@/services/avaliacaoEventoService";
 
 const T = (id: string, titulo: string, autores: string, categoria_id: string | null) => ({
   id, titulo, autores, categoria_id, em_conflito: false,
@@ -120,5 +125,25 @@ describe("avaliacaoEventoService", () => {
     mocks.rpc.mockResolvedValue({ error: { message: "Atribua uma nota de 1 a 5 a todos os critérios." } });
     await expect(avaliarTrabalhoEvento("t1", { c1: 4 })).rejects.toThrow("Atribua uma nota de 1 a 5");
     expect(mocks.rpc).toHaveBeenCalledWith("avaliar_trabalho_evento", { _trabalho_id: "t1", _notas: { c1: 4 } });
+  });
+
+  // Migration 20261105120000. Quem fecha o portal é a fresta; aqui só a
+  // política de erro: "não sei" (null) não pode virar "fechado" (false).
+  it("período: devolve o do servidor; falha vira aberto null, nunca false", async () => {
+    const janela = { abertura: "2026-11-20", encerramento: "2026-11-22", aberto: false, hoje: "2026-11-05" };
+    mocks.rpc.mockResolvedValue({ data: [janela], error: null });
+    expect(await carregarPeriodoAvaliacao()).toEqual(janela);
+    expect(mocks.rpc).toHaveBeenCalledWith("periodo_avaliacao");
+
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "rede" } });
+    expect((await carregarPeriodoAvaliacao()).aberto).toBeNull();
+  });
+
+  it("PDF: pede à RPC da fresta, nunca à tabela", async () => {
+    const pdf = { id: "a1", anexo_id: "e1", tipo: "pdf", titulo: "Resumo", ordem: 1, valor: "u/x.pdf", poster: false };
+    mocks.rpc.mockResolvedValue({ data: [pdf], error: null });
+    expect(await listarPdfsParaAvaliacao("t1")).toEqual([pdf]);
+    expect(mocks.rpc).toHaveBeenCalledWith("anexos_para_avaliacao", { _trabalho_id: "t1" });
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

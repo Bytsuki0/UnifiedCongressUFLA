@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,11 +22,12 @@ import {
 import { toast } from "sonner";
 import type { Categoria } from "@/lib/types";
 
-// Validação: categoria é obrigatória (regra de negócio)
+// Validação: categoria é obrigatória (regra de negócio).
+// Sem `resumo`: ele vive no PDF desde a 20260819120000 (a coluna é nullable).
+// Fora do payload, a edição preserva o texto legado das submissões antigas.
 const trabalhoSchema = z.object({
   titulo: z.string().trim().min(1, "Título é obrigatório").max(200, "Título muito longo"),
   autores: z.string().trim().min(1, "Informe ao menos um autor").max(300, "Texto muito longo"),
-  resumo: z.string().trim().min(10, "Resumo deve ter pelo menos 10 caracteres").max(5000, "Resumo muito longo"),
   categoria_id: z.string().uuid("Selecione uma categoria"),
   data_submissao: z.string().min(1, "Data é obrigatória"),
 });
@@ -40,7 +40,6 @@ const TrabalhoForm = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [form, setForm] = useState({
     titulo: "",
-    resumo: "",
     autores: "",
     categoria_id: "",
     data_submissao: new Date().toISOString().split("T")[0],
@@ -69,7 +68,6 @@ const TrabalhoForm = () => {
       }
       setForm({
         titulo: data.titulo,
-        resumo: data.resumo,
         autores: data.autores,
         categoria_id: data.categoria_id ?? "",
         data_submissao: data.data_submissao,
@@ -94,7 +92,6 @@ const TrabalhoForm = () => {
     const payload = {
       titulo: parsed.data.titulo,
       autores: parsed.data.autores,
-      resumo: parsed.data.resumo,
       categoria_id: parsed.data.categoria_id,
       data_submissao: parsed.data.data_submissao,
     };
@@ -144,17 +141,6 @@ const TrabalhoForm = () => {
                 aria-invalid={!!errors.autores}
               />
               {errors.autores && <p className="text-xs text-destructive">{errors.autores}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="resumo">Resumo *</Label>
-              <Textarea
-                id="resumo"
-                rows={6}
-                value={form.resumo}
-                onChange={(e) => setForm({ ...form, resumo: e.target.value })}
-                aria-invalid={!!errors.resumo}
-              />
-              {errors.resumo && <p className="text-xs text-destructive">{errors.resumo}</p>}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">

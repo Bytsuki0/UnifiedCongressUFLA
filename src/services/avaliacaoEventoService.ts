@@ -6,6 +6,7 @@ import {
   type NotaDada,
   type TrabalhoAvaliavel,
 } from "@/lib/avaliacaoEvento";
+import type { AnexoDoTrabalho } from "@/lib/anexos";
 import type { Categoria, Trabalho } from "@/lib/types";
 import type { Criterio } from "@/services/categoriasService";
 import { listarTrabalhosComCategorias } from "@/services/trabalhosService";
@@ -57,6 +58,39 @@ export async function carregarAvaliacaoEvento(avaliadorId: string): Promise<{
       (a.data ?? []).map((x) => [x.trabalho_id, { ...x, itens: x.itens as NotaDada[] }]),
     ),
   };
+}
+
+/** A janela da avaliação ao vivo (migration 20261105120000). */
+export type PeriodoAvaliacao = {
+  abertura: string | null;
+  encerramento: string | null;
+  /**
+   * Do SERVIDOR (`avaliacao_aberta()`). `null` = falha, "não sei": a tela
+   * segue e mostra o que a fresta devolver — quem fecha é o servidor, que
+   * fora da janela não devolve trabalho nenhum.
+   */
+  aberto: boolean | null;
+  /** Hoje em Lavras segundo o servidor, para dizer "começa" ou "encerrou". */
+  hoje: string;
+};
+
+export async function carregarPeriodoAvaliacao(): Promise<PeriodoAvaliacao> {
+  const { data, error } = await supabase.rpc("periodo_avaliacao");
+  if (error || !data || data.length === 0) {
+    return { abertura: null, encerramento: null, aberto: null, hoje: "" };
+  }
+  return data[0];
+}
+
+/**
+ * Os PDFs da submissão de um trabalho, na versão em vigor (a correção
+ * sobrescreve o arquivo da exigência — não há versão antiga para escolher).
+ * Nunca o pôster. Fora da janela a RPC devolve vazio.
+ */
+export async function listarPdfsParaAvaliacao(trabalhoId: string): Promise<AnexoDoTrabalho[]> {
+  const { data, error } = await supabase.rpc("anexos_para_avaliacao", { _trabalho_id: trabalhoId });
+  if (error) throw error;
+  return (data ?? []) as AnexoDoTrabalho[];
 }
 
 /**

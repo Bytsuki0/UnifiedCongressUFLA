@@ -239,6 +239,16 @@ const AdminPortal = () => {
       toast.error("O encerramento do envio de pôsteres não pode ser anterior à abertura.");
       return;
     }
+    // Mesmo CHECK, na janela da avaliação ao vivo.
+    if ((config.avaliacao_abertura === null) !== (config.avaliacao_encerramento === null)) {
+      toast.error("Preencha as duas datas do período de avaliação, ou deixe as duas vazias.");
+      return;
+    }
+    if (config.avaliacao_abertura && config.avaliacao_encerramento
+        && config.avaliacao_abertura > config.avaliacao_encerramento) {
+      toast.error("O fim do período de avaliação não pode ser anterior ao início.");
+      return;
+    }
     if (config.alerta_horas < 1) {
       toast.error("A antecedência do lembrete precisa ser de pelo menos 1 hora.");
       return;
@@ -698,6 +708,54 @@ const AdminPortal = () => {
                       className="form-input"
                       value={config.posteres_encerramento ?? ""}
                       onChange={e => setCampo("posteres_encerramento", e.target.value || null)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="config-card">
+                <div className="config-card-header">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+                    <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  </svg>
+                  <span className="config-title">Período de Avaliação</span>
+                </div>
+
+                {/* Regra de servidor (`avaliacao_aberta()`, migration
+                    20261105120000). Vazio FECHA, como a janela dos pôsteres:
+                    o portal lista autores, e aberto fora do evento quebraria
+                    o às cegas de /revisor. */}
+                <div className="alert alert-info alert-admin" style={{ marginBottom: "var(--space-4)" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }}>
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <div>
+                    <strong>SÓ DENTRO DESTA JANELA</strong> o portal Avaliação lista os trabalhos aprovados, com
+                    autores e PDF, e aceita notas. Fora dela a tela mostra apenas as datas — a lista revelaria
+                    a autoria a quem ainda revisa às cegas. As duas pontas são inclusivas, no horário de
+                    Brasília. <strong>Campos vazios = avaliação fechada.</strong>
+                  </div>
+                </div>
+
+                <div className="config-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-avaliacao-abertura">Início da Avaliação</label>
+                    <input
+                      type="date"
+                      id="cfg-avaliacao-abertura"
+                      className="form-input"
+                      value={config.avaliacao_abertura ?? ""}
+                      onChange={e => setCampo("avaliacao_abertura", e.target.value || null)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cfg-avaliacao-encerramento">Fim da Avaliação</label>
+                    <input
+                      type="date"
+                      id="cfg-avaliacao-encerramento"
+                      className="form-input"
+                      value={config.avaliacao_encerramento ?? ""}
+                      onChange={e => setCampo("avaliacao_encerramento", e.target.value || null)}
                     />
                   </div>
                 </div>

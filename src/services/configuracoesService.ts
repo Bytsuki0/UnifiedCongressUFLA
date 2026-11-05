@@ -51,6 +51,12 @@ export type Configuracoes = {
    */
   posteres_abertura: string | null;
   posteres_encerramento: string | null;
+  /**
+   * Janela da avaliação ao vivo (/avaliacao), mesmo formato e mesma regra
+   * da dos pôsteres: vazia = FECHADA, o CHECK recusa só uma das duas.
+   */
+  avaliacao_abertura: string | null;
+  avaliacao_encerramento: string | null;
   edital: string;
   atualizado_em: string;
 };
@@ -78,7 +84,7 @@ export type PrazoSubmissoes = {
  * mudar.
  */
 const COLUNAS_DO_ADMIN =
-  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, posteres_abertura, posteres_encerramento, edital, atualizado_em";
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, posteres_abertura, posteres_encerramento, avaliacao_abertura, avaliacao_encerramento, edital, atualizado_em";
 
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase

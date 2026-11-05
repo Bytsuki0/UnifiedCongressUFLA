@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { estadoDoPeriodo, rotuloPeriodo } from "@/lib/cronograma";
+import { carregarPeriodoAvaliacao, type PeriodoAvaliacao } from "@/services/avaliacaoEventoService";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortaisNav } from "@/components/PortaisNav";
 import { BotaoRecolherSidebar } from "@/components/BotaoRecolherSidebar";
@@ -14,9 +17,44 @@ const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/avaliacao/buscar", label: "Buscar Trabalhos", icon: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></> },
 ];
 
+/**
+ * Fora da janela (`/admin/configuracoes`) o portal não mostra nada: a lista
+ * traz título e autores, e um professor revisor acharia ali quem escreveu o
+ * trabalho que está revisando às cegas. Isto é cortesia — quem fecha é
+ * `trabalhos_para_avaliacao()`, que fora da janela não devolve nada.
+ */
+function PortalFechado({ periodo }: { periodo: PeriodoAvaliacao }) {
+  const { abertura, encerramento, hoje } = periodo;
+  let frase = "A organização ainda não definiu o período de avaliação.";
+  if (abertura && encerramento) {
+    frase = hoje && estadoDoPeriodo(abertura, encerramento, hoje) === "encerrado"
+      ? `O período de avaliação foi de ${rotuloPeriodo(abertura, encerramento)} e já foi encerrado.`
+      : `O período de avaliação ainda não começou. Ele vai de ${rotuloPeriodo(abertura, encerramento)}.`;
+  }
+  return (
+    <div className="section active">
+      <div className="content-area">
+        <div className="empty-state">
+          <h3 className="empty-state-title">Avaliação fechada</h3>
+          <p className="empty-state-description">{frase}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Layout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [periodo, setPeriodo] = useState<PeriodoAvaliacao | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    carregarPeriodoAvaliacao().then((p) => vivo && setPeriodo(p));
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -83,7 +121,7 @@ const Layout = () => {
           </div>
         </header>
 
-        <Outlet />
+        {periodo === null ? null : periodo.aberto === false ? <PortalFechado periodo={periodo} /> : <Outlet />}
       </main>
     </div>
   );
