@@ -6,9 +6,12 @@ import { carregarResultadosEvento } from "@/services/avaliacaoEventoService";
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
- * O ranking da avaliação ao vivo, por categoria: a média das médias de
- * cada avaliador. Só leitura — quem escreve é o portal Avaliação.
+ * O ranking do congresso, por categoria: metade da nota da revisão, metade
+ * da avaliação ao vivo. Só leitura — quem escreve são os portais Revisão e
+ * Avaliação.
  */
+
+const nota = (n: number | null) => (n === null ? "—" : n.toFixed(2));
 const ResultadosEvento = () => {
   const [dados, setDados] = useState<{
     ranking: Record<string, LinhaRanking<Trabalho>[]>;
@@ -33,8 +36,10 @@ const ResultadosEvento = () => {
           <Trophy className="h-6 w-6" /> Resultados da Avaliação
         </h1>
         <p className="text-muted-foreground">
-          As notas dadas no portal Avaliação durante o congresso, por categoria. A média de cada
-          trabalho é a média das médias de quem o avaliou.
+          Os trabalhos aprovados, por categoria, do maior para o menor número de pontos. Os pontos
+          são metade a nota da revisão (média dos pareceres) e metade a da avaliação ao vivo (média
+          de quem avaliou no congresso), as duas de 1 a 5. Enquanto uma das metades não existe, ela
+          vale zero.
         </p>
       </div>
 
@@ -48,7 +53,7 @@ const ResultadosEvento = () => {
       ) : grupos.length === 0 ? (
         <Card className="shadow-[var(--shadow-card)]">
           <CardContent className="py-12 text-center text-muted-foreground">
-            Nenhum trabalho avaliado ainda.
+            Nenhum trabalho aprovado ainda.
           </CardContent>
         </Card>
       ) : (
@@ -62,8 +67,10 @@ const ResultadosEvento = () => {
                     <th>POSIÇÃO</th>
                     <th>TRABALHO</th>
                     <th>AUTORES</th>
-                    <th>MÉDIA</th>
+                    <th>REVISÃO</th>
+                    <th>AO VIVO</th>
                     <th>AVALIAÇÕES</th>
+                    <th>PONTOS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -72,8 +79,10 @@ const ResultadosEvento = () => {
                       <td data-rotulo="POSIÇÃO">{i + 1}º</td>
                       <td data-rotulo="TRABALHO" className="celula-titulo">{l.trabalho.titulo}</td>
                       <td data-rotulo="AUTORES" className="celula-truncada">{l.trabalho.autores}</td>
-                      <td data-rotulo="MÉDIA">{l.media.toFixed(2)}</td>
-                      <td data-rotulo="AVALIAÇÕES">{l.total}</td>
+                      <td data-rotulo="REVISÃO">{nota(l.revisao)}</td>
+                      <td data-rotulo="AO VIVO">{nota(l.evento)}</td>
+                      <td data-rotulo="AVALIAÇÕES">{l.avaliacoes}</td>
+                      <td data-rotulo="PONTOS"><strong>{l.pontos.toFixed(2)}</strong></td>
                     </tr>
                   ))}
                 </tbody>

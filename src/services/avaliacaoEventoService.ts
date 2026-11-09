@@ -10,6 +10,7 @@ import type { AnexoDoTrabalho } from "@/lib/anexos";
 import type { Categoria, Trabalho } from "@/lib/types";
 import type { Criterio } from "@/services/categoriasService";
 import { listarTrabalhosComCategorias } from "@/services/trabalhosService";
+import { STATUS_APRESENTAVEIS } from "@/services/apresentacoesService";
 
 /**
  * Avaliação ao vivo (/avaliacao). A escrita dos critérios é a mesma de
@@ -109,17 +110,26 @@ export async function avaliarTrabalhoEvento(
   if (error) throw new Error(error.message);
 }
 
-/** O ranking de /co-chairs/resultados-evento. A RLS só deixa a organização ler tudo. */
+/**
+ * O ranking de /co-chairs/resultados-evento: metade revisão, metade
+ * avaliação ao vivo. A RLS só deixa a organização ler tudo (`pareceres` e
+ * `avaliacoes_evento` são `is_event_staff()`). Entram os trabalhos que se
+ * apresentam no congresso — os mesmos que o portal Avaliação lista.
+ * As categorias vêm da tabela: categoria criada em /co-chairs/categorias
+ * vira grupo sozinha.
+ */
 export async function carregarResultadosEvento(): Promise<{
   ranking: Record<string, LinhaRanking<Trabalho>[]>;
   categorias: Categoria[];
 }> {
   // ponytail: sem paginação — o PostgREST corta em 1000 linhas; passar disso
-  // (trabalhos × avaliadores) pede a média agregada numa RPC.
-  const [a, { trabalhos, categorias }] = await Promise.all([
+  // (trabalhos × avaliadores, ou × revisores) pede as médias agregadas numa RPC.
+  const [a, p, { trabalhos, categorias }] = await Promise.all([
     supabase.from("avaliacoes_evento").select("trabalho_id, media"),
+    supabase.from("pareceres").select("trabalho_id, rodada, itens"),
     listarTrabalhosComCategorias(),
   ]);
-  if (a.error) throw a.error;
-  return { ranking: rankingPorCategoria(a.data ?? [], trabalhos), categorias };
+  if (a.error || p.error) throw a.error ?? p.error;
+  const noEvento = trabalhos.filter((t) => STATUS_APRESENTAVEIS.includes(t.status));
+  return { ranking: rankingPorCategoria(p.data ?? [], a.data ?? [], noEvento), categorias };
 }

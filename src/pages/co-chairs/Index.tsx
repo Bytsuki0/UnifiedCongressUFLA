@@ -71,7 +71,7 @@ const SECOES: Secao[] = [
   {
     para: "/co-chairs/resultados-evento",
     titulo: "Resultados da Avaliação",
-    descricao: "O ranking das notas dadas no portal Avaliação, por categoria.",
+    descricao: "O ranking por categoria: metade revisão, metade avaliação ao vivo.",
     Icone: Trophy,
   },
   {

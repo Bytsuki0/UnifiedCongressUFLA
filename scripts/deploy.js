@@ -213,8 +213,12 @@ const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Um sleep fixo de 10s dava falso negativo de build-id — a verificação
  * acusava "cache velho" num deploy que estava correto. Aqui a espera é por
  * tentativa, até o build-id no ar bater com o que subiu.
+ *
+ * 36 × 5s = 3 min. Com 6 (30s) o deploy de 2026-11-09 abortou num envio
+ * correto: a borda levou ~3 min para largar o index.html velho, até no
+ * workers.dev. O laço sai na primeira tentativa que bater.
  */
-const TENTATIVAS = 6;
+const TENTATIVAS = 36;
 let noAr = null;
 for (let i = 1; i <= TENTATIVAS; i++) {
   await esperar(5000);
