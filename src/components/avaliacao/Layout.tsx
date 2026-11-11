@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { estadoDoPeriodo, rotuloPeriodo } from "@/lib/cronograma";
 import { carregarPeriodoAvaliacao, type PeriodoAvaliacao } from "@/services/avaliacaoEventoService";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import { APP_SHORT } from "@/lib/brand";
 const NAV_ITEMS: { to: string; label: string; icon: React.ReactNode }[] = [
   { to: "/avaliacao/minhas", label: "Minhas Avaliações", icon: <><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></> },
   { to: "/avaliacao/buscar", label: "Buscar Trabalhos", icon: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></> },
+  { to: "/avaliacao/certificados", label: "Certificados", icon: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></> },
 ];
 
 /**
@@ -46,6 +47,9 @@ function PortalFechado({ periodo }: { periodo: PeriodoAvaliacao }) {
 const Layout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Os certificados saem DEPOIS do evento, com a janela já fechada: a rota
+  // deles não passa pelo portão (não lista trabalho nem autor de ninguém).
+  const semJanela = useLocation().pathname === "/avaliacao/certificados";
   const [periodo, setPeriodo] = useState<PeriodoAvaliacao | null>(null);
 
   useEffect(() => {
@@ -121,7 +125,7 @@ const Layout = () => {
           </div>
         </header>
 
-        {periodo === null ? null : periodo.aberto === false ? <PortalFechado periodo={periodo} /> : <Outlet />}
+        {semJanela ? <Outlet /> : periodo === null ? null : periodo.aberto === false ? <PortalFechado periodo={periodo} /> : <Outlet />}
       </main>
     </div>
   );

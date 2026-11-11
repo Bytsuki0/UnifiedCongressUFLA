@@ -45,6 +45,13 @@ export type Configuracoes = {
    */
   resultados_divulgacao: string | null;
   /**
+   * Momento em que os certificados PUBLICADOS em /co-chairs/certificados
+   * ficam disponíveis, no mesmo formato sem fuso de `resultados_divulgacao`.
+   * Vazio = nada é liberado pela data. Mudar a data não recolhe o que já
+   * saiu (trigger `trg_trava_certificados`).
+   */
+  certificados_liberacao: string | null;
+  /**
    * Janela do envio de pôsteres, 'AAAA-MM-DD' nas duas pontas (inclusivas,
    * horário de Brasília). ⚠ Vazia = envio FECHADO, o oposto do prazo de
    * submissão; e o CHECK do banco recusa só uma das duas.
@@ -84,7 +91,7 @@ export type PrazoSubmissoes = {
  * mudar.
  */
 const COLUNAS_DO_ADMIN =
-  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, posteres_abertura, posteres_encerramento, avaliacao_abertura, avaliacao_encerramento, edital, atualizado_em";
+  "submissoes_abertura, submissoes_encerramento, parecer_min_caracteres, max_coautores, alerta_horas, revisoes_encerramento, resultados_divulgacao, certificados_liberacao, posteres_abertura, posteres_encerramento, avaliacao_abertura, avaliacao_encerramento, edital, atualizado_em";
 
 export async function carregarConfiguracoes(): Promise<Configuracoes | null> {
   const { data, error } = await supabase

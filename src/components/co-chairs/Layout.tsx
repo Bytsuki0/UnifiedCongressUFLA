@@ -162,6 +162,14 @@ const Layout = () => {
               Pôsteres
             </NavLink>
 
+            <NavLink to="/co-chairs/certificados" title="Certificados" className={({ isActive }) => navItem(isActive)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+                <circle cx="12" cy="8" r="6"/>
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+              </svg>
+              Certificados
+            </NavLink>
+
             <NavLink to="/co-chairs/avisos" title="Avisos de Login" className={({ isActive }) => navItem(isActive)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
                 <path d="m3 11 18-5v12L3 14v-3z"/>

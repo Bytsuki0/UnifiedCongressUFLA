@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { LinhaRanking } from "@/lib/avaliacaoEvento";
-import type { Categoria, Trabalho } from "@/lib/types";
+import type { Categoria } from "@/lib/types";
 import { carregarResultadosEvento } from "@/services/avaliacaoEventoService";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -11,10 +11,10 @@ import { Card, CardContent } from "@/components/ui/card";
  * Avaliação.
  */
 
-const nota = (n: number | null) => (n === null ? "—" : n.toFixed(2));
+const nota = (n: number | null) => (n === null ? "—" : Number(n).toFixed(2));
 const ResultadosEvento = () => {
   const [dados, setDados] = useState<{
-    ranking: Record<string, LinhaRanking<Trabalho>[]>;
+    ranking: Record<string, LinhaRanking[]>;
     categorias: Categoria[];
   } | null>(null);
   const [erro, setErro] = useState(false);
@@ -39,7 +39,7 @@ const ResultadosEvento = () => {
           Os trabalhos aprovados, por categoria, do maior para o menor número de pontos. Os pontos
           são metade a nota da revisão (média dos pareceres) e metade a da avaliação ao vivo (média
           de quem avaliou no congresso), as duas de 1 a 5. Enquanto uma das metades não existe, ela
-          vale zero.
+          vale zero. Em caso de empate, fica à frente quem teve a maior nota ao vivo.
         </p>
       </div>
 
@@ -74,15 +74,15 @@ const ResultadosEvento = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {dados.ranking[g.id].map((l, i) => (
-                    <tr key={l.trabalho.id}>
-                      <td data-rotulo="POSIÇÃO">{i + 1}º</td>
-                      <td data-rotulo="TRABALHO" className="celula-titulo">{l.trabalho.titulo}</td>
-                      <td data-rotulo="AUTORES" className="celula-truncada">{l.trabalho.autores}</td>
+                  {dados.ranking[g.id].map((l) => (
+                    <tr key={l.trabalho_id}>
+                      <td data-rotulo="POSIÇÃO">{l.posicao}º</td>
+                      <td data-rotulo="TRABALHO" className="celula-titulo">{l.titulo}</td>
+                      <td data-rotulo="AUTORES" className="celula-truncada">{l.autores}</td>
                       <td data-rotulo="REVISÃO">{nota(l.revisao)}</td>
                       <td data-rotulo="AO VIVO">{nota(l.evento)}</td>
                       <td data-rotulo="AVALIAÇÕES">{l.avaliacoes}</td>
-                      <td data-rotulo="PONTOS"><strong>{l.pontos.toFixed(2)}</strong></td>
+                      <td data-rotulo="PONTOS"><strong>{Number(l.pontos).toFixed(2)}</strong></td>
                     </tr>
                   ))}
                 </tbody>

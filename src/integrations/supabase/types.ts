@@ -413,6 +413,71 @@ export type Database = {
         }
         Relationships: []
       }
+      certificado_modelos: {
+        Row: {
+          altura: number
+          atualizado_em: string
+          caixas: Json
+          imagem: string
+          largura: number
+          liberado_em: string | null
+          publicado_em: string | null
+          uso: string
+        }
+        Insert: {
+          altura: number
+          atualizado_em?: string
+          caixas?: Json
+          imagem: string
+          largura: number
+          liberado_em?: string | null
+          publicado_em?: string | null
+          uso: string
+        }
+        Update: {
+          altura?: number
+          atualizado_em?: string
+          caixas?: Json
+          imagem?: string
+          largura?: number
+          liberado_em?: string | null
+          publicado_em?: string | null
+          uso?: string
+        }
+        Relationships: []
+      }
+      certificado_podio: {
+        Row: {
+          categoria_id: string
+          categoria_nome: string
+          congelado_em: string
+          posicao: number
+          trabalho_id: string
+        }
+        Insert: {
+          categoria_id: string
+          categoria_nome: string
+          congelado_em?: string
+          posicao: number
+          trabalho_id: string
+        }
+        Update: {
+          categoria_id?: string
+          categoria_nome?: string
+          congelado_em?: string
+          posicao?: number
+          trabalho_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificado_podio_trabalho_id_fkey"
+            columns: ["trabalho_id"]
+            isOneToOne: false
+            referencedRelation: "trabalhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           arquivo_url: string | null
@@ -470,6 +535,7 @@ export type Database = {
           atualizado_em: string
           avaliacao_abertura: string | null
           avaliacao_encerramento: string | null
+          certificados_liberacao: string | null
           atualizado_por: string | null
           edital: string
           id: boolean
@@ -488,6 +554,7 @@ export type Database = {
           atualizado_em?: string
           avaliacao_abertura?: string | null
           avaliacao_encerramento?: string | null
+          certificados_liberacao?: string | null
           atualizado_por?: string | null
           edital?: string
           id?: boolean
@@ -506,6 +573,7 @@ export type Database = {
           atualizado_em?: string
           avaliacao_abertura?: string | null
           avaliacao_encerramento?: string | null
+          certificados_liberacao?: string | null
           atualizado_por?: string | null
           edital?: string
           id?: boolean
@@ -1496,6 +1564,43 @@ export type Database = {
       avaliar_trabalho_evento: {
         Args: { _notas: Json; _trabalho_id: string }
         Returns: undefined
+      }
+      certificados_data_chegou: { Args: never; Returns: boolean }
+      congelar_podio: { Args: never; Returns: number }
+      despublicar_certificado: { Args: { _uso: string }; Returns: undefined }
+      meus_certificados: {
+        Args: never
+        Returns: {
+          altura: number
+          caixas: Json
+          chave: string
+          imagem: string
+          largura: number
+          uso: string
+          variaveis: Json
+        }[]
+      }
+      previa_certificados: {
+        Args: { _uso: string }
+        Returns: {
+          chave: string
+          variaveis: Json
+        }[]
+      }
+      publicar_certificado: { Args: { _uso: string }; Returns: undefined }
+      ranking_evento: {
+        Args: never
+        Returns: {
+          autores: string
+          avaliacoes: number
+          categoria_id: string
+          evento: number
+          pontos: number
+          posicao: number
+          revisao: number
+          titulo: string
+          trabalho_id: string
+        }[]
       }
       close_event_and_issue_certificates: {
         Args: { _carga_horaria: number; _event_id: string; _event_type: string }

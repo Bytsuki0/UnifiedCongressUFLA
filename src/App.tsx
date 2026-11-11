@@ -64,6 +64,7 @@ import EstudanteCronograma from "./pages/estudante/Cronograma";
 import EstudanteApresentacoes from "./pages/estudante/Apresentacoes";
 import EstudanteProgramacao from "./pages/estudante/Programacao";
 import EstudanteAvisos from "./pages/estudante/Avisos";
+import { MeusCertificados } from "./components/MeusCertificados";
 
 // Painel do Revisor — uma página por função, sob /revisor
 import RevisorLayout from "./components/revisor/Layout";
@@ -93,6 +94,7 @@ import CoChairsAdminCA from "./pages/co-chairs/AdminCA";
 import CoChairsAnais from "./pages/co-chairs/Anais";
 import CoChairsPitches from "./pages/co-chairs/Pitches";
 import CoChairsPosteres from "./pages/co-chairs/Posteres";
+import CoChairsCertificados from "./pages/co-chairs/Certificados";
 import CoChairsAvisos from "./pages/co-chairs/Avisos";
 import CoChairsDownloads from "./pages/co-chairs/Downloads";
 import Atribuicoes from "./pages/co-chairs/Atribuicoes";
@@ -241,6 +243,10 @@ const App = () => (
                 {/* Os avisos de login endereçados a quem está logado, numa
                     página fixa — o pop-up some quando é fechado. */}
                 <Route path="avisos" element={<EstudanteAvisos />} />
+                {/* Certificados liberados (migration 20261111120000): o
+                    base e os de pódio aqui; os de professor, em /revisor e
+                    /avaliacao. Quem recorta é `meus_certificados()`. */}
+                <Route path="certificados" element={<MeusCertificados usos={["base", "primeiro", "segundo", "terceiro"]} />} />
               </Route>
             </Route>
 
@@ -257,6 +263,7 @@ const App = () => (
                     A URL vira redirect, como as antigas de co-chairs. */}
                 <Route path="formularios" element={<Navigate to="/revisor/arquivo" replace />} />
                 <Route path="arquivo" element={<RevisorArquivo />} />
+                <Route path="certificados" element={<MeusCertificados usos={["revisao"]} />} />
               </Route>
             </Route>
 
@@ -268,6 +275,7 @@ const App = () => (
                 <Route path="minhas" element={<AvaliacaoTrabalhos minhas />} />
                 <Route path="buscar" element={<AvaliacaoTrabalhos />} />
                 <Route path="avaliar/:id" element={<AvaliacaoAvaliar />} />
+                <Route path="certificados" element={<MeusCertificados usos={["avaliacao"]} />} />
               </Route>
             </Route>
 
@@ -300,6 +308,7 @@ const App = () => (
                 <Route path="anais" element={<CoChairsAnais />} />
                 <Route path="pitches" element={<CoChairsPitches />} />
                 <Route path="posteres" element={<CoChairsPosteres />} />
+                <Route path="certificados" element={<CoChairsCertificados />} />
                 <Route path="avisos" element={<CoChairsAvisos />} />
                 {/* Saiu de /admin/configuracoes na 20260909120000, com a
                     policy de escrita junto (is_app_admin -> is_event_staff). */}

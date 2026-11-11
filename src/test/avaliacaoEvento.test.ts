@@ -16,7 +16,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: mocks.rpc, from: mocks.from },
 }));
 
-import { filtrarTrabalhos, rankingPorCategoria } from "@/lib/avaliacaoEvento";
+import { agruparRanking, filtrarTrabalhos, type LinhaRanking } from "@/lib/avaliacaoEvento";
 import {
   avaliarTrabalhoEvento,
   carregarAvaliacaoEvento,
@@ -56,69 +56,15 @@ describe("filtrarTrabalhos", () => {
   });
 });
 
-describe("rankingPorCategoria", () => {
-  // Trabalho com rodada: a revisão só conta os pareceres da rodada corrente.
-  const R = (id: string, titulo: string, categoria_id: string | null, rodada = 1) => ({
-    ...T(id, titulo, "", categoria_id), rodada,
-  });
-  const P = (trabalho_id: string, notas: unknown[], rodada = 1) => ({
-    trabalho_id, rodada, itens: notas.map((nota) => ({ nota })),
+describe("agruparRanking", () => {
+  const L = (trabalho_id: string, categoria_id: string | null, posicao: number): LinhaRanking => ({
+    trabalho_id, categoria_id, posicao, titulo: trabalho_id, autores: "", revisao: null, evento: null, avaliacoes: 0, pontos: 0,
   });
 
-  it("pontos = metade revisão + metade ao vivo, maior primeiro, por categoria", () => {
-    const r = rankingPorCategoria(
-      [P("1", [3, 3]), P("1", [5, 5]), P("3", [5, 5])],
-      [
-        { trabalho_id: "1", media: 4 },
-        { trabalho_id: "1", media: 5 },
-        { trabalho_id: "3", media: 4 },
-        { trabalho_id: "2", media: 2 },
-      ],
-      [R("1", "A", "bic"), R("2", "B", "ext"), R("3", "C", "bic")],
-    );
-    expect(Object.keys(r).sort()).toEqual(["bic", "ext"]);
-    // 3: (5 + 4)/2 = 4.5   1: (4 + 4.5)/2 = 4.25
-    expect(r.bic.map((l) => [l.trabalho.id, l.revisao, l.evento, l.avaliacoes, l.pontos])).toEqual([
-      ["3", 5, 4, 1, 4.5],
-      ["1", 4, 4.5, 2, 4.25],
-    ]);
-  });
-
-  it("a metade que falta vale zero, e o trabalho aparece mesmo assim", () => {
-    const r = rankingPorCategoria([P("1", [4])], [], [R("1", "A", "bic"), R("2", "B", "bic")]);
-    expect(r.bic.map((l) => [l.trabalho.id, l.revisao, l.evento, l.pontos])).toEqual([
-      ["1", 4, null, 2],
-      ["2", null, null, 0],
-    ]);
-  });
-
-  it("revisão: só a rodada corrente, e nota que não é número fica de fora", () => {
-    const r = rankingPorCategoria(
-      // A rodada 1 (nota 1) é de antes do reenvio; null e "" não podem virar zero.
-      [P("1", [1, 1], 1), P("1", [4, "5", null, "", "x"], 2)],
-      [],
-      [R("1", "A", "bic", 2)],
-    );
-    expect(r.bic[0].revisao).toBe(4.5);
-  });
-
-  it("empate: mais avaliações ao vivo na frente, depois o título", () => {
-    const r = rankingPorCategoria(
-      [],
-      [
-        { trabalho_id: "3", media: 4 },
-        { trabalho_id: "1", media: 4 },
-        { trabalho_id: "1", media: 4 },
-        { trabalho_id: "4", media: 4 },
-      ],
-      [R("1", "Zebra", "bic"), R("3", "Robôs", "bic"), R("4", "Abelhas", "bic")],
-    );
-    expect(r.bic.map((l) => l.trabalho.id)).toEqual(["1", "4", "3"]);
-  });
-
-  it("trabalho sem categoria vai para a chave vazia", () => {
-    const r = rankingPorCategoria([], [{ trabalho_id: "9", media: 2 }], [R("9", "Órfão", null)]);
-    expect(r[""]).toHaveLength(1);
+  it("agrupa por categoria, na ordem da posição do servidor; sem categoria vai na chave vazia", () => {
+    const r = agruparRanking([L("b", "bic", 2), L("x", null, 1), L("a", "bic", 1)]);
+    expect(r.bic.map((l) => l.trabalho_id)).toEqual(["a", "b"]);
+    expect(r[""].map((l) => l.trabalho_id)).toEqual(["x"]);
   });
 });
 
@@ -162,22 +108,20 @@ describe("avaliacaoEventoService", () => {
     expect((await carregarPeriodoAvaliacao()).aberto).toBeNull();
   });
 
-  it("resultados: só entram os trabalhos que se apresentam no congresso", async () => {
-    const tabelas: Record<string, unknown[]> = {
-      avaliacoes_evento: [],
-      pareceres: [{ trabalho_id: "3", rodada: 1, itens: [{ nota: 5 }] }],
-      trabalhos: ["aprovado", "aprovado_correcoes", "reprovado", "em_avaliacao"].map((status, i) => ({
-        id: String(i + 1), titulo: status, categoria_id: "bic", rodada: 1, status,
-      })),
-      categorias: [{ id: "bic", nome: "BIC" }],
-    };
-    mocks.from.mockImplementation((t: string) => {
-      const r = Promise.resolve({ data: tabelas[t], error: null });
-      return { select: () => Object.assign(r, { order: () => r }) };
+  // Migration 20261111120000: a conta saiu do cliente. Recalcular aqui
+  // criaria um segundo ranking, diferente do que congela o pódio.
+  it("resultados: o ranking vem da RPC, não de uma conta do cliente", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [{ trabalho_id: "1", categoria_id: "bic", titulo: "A", autores: "", revisao: 4, evento: 5, avaliacoes: 1, pontos: 4.5, posicao: 1 }],
+      error: null,
     });
+    const r = Promise.resolve({ data: [{ id: "bic", nome: "BIC" }], error: null });
+    mocks.from.mockReturnValue({ select: () => Object.assign(r, { order: () => r }) });
 
     const { ranking } = await carregarResultadosEvento();
-    expect(ranking.bic.map((l) => l.trabalho.id).sort()).toEqual(["1", "2"]);
+    expect(mocks.rpc).toHaveBeenCalledWith("ranking_evento");
+    expect(mocks.from).not.toHaveBeenCalledWith("pareceres");
+    expect(ranking.bic[0].posicao).toBe(1);
   });
 
   it("PDF: pede à RPC da fresta, nunca à tabela", async () => {

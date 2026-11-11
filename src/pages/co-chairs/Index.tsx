@@ -15,6 +15,7 @@ import {
   Trophy,
   Users,
   Video,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,6 +126,13 @@ const SECOES: Secao[] = [
     descricao:
       "Os pôsteres que os autores dos trabalhos aprovados enviaram na janela de pôsteres.",
     Icone: Presentation,
+  },
+  {
+    para: "/co-chairs/certificados",
+    titulo: "Certificados",
+    descricao:
+      "Os modelos de certificado: suba o PNG, posicione o texto, confira a prévia de todos e publique.",
+    Icone: Award,
   },
   {
     para: "/co-chairs/downloads",

@@ -417,6 +417,70 @@ function montarEmailApresentacao(a: Apresentacao, siteUrl: string) {
 }
 
 // ------------------------------------------------------------
+// Certificados (migration 20261111120000)
+// ------------------------------------------------------------
+// Aviso sem anexo: o certificado é desenhado no navegador, no portal. Um
+// e-mail por pessoa por leva; `avisados` são os usos que esta leva liberou.
+
+/** Uma linha de `certificados_devidos()`. */
+type Certificado = {
+  envio_id: string;
+  para: string;
+  para_nome: string | null;
+  avisados: string[];
+};
+
+function montarEmailCertificado(c: Certificado, siteUrl: string) {
+  const nome = c.para_nome?.trim() || null;
+  const saudacao = nome ? `Olá, ${nome}!` : "Olá!";
+  const base = siteUrl.replace(/\/+$/, "");
+  // O botão leva ao portal do primeiro uso avisado; os demais vão por extenso.
+  const portais = [
+    c.avisados.some((u) => u !== "revisao" && u !== "avaliacao")
+      ? { rotulo: "Submissão", link: `${base}/estudante/certificados` }
+      : null,
+    c.avisados.includes("revisao") ? { rotulo: "Revisão", link: `${base}/revisor/certificados` } : null,
+    c.avisados.includes("avaliacao")
+      ? { rotulo: "Avaliação", link: `${base}/avaliacao/certificados` }
+      : null,
+  ].filter((p): p is { rotulo: string; link: string } => p !== null);
+  const link = portais[0]?.link ?? base;
+
+  const assunto = `Seu certificado está disponível - ${APP_NAME}`;
+  const abertura =
+    `Seu certificado do ${APP_NAME} já pode ser baixado no portal, na aba Certificados` +
+    (portais.length > 1 ? " de cada área em que você participou:" : ".");
+
+  const texto = [
+    saudacao,
+    "",
+    abertura,
+    "",
+    ...portais.map((p) => `- ${p.rotulo}: ${p.link}`),
+    "",
+    RODAPE,
+    `${APP_NAME} - ${APP_TAGLINE}`,
+  ].join("\n");
+
+  const itens =
+    portais.length > 1
+      ? `<ul style="margin:0 0 20px;padding-left:20px;line-height:1.6;">${portais
+          .map((p) => `<li><a href="${p.link}">${escapar(p.rotulo)}</a></li>`)
+          .join("")}</ul>`
+      : "";
+  const html = moldura(
+    "Seu certificado está disponível",
+    `<p style="margin:0 0 16px;line-height:1.6;">${escapar(saudacao)}</p>
+        <p style="margin:0 0 20px;line-height:1.6;">${escapar(abertura)}</p>
+        ${itens}`,
+    link,
+    "Baixar o certificado",
+  );
+
+  return { assunto, html, texto };
+}
+
+// ------------------------------------------------------------
 // Handler
 // ------------------------------------------------------------
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -509,11 +573,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Os avisos de certificado vêm por último: não correm contra prazo.
+    let certificados: Certificado[] = [];
+    const restaCert = resta - apresentacoes.length;
+    if (restaCert > 0) {
+      const c = await clienteServico.rpc("certificados_devidos", { _limite: restaCert });
+      if (c.error) {
+        // ⚠ Sem 500, pelo mesmo motivo das filas acima.
+        console.error(`certificados_devidos falhou [${c.error.code ?? ""}]: ${c.error.message}`);
+      } else {
+        certificados = (c.data ?? []) as Certificado[];
+      }
+    }
+
     // Só contagens no log: endereço de revisor ou de autor não vai para log nenhum.
-    if (devidos.length + resultados.length + apresentacoes.length > 0) {
+    if (devidos.length + resultados.length + apresentacoes.length + certificados.length > 0) {
       console.log(
-        `pegar: ${devidos.length} e-mail(s) a revisores, ${resultados.length} resultado(s) e ` +
-          `${apresentacoes.length} apresentação(ões) reservado(s).`,
+        `pegar: ${devidos.length} e-mail(s) a revisores, ${resultados.length} resultado(s), ` +
+          `${apresentacoes.length} apresentação(ões) e ${certificados.length} certificado(s) reservado(s).`,
       );
     }
 
@@ -540,6 +617,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
           tipo: "apresentacao",
           para: a.autor_email,
           ...montarEmailApresentacao(a, SITE_URL!),
+        })),
+        ...certificados.map((c) => ({
+          id: c.envio_id,
+          tipo: "certificado",
+          para: c.para,
+          ...montarEmailCertificado(c, SITE_URL!),
         })),
       ],
     });

@@ -1,16 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
-  rankingPorCategoria,
+  agruparRanking,
   type LinhaRanking,
   type MinhaAvaliacao,
   type NotaDada,
   type TrabalhoAvaliavel,
 } from "@/lib/avaliacaoEvento";
 import type { AnexoDoTrabalho } from "@/lib/anexos";
-import type { Categoria, Trabalho } from "@/lib/types";
+import type { Categoria } from "@/lib/types";
 import type { Criterio } from "@/services/categoriasService";
-import { listarTrabalhosComCategorias } from "@/services/trabalhosService";
-import { STATUS_APRESENTAVEIS } from "@/services/apresentacoesService";
+import { listarCategorias } from "@/services/categoriasService";
 
 /**
  * Avaliação ao vivo (/avaliacao). A escrita dos critérios é a mesma de
@@ -111,25 +110,16 @@ export async function avaliarTrabalhoEvento(
 }
 
 /**
- * O ranking de /co-chairs/resultados-evento: metade revisão, metade
- * avaliação ao vivo. A RLS só deixa a organização ler tudo (`pareceres` e
- * `avaliacoes_evento` são `is_event_staff()`). Entram os trabalhos que se
- * apresentam no congresso — os mesmos que o portal Avaliação lista.
+ * O ranking de /co-chairs/resultados-evento. A conta é de `ranking_evento()`
+ * (só a organização a lê): é a mesma que congela o pódio dos certificados.
  * As categorias vêm da tabela: categoria criada em /co-chairs/categorias
  * vira grupo sozinha.
  */
 export async function carregarResultadosEvento(): Promise<{
-  ranking: Record<string, LinhaRanking<Trabalho>[]>;
+  ranking: Record<string, LinhaRanking[]>;
   categorias: Categoria[];
 }> {
-  // ponytail: sem paginação — o PostgREST corta em 1000 linhas; passar disso
-  // (trabalhos × avaliadores, ou × revisores) pede as médias agregadas numa RPC.
-  const [a, p, { trabalhos, categorias }] = await Promise.all([
-    supabase.from("avaliacoes_evento").select("trabalho_id, media"),
-    supabase.from("pareceres").select("trabalho_id, rodada, itens"),
-    listarTrabalhosComCategorias(),
-  ]);
-  if (a.error || p.error) throw a.error ?? p.error;
-  const noEvento = trabalhos.filter((t) => STATUS_APRESENTAVEIS.includes(t.status));
-  return { ranking: rankingPorCategoria(p.data ?? [], a.data ?? [], noEvento), categorias };
+  const [r, categorias] = await Promise.all([supabase.rpc("ranking_evento"), listarCategorias()]);
+  if (r.error) throw r.error;
+  return { ranking: agruparRanking((r.data ?? []) as LinhaRanking[]), categorias };
 }
