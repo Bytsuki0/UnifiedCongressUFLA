@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Award, Bold, Italic, Plus, Trash2, Upload } from "lucide-react";
+import { Award, Bold, Download, Italic, Plus, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { envolverSelecao } from "@/lib/avisos";
 import {
@@ -7,6 +7,7 @@ import {
   estadoDoModelo,
   familiaDaFonte,
   FONTES_EMBUTIDAS,
+  nomeDoArquivo,
   precisaEncolher,
   ROTULO_USO,
   USOS,
@@ -15,9 +16,11 @@ import {
   type Alinhamento,
   type Caixa,
   type Uso,
+  type Variaveis,
 } from "@/lib/certificados";
 import { fatiaDaPagina, paginaValida, totalDePaginas } from "@/lib/pitches";
 import {
+  baixarCertificado,
   carregarFontes,
   congelarPodio,
   dataDosCertificadosChegou,
@@ -45,7 +48,8 @@ import { Card, CardContent } from "@/components/ui/card";
  * Um modelo por USO: o PNG, mais caixas de texto arrastadas sobre ele. O
  * texto aceita variáveis (`{titulo}`) e a marcação leve dos avisos
  * (`**negrito**`, `*itálico*`). Embaixo, a prévia de TODOS os destinatários
- * — o mesmo desenho que cada um vai baixar.
+ * — o mesmo desenho que cada um vai baixar —, cada uma com o botão que a
+ * baixa no tamanho do modelo.
  *
  * Duas gravações diferentes, e os botões dizem qual é qual: SALVAR grava a
  * arte e as caixas (vale na hora para quem já baixa); PUBLICAR é o que
@@ -57,6 +61,8 @@ type Rascunho = { imagem: string; largura: number; altura: number; caixas: Caixa
 
 const POR_PAGINA = 6;
 const LARGURA_EDITOR = 1000;
+/** A chave do download sem destinatário (as dos destinatários vêm do servidor). */
+const AMOSTRA = "amostra";
 
 /** 'AAAA-MM-DDTHH:MM…' → 'DD/MM/AAAA às HH:MM', sem passar por `Date` (o valor não tem fuso). */
 const momentoBr = (m: string) => `${m.slice(8, 10)}/${m.slice(5, 7)}/${m.slice(0, 4)} às ${m.slice(11, 16)}`;
@@ -81,6 +87,7 @@ const Certificados = () => {
   const [encolhidos, setEncolhidos] = useState<Set<string>>(new Set());
   const [soEncolhidos, setSoEncolhidos] = useState(false);
   const [pagina, setPagina] = useState(1);
+  const [baixando, setBaixando] = useState<string | null>(null);
 
   const palco = useRef<HTMLDivElement>(null);
   const campoTexto = useRef<HTMLTextAreaElement>(null);
@@ -297,6 +304,21 @@ const Certificados = () => {
       if (caixa) mudarCaixa({ fonte: caminho });
       toast.success("Fonte enviada.");
     });
+
+  // Baixa UMA prévia no tamanho do modelo — o mesmo arquivo que o
+  // destinatário recebe. Sai do RASCUNHO, como o desenho da tela: o que está
+  // à vista é o que baixa, inclusive alteração ainda não salva.
+  const baixar = async (chave: string, variaveis: Variaveis) => {
+    if (!rascunho) return;
+    setBaixando(chave);
+    try {
+      await baixarCertificado(rascunho, rascunho.imagem, variaveis, nomeDoArquivo(uso, variaveis));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível gerar o certificado.");
+    } finally {
+      setBaixando(null);
+    }
+  };
 
   const visiveis = useMemo(
     () => (soEncolhidos ? destinatarios.filter((d) => encolhidos.has(d.chave)) : destinatarios),
@@ -625,10 +647,23 @@ const Certificados = () => {
 
               {destinatarios.length === 0 ? (
                 <Card className="shadow-[var(--shadow-card)]">
-                  <CardContent className="py-10 text-center text-muted-foreground">
-                    {ehPodio && !podioEm
-                      ? "Sem destinatários: o pódio ainda não foi congelado."
-                      : "Ninguém recebe este certificado ainda."}
+                  <CardContent className="space-y-3 py-10 text-center text-muted-foreground">
+                    <p>
+                      {ehPodio && !podioEm
+                        ? "Sem destinatários: o pódio ainda não foi congelado."
+                        : "Ninguém recebe este certificado ainda."}
+                    </p>
+                    {/* Sem destinatário, a única prévia é a do editor: é ela que baixa. */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={baixando !== null}
+                      title="Baixa o certificado em tamanho real, com as variáveis por extenso"
+                      onClick={() => baixar(AMOSTRA, amostra)}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {baixando === AMOSTRA ? "Gerando..." : "Baixar amostra"}
+                    </Button>
                   </CardContent>
                 </Card>
               ) : (
@@ -637,12 +672,26 @@ const Certificados = () => {
                     {fatiaDaPagina(visiveis, paginaAtual, POR_PAGINA).map((d) => (
                       <div key={d.chave} className="space-y-1">
                         <PreviaCertificado modelo={rascunho} imagem={rascunho.imagem} variaveis={d.variaveis} />
-                        <p className="truncate text-sm" title={d.variaveis.titulo ?? d.variaveis.nome}>
-                          {d.variaveis.titulo ?? d.variaveis.nome}
+                        <div className="flex items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate text-sm" title={d.variaveis.titulo ?? d.variaveis.nome}>
+                            {d.variaveis.titulo ?? d.variaveis.nome}
+                          </p>
+                          {/* Fora do <p>: dentro dele, o corte do título longo levava o selo junto. */}
                           {encolhidos.has(d.chave) && (
-                            <span className="badge badge-amber ml-2">fonte reduzida</span>
+                            <span className="badge badge-amber shrink-0">fonte reduzida</span>
                           )}
-                        </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0"
+                            disabled={baixando !== null}
+                            title="Baixar este certificado em tamanho real"
+                            onClick={() => baixar(d.chave, d.variaveis)}
+                          >
+                            <Download className="mr-1 h-4 w-4" />
+                            {baixando === d.chave ? "Gerando..." : "Baixar"}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
